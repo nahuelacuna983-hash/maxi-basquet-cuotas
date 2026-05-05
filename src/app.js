@@ -30,6 +30,7 @@ import {
   savePersistedState,
 } from "./domain/storage.js";
 import {
+  deleteSupabasePayment,
   isSupabaseEnabled,
   loadSupabaseState,
   saveSupabaseState,
@@ -1612,11 +1613,29 @@ function reviewPayment(paymentId, status) {
   render();
 }
 
-function deletePayment(paymentId) {
+async function deletePayment(paymentId) {
   if (!requireAdmin()) return;
   if (!confirm("Eliminar este pago de prueba? Esta accion recalcula la deuda.")) return;
 
+  const previousPayments = state.payments;
   state.payments = state.payments.filter((payment) => payment.id !== paymentId);
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Eliminando pago...";
+    renderRoleVisibility();
+
+    try {
+      await deleteSupabasePayment(paymentId);
+      state.syncStatus = "Pago eliminado";
+    } catch (error) {
+      state.payments = previousPayments;
+      state.syncStatus = `Error al eliminar pago: ${error.message}`;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  }
+
   render();
 }
 

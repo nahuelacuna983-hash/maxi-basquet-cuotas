@@ -61,6 +61,13 @@ export async function saveSupabaseState(state) {
   });
 }
 
+export async function deleteSupabasePayment(paymentId) {
+  const client = await getSupabaseClient();
+  const result = await client.from("payments").delete().eq("id", paymentId);
+
+  assertSupabaseResult(result, "payments");
+}
+
 async function getSupabaseClient() {
   if (!isSupabaseEnabled()) {
     throw new Error("Supabase no esta configurado");
