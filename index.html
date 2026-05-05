@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maxi Basquet</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Maxi Basquet</p>
+          <h1>Gestion del equipo</h1>
+        </div>
+      </header>
+
+      <section id="playerView" class="player-view">
+        <section class="panel self-service-panel">
+          <div class="panel-heading">
+            <div class="panel-icon" aria-hidden="true">$</div>
+            <div>
+              <h2>Mi cuota</h2>
+              <p>Consulta rapida para pagar e informar pagos</p>
+            </div>
+          </div>
+
+          <label class="self-player-selector">
+            Jugador
+            <select id="selfServicePlayer"></select>
+          </label>
+          <label class="self-player-selector">
+            Mes a consultar
+            <select id="selfServiceMonth"></select>
+          </label>
+
+          <div class="self-dashboard">
+            <article class="metric-card main-payment-card">
+              <span>Monto a pagar</span>
+              <strong id="selfCurrentBalance">$0</strong>
+              <span class="payment-status" id="selfCurrentStatus">Pendiente</span>
+              <dl>
+                <div>
+                  <dt>Vencimiento</dt>
+                  <dd id="selfCurrentDue">-</dd>
+                </div>
+                <div>
+                  <dt>Cuota esperada</dt>
+                  <dd id="selfCurrentExpected">$0</dd>
+                </div>
+                <div>
+                  <dt>Pagado aprobado</dt>
+                  <dd id="selfCurrentPaid">$0</dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+
+          <div class="pay-actions">
+            <button class="primary-button pay-button" id="selfPayButton" type="button">Pagar</button>
+            <span id="selfPaymentStatus" class="muted-detail"></span>
+          </div>
+
+          <form class="form-grid self-payment-form" id="selfPaymentForm">
+            <label>
+              Metodo
+              <select id="selfPaymentMethod">
+                <option value="transferencia">Transferencia</option>
+                <option value="efectivo">Efectivo</option>
+              </select>
+            </label>
+            <label>
+              Monto
+              <input id="selfPaymentAmount" type="number" min="1" required />
+            </label>
+            <label>
+              Fecha
+              <input id="selfPaymentDate" type="date" required />
+            </label>
+            <label class="wide-field">
+              Comprobante u observacion
+              <input id="selfPaymentNote" placeholder="Operacion, comprobante o nota" />
+            </label>
+            <button class="primary-button" type="submit">Informar pago</button>
+          </form>
+
+          <div class="support-dashboard">
+            <article class="metric-card">
+              <span>Deuda atrasada</span>
+              <strong id="selfLateDebt">$0</strong>
+              <p>Saldo pendiente de meses anteriores.</p>
+            </article>
+
+            <article class="metric-card">
+              <span>Proxima cuota estimada</span>
+              <strong id="selfNextEstimate">$0</strong>
+              <p>Calculo aproximado con los valores cargados.</p>
+            </article>
+          </div>
+
+          <div class="progress-grid compact-progress">
+            <div class="progress-row">
+              <div>
+                <strong>Pago del mes</strong>
+                <span id="selfMonthPercentText">0%</span>
+              </div>
+              <div class="progress-track" aria-hidden="true">
+                <div class="progress-fill" id="selfMonthPercentBar"></div>
+              </div>
+            </div>
+            <div class="progress-row">
+              <div>
+                <strong>Pago anual</strong>
+                <span id="selfYearPercentText">0%</span>
+              </div>
+              <div class="progress-track" aria-hidden="true">
+                <div class="progress-fill" id="selfYearPercentBar"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="admin-access">
+          <button class="secondary-button" id="showAdminLoginButton" type="button">Modo admin</button>
+          <div class="admin-login" id="adminLoginBox" hidden>
+            <input id="adminPin" type="password" inputmode="numeric" placeholder="PIN admin" />
+            <button class="secondary-button" id="adminLoginButton" type="button">Entrar</button>
+          </div>
+          <button class="secondary-button" id="adminLogoutButton" type="button" hidden>Salir modo admin</button>
+          <button class="secondary-button" id="backToPlayerViewButton" type="button" hidden>Volver a mi cuota</button>
+          <span class="muted-detail" id="adminModeStatus"></span>
+        </div>
+      </section>
+
+      <section id="adminView" class="admin-view" hidden>
+      <div class="summary-grid admin-summary-grid" id="adminSummary" aria-label="Resumen">
+        <article class="summary-item">
+          <span>Jugadores</span>
+          <strong id="summaryPlayers">0</strong>
+        </article>
+        <article class="summary-item">
+          <span>Cobrado</span>
+          <strong id="summaryCollected">$0</strong>
+        </article>
+        <article class="summary-item">
+          <span>Deuda</span>
+          <strong id="summaryDebt">$0</strong>
+        </article>
+        <article class="summary-item">
+          <span>Morosos</span>
+          <strong id="summaryDefaulters">0</strong>
+        </article>
+      </div>
+      <section class="panel data-panel">
+        <div class="panel-heading">
+          <div class="panel-icon" aria-hidden="true">D</div>
+          <div>
+            <h2>Datos y respaldo</h2>
+            <p>Persistencia local, backup y limpieza de datos de prueba</p>
+          </div>
+        </div>
+        <div class="data-actions">
+          <button class="secondary-button" id="exportBackupButton" type="button">Exportar backup JSON</button>
+          <button class="secondary-button" id="importBackupButton" type="button">Importar backup JSON</button>
+          <input id="importBackupFile" type="file" accept="application/json,.json" hidden />
+          <button class="secondary-button danger-button" id="removeSampleDataButton" type="button">Quitar datos de prueba</button>
+          <button class="secondary-button danger-button" id="resetSampleDataButton" type="button">Restablecer datos de prueba</button>
+          <span class="muted-detail" id="backupMessage"></span>
+        </div>
+      </section>
+      <section class="workspace">
+        <div class="forms-column">
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">+</div>
+              <div>
+                <h2>Nuevo jugador</h2>
+                <p>Alta basica y habilitacion interna</p>
+              </div>
+            </div>
+            <form class="form-grid" id="playerForm">
+              <label>
+                Nombre
+                <input id="playerFirstName" placeholder="Juan" required />
+              </label>
+              <label>
+                Apellido
+                <input id="playerLastName" placeholder="Perez" required />
+              </label>
+              <label>
+                Telefono
+                <input id="playerPhone" placeholder="11 5555-0000" />
+              </label>
+              <label>
+                Tipo
+                <select id="playerType">
+                  <option value="competidor">Competidor</option>
+                  <option value="solo_entrenamientos">Solo entrenamientos</option>
+                </select>
+              </label>
+              <label>
+                Estado
+                <select id="playerStatus">
+                  <option value="activo">Activo</option>
+                  <option value="lesionado">Lesionado</option>
+                  <option value="lista_espera">Lista de espera</option>
+                  <option value="esporadico">Esporadico</option>
+                  <option value="baja">Baja</option>
+                </select>
+              </label>
+              <label class="check-row">
+                <input id="playerInternalEnabled" type="checkbox" checked />
+                Habilitado interno
+              </label>
+              <button class="primary-button" type="submit">+ Agregar jugador</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">+</div>
+              <div>
+                <h2>Carga masiva jugadores</h2>
+                <p>Pega filas desde Excel o Google Sheets</p>
+              </div>
+            </div>
+            <form class="form-grid" id="bulkPlayersForm">
+              <label class="wide-field">
+                Datos
+                <textarea
+                  id="bulkPlayersInput"
+                  class="bulk-textarea"
+                  placeholder="Nombre | Tipo | Estado | Telefono | Habilitado interno | Resp. pts&#10;Acuña Nahuel | competidor | activo | 2210000000 | si | 1050&#10;García Jerónimo | solo_entrenamientos | activo | 2210000000 | no | 1000&#10;Pérez Bruno | solo_entrenamientos | lista_espera | 2210000000 | no | 0"
+                ></textarea>
+              </label>
+              <p class="form-message wide-field" id="bulkPlayersMessage"></p>
+              <button class="primary-button" type="submit">Importar jugadores</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">$</div>
+              <div>
+                <h2>Cargar cuota</h2>
+                <p>Calcula entrenamientos y domingos del mes</p>
+              </div>
+            </div>
+            <form class="form-grid" id="feeForm">
+              <label>
+                Mes
+                <input id="feeMonth" type="month" value="2026-05" required />
+              </label>
+              <label>
+                Turno entrenamiento
+                <input id="feeTrainingCost" type="number" min="1" value="55000" required />
+              </label>
+              <label>
+                Domingo
+                <input id="feeSundayCost" type="number" min="0" value="90000" required />
+              </label>
+              <label>
+                Base cobro entrenamientos
+                <input id="feeTrainingBillingBase" type="number" min="0" placeholder="Auto" />
+              </label>
+              <label>
+                Base cobro domingos
+                <input id="feeSundayBillingBase" type="number" min="0" placeholder="Auto" />
+              </label>
+              <label>
+                Interes desde dia 11 (%)
+                <input id="feeInterestPercent" type="number" min="0" value="5" required />
+              </label>
+              <button class="primary-button" type="submit">+ Agregar cuota</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">$</div>
+              <div>
+                <h2>Cargar pago admin</h2>
+                <p>Accion de administrador: registra pagos aprobados</p>
+              </div>
+            </div>
+            <form class="form-grid" id="paymentForm">
+              <label>
+                Jugador
+                <select id="paymentPlayer" required></select>
+              </label>
+              <label>
+                Cuota
+                <select id="paymentFee" required></select>
+              </label>
+              <label>
+                Monto pagado
+                <input id="paymentAmount" type="number" min="1" required />
+              </label>
+              <label>
+                Fecha
+                <input id="paymentDate" type="date" required />
+              </label>
+              <label class="wide-field">
+                Nota
+                <input id="paymentNote" placeholder="Efectivo, transferencia, pago parcial..." />
+              </label>
+              <button class="primary-button" type="submit">+ Registrar pago</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">$</div>
+              <div>
+                <h2>Tesoreria</h2>
+                <p>Configuracion simple de cobro</p>
+              </div>
+            </div>
+            <form class="form-grid" id="treasuryForm">
+              <label>
+                Alias de pago
+                <input id="treasuryAlias" required />
+              </label>
+              <label>
+                Titular
+                <input id="treasuryHolder" required />
+              </label>
+              <label class="wide-field">
+                Link de pago
+                <input id="treasuryPaymentLink" placeholder="https://link.mercadopago.com.ar/mi-alias" />
+              </label>
+              <label class="check-row wide-field">
+                <input id="treasuryPaymentTestMode" type="checkbox" checked />
+                Modo prueba de pago
+              </label>
+              <label class="wide-field">
+                Instrucciones
+                <textarea id="treasuryInstructions" class="small-textarea" required></textarea>
+              </label>
+              <button class="primary-button" type="submit">Guardar tesoreria</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">$</div>
+              <div>
+                <h2>Pagar cuota</h2>
+                <p>Informa pagos para validacion del administrador</p>
+              </div>
+            </div>
+            <form class="form-grid" id="playerPaymentForm">
+              <label>
+                Jugador
+                <select id="playerPaymentPlayer" required></select>
+              </label>
+              <label>
+                Cuota
+                <select id="playerPaymentFee" required></select>
+              </label>
+              <div class="payment-summary wide-field">
+                <strong id="playerPaymentDebt">$0</strong>
+                <span id="playerPaymentAlias">Alias: -</span>
+                <span id="playerPaymentInstructions"></span>
+                <button class="secondary-button" id="copyAliasButton" type="button">Copiar alias</button>
+              </div>
+              <label>
+                Tipo de pago
+                <select id="playerPaymentMethod">
+                  <option value="transferencia">Transferencia</option>
+                  <option value="efectivo">Efectivo</option>
+                </select>
+              </label>
+              <label>
+                Monto
+                <input id="playerPaymentAmount" type="number" min="1" required />
+              </label>
+              <label>
+                Fecha
+                <input id="playerPaymentDate" type="date" required />
+              </label>
+              <label>
+                Operacion / comprobante
+                <input id="playerPaymentOperation" placeholder="Opcional" />
+              </label>
+              <label class="wide-field">
+                Nota
+                <input id="playerPaymentNote" placeholder="Ej: pague en efectivo a..." />
+              </label>
+              <button class="primary-button" type="submit">Informar pago</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">A</div>
+              <div>
+                <h2>Asistencia</h2>
+                <p>Registro del jugador: marque que asistio al entrenamiento</p>
+              </div>
+            </div>
+            <form class="form-grid" id="attendanceForm">
+              <label>
+                Fecha
+                <input id="attendanceDate" type="date" required />
+              </label>
+              <label>
+                Jugador
+                <select id="attendancePlayer" required></select>
+              </label>
+              <p class="form-message wide-field" id="attendanceMessage"></p>
+              <button class="primary-button" type="submit">Registrar que asistio</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">N</div>
+              <div>
+                <h2>Novedad admin</h2>
+                <p>Incumplimientos desde el 06/04/2026</p>
+              </div>
+            </div>
+            <form class="form-grid" id="attendanceNoveltyForm">
+              <label>
+                Fecha
+                <input id="attendanceNoveltyDate" type="date" required />
+              </label>
+              <label>
+                Jugador
+                <select id="attendanceNoveltyPlayer" required></select>
+              </label>
+              <label class="wide-field">
+                Novedad
+                <select id="attendanceNoveltyStatus">
+                  <option value="falto">Falto</option>
+                  <option value="aviso_tarde">Aviso tarde</option>
+                  <option value="baja_sobre_hora">Baja sobre la hora</option>
+                </select>
+              </label>
+              <p class="form-message wide-field" id="attendanceNoveltyMessage"></p>
+              <button class="primary-button" type="submit">Guardar novedad admin</button>
+            </form>
+          </section>
+        </div>
+
+        <div class="tables-column">
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">J</div>
+              <div>
+                <h2>Jugadores</h2>
+                <p>Deuda y estado interno</p>
+              </div>
+            </div>
+            <div class="filter-bar" id="playerFilters" aria-label="Filtros de jugadores">
+              <button class="filter-button active" type="button" data-filter="todos">Todos</button>
+              <button class="filter-button" type="button" data-filter="competidores">Competidores</button>
+              <button class="filter-button" type="button" data-filter="solo_entrenamientos">Solo entrenamientos</button>
+              <button class="filter-button" type="button" data-filter="morosos">Morosos</button>
+              <button class="filter-button" type="button" data-filter="habilitados">Habilitados internos</button>
+              <button class="filter-button" type="button" data-filter="no_habilitados">No habilitados</button>
+              <button class="filter-button" type="button" data-filter="activos">Activos</button>
+              <button class="filter-button" type="button" data-filter="lesionados">Lesionados</button>
+              <button class="filter-button" type="button" data-filter="lista_espera">Lista de espera</button>
+              <button class="filter-button" type="button" data-filter="esporadicos">Esporadicos</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Jugador</th>
+                    <th>Telefono</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Resp. pts</th>
+                    <th>Habilitado interno</th>
+                    <th>Pagado acumulado</th>
+                    <th>Cuota esperada</th>
+                    <th>Deuda actual</th>
+                    <th>Moroso</th>
+                    <th>Prox. vencimiento</th>
+                    <th>Ultimo pago</th>
+                  </tr>
+                </thead>
+                <tbody id="playersTable"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">$</div>
+              <div>
+                <h2>Cuotas</h2>
+                <p>Estado de cobro por mes</p>
+              </div>
+            </div>
+            <div class="fee-list" id="feesList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">!</div>
+              <div>
+                <h2>Morosos</h2>
+                <p>Cuotas vencidas con saldo pendiente</p>
+              </div>
+            </div>
+            <div id="defaultersList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">A</div>
+              <div>
+                <h2>Validacion de pagos</h2>
+                <p>Acciones de administrador: aprobar o rechazar</p>
+              </div>
+            </div>
+            <div id="pendingPaymentsList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">$</div>
+              <div>
+                <h2>Historial de pagos</h2>
+                <p>Pagos informados, aprobados y rechazados</p>
+              </div>
+            </div>
+            <div id="paymentsHistoryList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">E</div>
+              <div>
+                <h2>Entrenamientos</h2>
+                <p>Asistencia cargada por jugador</p>
+              </div>
+            </div>
+            <div id="attendanceList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">R</div>
+              <div>
+                <h2>Ajuste inicial de responsabilidad</h2>
+                <p>Incumplimientos acumulados desde el inicio configurado</p>
+              </div>
+            </div>
+            <div class="responsibility-summary" id="responsibilityBaseInfo"></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Jugador</th>
+                    <th>Faltas acum.</th>
+                    <th>Avisos tarde</th>
+                    <th>Bajas sobre hora</th>
+                    <th>Observacion</th>
+                    <th>Puntaje actual</th>
+                  </tr>
+                </thead>
+                <tbody id="responsibilityAdjustmentsTable"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">W</div>
+              <div>
+                <h2>Reporte WhatsApp</h2>
+                <p>Citados por responsabilidad y habilitacion interna</p>
+              </div>
+            </div>
+            <textarea id="whatsappReport" class="report-box" readonly></textarea>
+          </section>
+        </div>
+      </section>
+      </section>
+    </main>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
