@@ -34,6 +34,16 @@
             <select id="selfServiceMonth"></select>
           </label>
 
+          <div class="player-access-card" id="selfAccessBox">
+            <label>
+              Codigo de acceso
+              <input id="selfAccessCode" type="password" inputmode="numeric" autocomplete="one-time-code" />
+            </label>
+            <button class="secondary-button" id="selfAccessButton" type="button">Ingresar</button>
+            <span class="muted-detail" id="selfAccessMessage"></span>
+          </div>
+
+          <div id="selfServiceProtectedContent" hidden>
           <div class="self-dashboard">
             <article class="metric-card main-payment-card">
               <span>Monto a pagar</span>
@@ -94,7 +104,7 @@
             <article class="metric-card">
               <span>Proxima cuota estimada</span>
               <strong id="selfNextEstimate">$0</strong>
-              <p>Calculo aproximado con los valores cargados.</p>
+              <p id="selfNextEstimateDetail">Estimada segun valores actuales.</p>
             </article>
           </div>
 
@@ -117,6 +127,7 @@
                 <div class="progress-fill" id="selfYearPercentBar"></div>
               </div>
             </div>
+          </div>
           </div>
         </section>
 
@@ -190,6 +201,10 @@
               <label>
                 Telefono
                 <input id="playerPhone" placeholder="11 5555-0000" />
+              </label>
+              <label>
+                Codigo de acceso
+                <input id="playerAccessCode" placeholder="Ej: 1234" />
               </label>
               <label>
                 Tipo
@@ -474,6 +489,7 @@
                     <th>Tipo</th>
                     <th>Estado</th>
                     <th>Resp. pts</th>
+                    <th>Codigo acceso</th>
                     <th>Habilitado interno</th>
                     <th>Pagado acumulado</th>
                     <th>Cuota esperada</th>

@@ -175,6 +175,23 @@ h1 {
   margin-bottom: 14px;
 }
 
+.player-access-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  max-width: 640px;
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.player-access-card label {
+  flex: 1 1 220px;
+}
+
 .self-dashboard,
 .support-dashboard {
   display: grid;
@@ -634,6 +651,12 @@ tbody tr:last-child td {
 
 .table-select {
   min-width: 140px;
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.table-input {
+  width: 110px;
   min-height: 34px;
   padding: 6px 8px;
 }

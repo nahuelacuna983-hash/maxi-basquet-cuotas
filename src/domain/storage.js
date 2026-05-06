@@ -45,7 +45,9 @@ export function normalizePersistedState(parsedState, fallbackState) {
   return {
     version: Number(parsedState.version) || 1,
     exportedAt: parsedState.exportedAt,
-    players: Array.isArray(parsedState.players) ? parsedState.players : fallbackState.players,
+    players: Array.isArray(parsedState.players)
+      ? parsedState.players.map(normalizePlayer)
+      : fallbackState.players,
     fees: Array.isArray(parsedState.fees)
       ? dedupeFeesByMonth(parsedState.fees)
       : fallbackState.fees,
@@ -64,6 +66,13 @@ export function normalizePersistedState(parsedState, fallbackState) {
       parsedState.treasuryConfig && typeof parsedState.treasuryConfig === "object"
         ? { ...fallbackState.treasuryConfig, ...parsedState.treasuryConfig }
         : fallbackState.treasuryConfig,
+  };
+}
+
+function normalizePlayer(player) {
+  return {
+    ...player,
+    accessCode: player.accessCode ?? "",
   };
 }
 

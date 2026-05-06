@@ -98,6 +98,7 @@ function fromSupabasePlayer(row) {
     status: row.status,
     internalEnabled: Boolean(row.internal_enabled),
     responsibilityScore: Number(row.responsibility_score) || 0,
+    accessCode: row.access_code ?? "",
   };
 }
 
@@ -111,6 +112,7 @@ function toSupabasePlayer(player) {
     status: player.status,
     internal_enabled: Boolean(player.internalEnabled),
     responsibility_score: Number(player.responsibilityScore) || 0,
+    access_code: player.accessCode ?? "",
     updated_at: new Date().toISOString(),
   };
 }

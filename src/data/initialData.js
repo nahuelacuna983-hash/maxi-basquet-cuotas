@@ -8,6 +8,7 @@ export const initialPlayers = [
     status: "activo",
     type: "competidor",
     responsibilityScore: 245,
+    accessCode: "",
   },
   {
     id: "player-2",
@@ -18,6 +19,7 @@ export const initialPlayers = [
     status: "activo",
     type: "competidor",
     responsibilityScore: 198,
+    accessCode: "",
   },
   {
     id: "player-3",
@@ -28,6 +30,7 @@ export const initialPlayers = [
     status: "lesionado",
     type: "solo_entrenamientos",
     responsibilityScore: 220,
+    accessCode: "",
   },
 ];
 

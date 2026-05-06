@@ -38,12 +38,17 @@ import {
 
 const initialAppState = createInitialAppState();
 const persistedAppState = loadPersistedState(initialAppState);
+const initialUrlPlayerId = getUrlPlayerId();
 let supabaseHydrated = !isSupabaseEnabled();
 let supabaseSyncInProgress = false;
+const authorizedSelfServicePlayerIds = new Set();
 const state = {
   ...persistedAppState,
   playerFilter: "todos",
-  selectedSelfServicePlayerId: persistedAppState.players[0]?.id ?? "",
+  selectedSelfServicePlayerId:
+    persistedAppState.players.find((player) => player.id === initialUrlPlayerId)?.id ??
+    persistedAppState.players[0]?.id ??
+    "",
   selectedSelfServiceMonth: "",
   isAdminMode: false,
   isAdminLoginVisible: false,
@@ -85,6 +90,11 @@ const elements = {
   treasuryInstructions: document.querySelector("#treasuryInstructions"),
   selfServicePlayer: document.querySelector("#selfServicePlayer"),
   selfServiceMonth: document.querySelector("#selfServiceMonth"),
+  selfAccessBox: document.querySelector("#selfAccessBox"),
+  selfAccessCode: document.querySelector("#selfAccessCode"),
+  selfAccessButton: document.querySelector("#selfAccessButton"),
+  selfAccessMessage: document.querySelector("#selfAccessMessage"),
+  selfServiceProtectedContent: document.querySelector("#selfServiceProtectedContent"),
   selfCurrentExpected: document.querySelector("#selfCurrentExpected"),
   selfCurrentPaid: document.querySelector("#selfCurrentPaid"),
   selfCurrentBalance: document.querySelector("#selfCurrentBalance"),
@@ -92,6 +102,7 @@ const elements = {
   selfCurrentStatus: document.querySelector("#selfCurrentStatus"),
   selfLateDebt: document.querySelector("#selfLateDebt"),
   selfNextEstimate: document.querySelector("#selfNextEstimate"),
+  selfNextEstimateDetail: document.querySelector("#selfNextEstimateDetail"),
   selfMonthPercentText: document.querySelector("#selfMonthPercentText"),
   selfMonthPercentBar: document.querySelector("#selfMonthPercentBar"),
   selfYearPercentText: document.querySelector("#selfYearPercentText"),
@@ -195,6 +206,8 @@ elements.resetSampleDataButton.addEventListener("click", () => {
 
 elements.selfServicePlayer.addEventListener("change", () => {
   state.selectedSelfServicePlayerId = elements.selfServicePlayer.value;
+  elements.selfAccessCode.value = "";
+  elements.selfAccessMessage.textContent = "";
   renderSelfService();
 });
 
@@ -203,7 +216,21 @@ elements.selfServiceMonth.addEventListener("change", () => {
   renderSelfService();
 });
 
+elements.selfAccessButton.addEventListener("click", () => {
+  authorizeSelfServicePlayer();
+});
+
+elements.selfAccessCode.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") authorizeSelfServicePlayer();
+});
+
 elements.selfPayButton.addEventListener("click", () => {
+  const player = state.players.find((item) => item.id === state.selectedSelfServicePlayerId);
+  if (!player || !canViewSelfServicePlayer(player)) {
+    elements.selfPaymentStatus.textContent = "Ingresa tu codigo antes de pagar.";
+    return;
+  }
+
   if (state.treasuryConfig.paymentTestMode) {
     elements.selfPaymentStatus.textContent =
       "Modo prueba: no se abrió Mercado Pago. Para simular el pago, usá Informar pago.";
@@ -223,11 +250,17 @@ elements.selfPaymentForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
   const playerId = elements.selfServicePlayer.value;
+  const player = state.players.find((item) => item.id === playerId);
   const currentFee = getSelectedSelfServiceFee();
   const amount = Number(elements.selfPaymentAmount.value);
   const paidAt = elements.selfPaymentDate.value;
   const method = elements.selfPaymentMethod.value;
   const note = elements.selfPaymentNote.value.trim();
+
+  if (!player || !canViewSelfServicePlayer(player)) {
+    elements.selfPaymentStatus.textContent = "Ingresa tu codigo antes de informar un pago.";
+    return;
+  }
 
   if (!playerId || !currentFee || amount <= 0 || !paidAt) {
     elements.selfPaymentStatus.textContent =
@@ -270,6 +303,7 @@ elements.playerForm.addEventListener("submit", (event) => {
   const firstName = document.querySelector("#playerFirstName").value.trim();
   const lastName = document.querySelector("#playerLastName").value.trim();
   const phone = document.querySelector("#playerPhone").value.trim();
+  const accessCode = document.querySelector("#playerAccessCode").value.trim();
   const type = document.querySelector("#playerType").value;
   const status = document.querySelector("#playerStatus").value;
   const internalEnabled = document.querySelector("#playerInternalEnabled").checked;
@@ -281,6 +315,7 @@ elements.playerForm.addEventListener("submit", (event) => {
     firstName,
     lastName,
     phone,
+    accessCode,
     type,
     status,
     internalEnabled,
@@ -582,6 +617,8 @@ function renderSelfService() {
   renderSelfServiceMonthOptions(selectedMonth);
 
   if (!fallbackPlayer) {
+    elements.selfAccessBox.hidden = true;
+    elements.selfServiceProtectedContent.hidden = true;
     elements.selfCurrentExpected.textContent = formatMoney(0);
     elements.selfCurrentPaid.textContent = formatMoney(0);
     elements.selfCurrentBalance.textContent = formatMoney(0);
@@ -592,6 +629,33 @@ function renderSelfService() {
     updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, 0);
     updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, 0);
     return;
+  }
+
+  const isAuthorized = canViewSelfServicePlayer(fallbackPlayer);
+  elements.selfAccessBox.hidden = state.isAdminMode;
+  elements.selfServiceProtectedContent.hidden = !isAuthorized;
+
+  if (!isAuthorized) {
+    elements.selfCurrentExpected.textContent = formatMoney(0);
+    elements.selfCurrentPaid.textContent = formatMoney(0);
+    elements.selfCurrentBalance.textContent = formatMoney(0);
+    elements.selfCurrentDue.textContent = "-";
+    elements.selfCurrentStatus.textContent = "Codigo requerido";
+    elements.selfCurrentStatus.className = "payment-status status-pendiente";
+    elements.selfLateDebt.textContent = formatMoney(0);
+    elements.selfNextEstimate.textContent = formatMoney(0);
+    elements.selfPaymentStatus.textContent = "";
+    elements.selfAccessMessage.textContent =
+      fallbackPlayer.accessCode?.trim()
+        ? "Ingresa tu codigo para ver tu cuota."
+        : "Este jugador todavia no tiene codigo asignado.";
+    updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, 0);
+    updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, 0);
+    return;
+  }
+
+  if (state.isAdminMode) {
+    elements.selfAccessMessage.textContent = "Vista habilitada por modo admin.";
   }
 
   const currentMonth = selectedMonth;
@@ -606,6 +670,7 @@ function renderSelfService() {
     : { label: "Sin cuota mensual", className: "status-pendiente" };
   const lateDebt = getLateDebtForPlayer(fallbackPlayer, currentMonth);
   const nextEstimate = getNextMonthEstimate(fallbackPlayer, currentMonth);
+  const nextMonth = getNextMonth(currentMonth);
   const monthPercent = getPaymentPercent(currentPaid, currentExpected);
   const yearPercent = getYearPaymentPercent(fallbackPlayer, currentMonth.slice(0, 4));
   const pendingAmount = getPendingAmountForPlayer(fallbackPlayer.id, currentFee?.id);
@@ -623,6 +688,8 @@ function renderSelfService() {
   elements.selfCurrentStatus.className = `payment-status ${currentStatus.className}`;
   elements.selfLateDebt.textContent = formatMoney(lateDebt);
   elements.selfNextEstimate.textContent = formatMoney(nextEstimate);
+  elements.selfNextEstimateDetail.textContent =
+    `${formatMonthLabel(nextMonth)} estimada segun valores actuales.`;
   elements.selfPayButton.disabled = !state.treasuryConfig.paymentTestMode && !state.treasuryConfig.paymentLink;
   elements.selfPayButton.hidden = currentExpected <= 0 || currentBalance <= 0;
   elements.selfPaymentStatus.textContent = pendingAmount
@@ -734,6 +801,14 @@ function renderPlayersTable(debts) {
           <td><span class="status status-${debt.player.status}">${formatPlayerStatus(debt.player.status)}</span></td>
           <td><strong>${getResponsibilityDetails(debt.player.id).score}</strong></td>
           <td>
+            <input
+              class="table-input"
+              data-access-code-player="${debt.player.id}"
+              value="${escapeHtml(debt.player.accessCode ?? "")}"
+              placeholder="Sin codigo"
+            />
+          </td>
+          <td>
             <button class="toggle-button ${enabledClass}" data-toggle-player="${debt.player.id}" type="button">
               ${enabledText}
             </button>
@@ -752,6 +827,12 @@ function renderPlayersTable(debts) {
   document.querySelectorAll("[data-toggle-player]").forEach((button) => {
     button.addEventListener("click", () => {
       toggleInternalEnabled(button.dataset.togglePlayer);
+    });
+  });
+
+  document.querySelectorAll("[data-access-code-player]").forEach((input) => {
+    input.addEventListener("change", () => {
+      updatePlayerAccessCode(input.dataset.accessCodePlayer, input.value);
     });
   });
 }
@@ -1246,7 +1327,7 @@ function removeSampleData() {
 }
 
 function applyPersistentState(nextState) {
-  state.players = nextState.players.map((player) => ({ ...player }));
+  state.players = nextState.players.map((player) => ({ ...player, accessCode: player.accessCode ?? "" }));
   state.fees = nextState.fees.map((fee) => ({ ...fee }));
   state.payments = nextState.payments.map((payment) => ({ ...payment }));
   state.attendances = nextState.attendances.map((attendance) => ({ ...attendance }));
@@ -1256,7 +1337,11 @@ function applyPersistentState(nextState) {
   state.responsibilityConfig = { ...nextState.responsibilityConfig };
   state.treasuryConfig = { ...nextState.treasuryConfig };
   state.playerFilter = "todos";
-  state.selectedSelfServicePlayerId = state.players[0]?.id ?? "";
+  state.selectedSelfServicePlayerId =
+    state.players.find((player) => player.id === initialUrlPlayerId)?.id ??
+    state.selectedSelfServicePlayerId ??
+    state.players[0]?.id ??
+    "";
   state.selectedSelfServiceMonth = getCurrentMonth();
   syncFormValuesFromState();
 }
@@ -1301,6 +1386,7 @@ function importBulkPlayers(rawValue) {
     const phone = parsedRecord.phone;
     const internalEnabled = parsedRecord.internalEnabled;
     const responsibilityScore = parsedRecord.responsibilityScore;
+    const accessCode = parsedRecord.accessCode;
 
     if (!type || !status || internalEnabled === null) {
       result.errors += 1;
@@ -1317,6 +1403,7 @@ function importBulkPlayers(rawValue) {
       status,
       internalEnabled,
       responsibilityScore,
+      accessCode,
     });
     result.imported += 1;
   });
@@ -1396,6 +1483,7 @@ function parseBulkPlayerRecord(record) {
       phone: columns[3]?.trim() ?? "",
       internalEnabled,
       responsibilityScore: Number(columns[5]) || 0,
+      accessCode: columns[6]?.trim() ?? "",
     };
   }
 
@@ -1426,6 +1514,7 @@ function parseLooseBulkPlayerRecord(record) {
       phone: "",
       internalEnabled: null,
       responsibilityScore: 0,
+      accessCode: "",
     };
   }
 
@@ -1439,6 +1528,7 @@ function parseLooseBulkPlayerRecord(record) {
     phone: "",
     internalEnabled: defaultInternalEnabled(statusMatch.value),
     responsibilityScore: 0,
+    accessCode: "",
   };
 }
 
@@ -1557,6 +1647,37 @@ function normalizeYesNo(value) {
   return null;
 }
 
+function getUrlPlayerId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("player") || params.get("id") || "";
+}
+
+function canViewSelfServicePlayer(player) {
+  return state.isAdminMode || authorizedSelfServicePlayerIds.has(player.id);
+}
+
+function authorizeSelfServicePlayer() {
+  const player = state.players.find((item) => item.id === state.selectedSelfServicePlayerId);
+  const accessCode = elements.selfAccessCode.value.trim();
+
+  if (!player) return;
+
+  if (!player.accessCode?.trim()) {
+    elements.selfAccessMessage.textContent = "Este jugador todavia no tiene codigo asignado.";
+    return;
+  }
+
+  if (accessCode !== player.accessCode.trim()) {
+    elements.selfAccessMessage.textContent = "Codigo incorrecto.";
+    return;
+  }
+
+  authorizedSelfServicePlayerIds.add(player.id);
+  elements.selfAccessCode.value = "";
+  elements.selfAccessMessage.textContent = "Acceso habilitado.";
+  renderSelfService();
+}
+
 function enterAdmin(pin) {
   if (pin !== adminConfig.pin) {
     elements.adminModeStatus.textContent = "PIN incorrecto.";
@@ -1655,6 +1776,15 @@ function toggleInternalEnabled(playerId) {
     player.id === playerId
       ? { ...player, internalEnabled: !player.internalEnabled }
       : player,
+  );
+  render();
+}
+
+function updatePlayerAccessCode(playerId, value) {
+  if (!requireAdmin()) return;
+
+  state.players = state.players.map((player) =>
+    player.id === playerId ? { ...player, accessCode: value.trim() } : player,
   );
   render();
 }
