@@ -268,6 +268,13 @@ elements.selfPaymentForm.addEventListener("submit", (event) => {
     return;
   }
 
+  const existingPayment = getActivePaymentForPlayerFee(playerId, currentFee.id);
+  if (existingPayment) {
+    elements.selfPaymentStatus.textContent =
+      `Ya hay un pago ${formatPaymentStatus(existingPayment.status).toLowerCase()} informado para ${formatMonthLabel(currentFee.month)}. Si necesitas corregirlo, avisa al administrador.`;
+    return;
+  }
+
   state.payments.unshift({
     id: createId("payment"),
     playerId,
@@ -378,7 +385,7 @@ elements.feeForm.addEventListener("submit", (event) => {
   render();
 });
 
-elements.paymentForm.addEventListener("submit", (event) => {
+elements.paymentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requireAdmin()) return;
 
@@ -390,6 +397,16 @@ elements.paymentForm.addEventListener("submit", (event) => {
   const note = document.querySelector("#paymentNote").value.trim();
 
   if (!playerId || !selectedFee || amount <= 0 || !paidAt) return;
+
+  const existingPayments = getActivePaymentsForPlayerFee(playerId, selectedFee.id);
+  if (existingPayments.length > 0) {
+    const shouldReplace = confirm(
+      `Ya hay ${existingPayments.length} pago(s) informado(s) para ${selectedFee.month}. Reemplazar por este pago y quitar los anteriores?`,
+    );
+    if (!shouldReplace) return;
+
+    await removePayments(existingPayments.map((payment) => payment.id));
+  }
 
   state.payments.unshift({
     id: createId("payment"),
@@ -454,6 +471,14 @@ elements.playerPaymentForm.addEventListener("submit", (event) => {
   const note = document.querySelector("#playerPaymentNote").value.trim();
 
   if (!playerId || !selectedFee || amount <= 0 || !paidAt) return;
+
+  const existingPayment = getActivePaymentForPlayerFee(playerId, selectedFee.id);
+  if (existingPayment) {
+    alert(
+      `Ya hay un pago ${formatPaymentStatus(existingPayment.status).toLowerCase()} informado para ${selectedFee.month}. Si necesitas corregirlo, avisale al administrador.`,
+    );
+    return;
+  }
 
   state.payments.unshift({
     id: createId("payment"),
@@ -1740,17 +1765,21 @@ async function deletePayment(paymentId) {
   if (!requireAdmin()) return;
   if (!confirm("Eliminar este pago de prueba? Esta accion recalcula la deuda.")) return;
 
+  await removePayments([paymentId]);
+}
+
+async function removePayments(paymentIds) {
   const previousPayments = state.payments;
-  state.payments = state.payments.filter((payment) => payment.id !== paymentId);
+  state.payments = state.payments.filter((payment) => !paymentIds.includes(payment.id));
 
   if (isSupabaseEnabled() && supabaseHydrated) {
     supabaseSyncInProgress = true;
-    state.syncStatus = "Eliminando pago...";
+    state.syncStatus = paymentIds.length > 1 ? "Eliminando pagos..." : "Eliminando pago...";
     renderRoleVisibility();
 
     try {
-      await deleteSupabasePayment(paymentId);
-      state.syncStatus = "Pago eliminado";
+      await Promise.all(paymentIds.map((paymentId) => deleteSupabasePayment(paymentId)));
+      state.syncStatus = paymentIds.length > 1 ? "Pagos eliminados" : "Pago eliminado";
     } catch (error) {
       state.payments = previousPayments;
       state.syncStatus = `Error al eliminar pago: ${error.message}`;
@@ -1981,6 +2010,19 @@ function getLatestPaymentForPlayerFee(playerId, feeId) {
     state.payments.find((payment) => payment.playerId === playerId && payment.feeId === feeId) ??
     null
   );
+}
+
+function getActivePaymentsForPlayerFee(playerId, feeId) {
+  return state.payments.filter(
+    (payment) =>
+      payment.playerId === playerId &&
+      payment.feeId === feeId &&
+      ["pendiente", "aprobado"].includes(payment.status ?? "aprobado"),
+  );
+}
+
+function getActivePaymentForPlayerFee(playerId, feeId) {
+  return getActivePaymentsForPlayerFee(playerId, feeId)[0] ?? null;
 }
 
 function formatLatestPaymentStatus(payment) {
