@@ -268,10 +268,11 @@ elements.selfPaymentForm.addEventListener("submit", (event) => {
     return;
   }
 
+  const targetFee = getPaymentTargetFee(currentFee, paidAt);
   state.payments.unshift({
     id: createId("payment"),
     playerId,
-    feeId: currentFee.id,
+    feeId: targetFee.id,
     amount,
     paidAt,
     method,
@@ -384,16 +385,18 @@ elements.paymentForm.addEventListener("submit", (event) => {
 
   const playerId = elements.paymentPlayer.value;
   const feeId = elements.paymentFee.value;
+  const selectedFee = state.fees.find((fee) => fee.id === feeId);
   const amount = Number(document.querySelector("#paymentAmount").value);
   const paidAt = document.querySelector("#paymentDate").value;
   const note = document.querySelector("#paymentNote").value.trim();
 
-  if (!playerId || !feeId || amount <= 0 || !paidAt) return;
+  if (!playerId || !selectedFee || amount <= 0 || !paidAt) return;
 
+  const targetFee = getPaymentTargetFee(selectedFee, paidAt);
   state.payments.unshift({
     id: createId("payment"),
     playerId,
-    feeId,
+    feeId: targetFee.id,
     amount,
     paidAt,
     method: "transferencia",
@@ -445,18 +448,20 @@ elements.playerPaymentForm.addEventListener("submit", (event) => {
 
   const playerId = elements.playerPaymentPlayer.value;
   const feeId = elements.playerPaymentFee.value;
+  const selectedFee = state.fees.find((fee) => fee.id === feeId);
   const amount = Number(document.querySelector("#playerPaymentAmount").value);
   const paidAt = elements.playerPaymentDate.value;
   const method = document.querySelector("#playerPaymentMethod").value;
   const operationNumber = document.querySelector("#playerPaymentOperation").value.trim();
   const note = document.querySelector("#playerPaymentNote").value.trim();
 
-  if (!playerId || !feeId || amount <= 0 || !paidAt) return;
+  if (!playerId || !selectedFee || amount <= 0 || !paidAt) return;
 
+  const targetFee = getPaymentTargetFee(selectedFee, paidAt);
   state.payments.unshift({
     id: createId("payment"),
     playerId,
-    feeId,
+    feeId: targetFee.id,
     amount,
     paidAt,
     method,
@@ -1900,6 +1905,13 @@ function getSelectedSelfServiceMonth() {
 function getSelectedSelfServiceFee() {
   const selectedMonth = getSelectedSelfServiceMonth();
   return state.fees.find((fee) => fee.month === selectedMonth);
+}
+
+function getPaymentTargetFee(selectedFee, paidAt) {
+  const paidMonth = paidAt?.slice(0, 7);
+  if (!paidMonth) return selectedFee;
+
+  return state.fees.find((fee) => fee.month === paidMonth) ?? selectedFee;
 }
 
 function formatMonthLabel(month) {

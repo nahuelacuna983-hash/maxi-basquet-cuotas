@@ -11,7 +11,11 @@ export async function loadSupabaseState(fallbackState) {
   const [playersResult, feesResult, paymentsResult, treasuryResult] = await Promise.all([
     client.from("players").select("*").order("first_name", { ascending: true }),
     client.from("fees").select("*").order("month", { ascending: true }),
-    client.from("payments").select("*").order("created_at", { ascending: false }),
+    client
+      .from("payments")
+      .select("*")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
     client.from("treasury_config").select("*").eq("id", "main").maybeSingle(),
   ]);
 
@@ -63,7 +67,10 @@ export async function saveSupabaseState(state) {
 
 export async function deleteSupabasePayment(paymentId) {
   const client = await getSupabaseClient();
-  const result = await client.from("payments").delete().eq("id", paymentId);
+  const result = await client
+    .from("payments")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", paymentId);
 
   assertSupabaseResult(result, "payments");
 }
@@ -159,6 +166,7 @@ function fromSupabasePayment(row) {
     createdAt: row.created_at,
     reviewedAt: row.reviewed_at,
     reviewedBy: row.reviewed_by,
+    deletedAt: row.deleted_at,
   };
 }
 

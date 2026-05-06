@@ -41,8 +41,12 @@ create table if not exists public.payments (
   note text default '',
   created_at timestamptz not null default now(),
   reviewed_at timestamptz,
-  reviewed_by text
+  reviewed_by text,
+  deleted_at timestamptz
 );
+
+alter table public.payments
+add column if not exists deleted_at timestamptz;
 
 create table if not exists public.treasury_config (
   id text primary key default 'main',
