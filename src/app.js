@@ -268,11 +268,10 @@ elements.selfPaymentForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const targetFee = getPaymentTargetFee(currentFee, paidAt);
   state.payments.unshift({
     id: createId("payment"),
     playerId,
-    feeId: targetFee.id,
+    feeId: currentFee.id,
     amount,
     paidAt,
     method,
@@ -392,11 +391,10 @@ elements.paymentForm.addEventListener("submit", (event) => {
 
   if (!playerId || !selectedFee || amount <= 0 || !paidAt) return;
 
-  const targetFee = getPaymentTargetFee(selectedFee, paidAt);
   state.payments.unshift({
     id: createId("payment"),
     playerId,
-    feeId: targetFee.id,
+    feeId: selectedFee.id,
     amount,
     paidAt,
     method: "transferencia",
@@ -457,11 +455,10 @@ elements.playerPaymentForm.addEventListener("submit", (event) => {
 
   if (!playerId || !selectedFee || amount <= 0 || !paidAt) return;
 
-  const targetFee = getPaymentTargetFee(selectedFee, paidAt);
   state.payments.unshift({
     id: createId("payment"),
     playerId,
-    feeId: targetFee.id,
+    feeId: selectedFee.id,
     amount,
     paidAt,
     method,
@@ -1347,7 +1344,7 @@ function applyPersistentState(nextState) {
     state.selectedSelfServicePlayerId ??
     state.players[0]?.id ??
     "";
-  state.selectedSelfServiceMonth = getCurrentMonth();
+  state.selectedSelfServiceMonth = getValidSelfServiceMonth(state.selectedSelfServiceMonth);
   syncFormValuesFromState();
 }
 
@@ -1885,11 +1882,16 @@ function getCurrentFee() {
 }
 
 function getSelectedSelfServiceMonth() {
+  return getValidSelfServiceMonth(state.selectedSelfServiceMonth);
+}
+
+function getValidSelfServiceMonth(preferredMonth) {
   const months = state.fees.map((fee) => fee.month).sort();
   const currentMonth = getCurrentMonth();
 
-  if (state.selectedSelfServiceMonth && months.includes(state.selectedSelfServiceMonth)) {
-    return state.selectedSelfServiceMonth;
+  if (preferredMonth && months.includes(preferredMonth)) {
+    state.selectedSelfServiceMonth = preferredMonth;
+    return preferredMonth;
   }
 
   if (months.includes(currentMonth)) {
@@ -1905,13 +1907,6 @@ function getSelectedSelfServiceMonth() {
 function getSelectedSelfServiceFee() {
   const selectedMonth = getSelectedSelfServiceMonth();
   return state.fees.find((fee) => fee.month === selectedMonth);
-}
-
-function getPaymentTargetFee(selectedFee, paidAt) {
-  const paidMonth = paidAt?.slice(0, 7);
-  if (!paidMonth) return selectedFee;
-
-  return state.fees.find((fee) => fee.month === paidMonth) ?? selectedFee;
 }
 
 function formatMonthLabel(month) {
