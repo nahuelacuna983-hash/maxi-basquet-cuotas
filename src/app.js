@@ -1368,6 +1368,7 @@ function removeSampleData() {
 
 function applyPersistentState(nextState) {
   const selfServiceSnapshot = getSelfServiceUiSnapshot();
+  const previousPlayerFilter = state.playerFilter;
   state.players = nextState.players.map((player) => ({ ...player, accessCode: player.accessCode ?? "" }));
   state.fees = nextState.fees.map((fee) => ({ ...fee }));
   state.payments = nextState.payments.map((payment) => ({ ...payment }));
@@ -1377,7 +1378,7 @@ function applyPersistentState(nextState) {
   }));
   state.responsibilityConfig = { ...nextState.responsibilityConfig };
   state.treasuryConfig = { ...nextState.treasuryConfig };
-  state.playerFilter = "todos";
+  state.playerFilter = previousPlayerFilter || "todos";
   state.selectedSelfServicePlayerId =
     state.players.find((player) => player.id === selfServiceSnapshot.playerId)?.id ??
     state.players.find((player) => player.id === initialUrlPlayerId)?.id ??
