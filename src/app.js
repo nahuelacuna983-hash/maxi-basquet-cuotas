@@ -9,11 +9,13 @@ import {
   getExpectedFeeForPlayer,
   getFeeBreakdown,
   getFeeDueDate,
+  getInterestAmount,
   getPendingPayments,
   getPaidAmount,
   getPlayerName,
   isBillablePlayer,
   isApprovedPayment,
+  isFeeOverdue,
 } from "./domain/finance.js";
 import { createId } from "./domain/ids.js";
 import {
@@ -96,6 +98,7 @@ const elements = {
   selfAccessMessage: document.querySelector("#selfAccessMessage"),
   selfServiceProtectedContent: document.querySelector("#selfServiceProtectedContent"),
   selfCurrentExpected: document.querySelector("#selfCurrentExpected"),
+  selfCurrentInterest: document.querySelector("#selfCurrentInterest"),
   selfCurrentPaid: document.querySelector("#selfCurrentPaid"),
   selfCurrentBalance: document.querySelector("#selfCurrentBalance"),
   selfCurrentDue: document.querySelector("#selfCurrentDue"),
@@ -214,6 +217,10 @@ elements.selfServicePlayer.addEventListener("change", () => {
 elements.selfServiceMonth.addEventListener("change", () => {
   state.selectedSelfServiceMonth = elements.selfServiceMonth.value;
   renderSelfService();
+});
+
+elements.selfPaymentDate.addEventListener("change", () => {
+  updateSelfPaymentSuggestedAmount(true);
 });
 
 elements.selfAccessButton.addEventListener("click", () => {
@@ -647,6 +654,7 @@ function renderSelfService() {
     elements.selfAccessBox.hidden = true;
     elements.selfServiceProtectedContent.hidden = true;
     elements.selfCurrentExpected.textContent = formatMoney(0);
+    elements.selfCurrentInterest.textContent = formatMoney(0);
     elements.selfCurrentPaid.textContent = formatMoney(0);
     elements.selfCurrentBalance.textContent = formatMoney(0);
     elements.selfCurrentDue.textContent = "-";
@@ -664,6 +672,7 @@ function renderSelfService() {
 
   if (!isAuthorized) {
     elements.selfCurrentExpected.textContent = formatMoney(0);
+    elements.selfCurrentInterest.textContent = formatMoney(0);
     elements.selfCurrentPaid.textContent = formatMoney(0);
     elements.selfCurrentBalance.textContent = formatMoney(0);
     elements.selfCurrentDue.textContent = "-";
@@ -692,8 +701,10 @@ function renderSelfService() {
     : 0;
   const currentPaid = currentFee ? getPaidAmount(state.payments, fallbackPlayer.id, currentFee.id) : 0;
   const currentBalance = Math.max(currentExpected - currentPaid, 0);
+  const currentInterest = currentFee ? getCurrentInterestAmount(currentBalance, currentFee) : 0;
+  const currentPayable = currentBalance + currentInterest;
   const currentStatus = isBillablePlayer(fallbackPlayer)
-    ? getCurrentPaymentStatus(currentBalance, currentFee)
+    ? getCurrentPaymentStatus(currentPayable, currentFee)
     : { label: "Sin cuota mensual", className: "status-pendiente" };
   const lateDebt = getLateDebtForPlayer(fallbackPlayer, currentMonth);
   const nextEstimate = getNextMonthEstimate(fallbackPlayer, currentMonth);
@@ -704,11 +715,12 @@ function renderSelfService() {
   const latestPayment = currentFee ? getLatestPaymentForPlayerFee(fallbackPlayer.id, currentFee.id) : null;
 
   elements.selfCurrentExpected.textContent = formatMoney(currentExpected);
+  elements.selfCurrentInterest.textContent = formatMoney(currentInterest);
   elements.selfCurrentPaid.textContent = formatMoney(currentPaid);
   elements.selfCurrentBalance.textContent = getMainPaymentText(
     fallbackPlayer,
     currentExpected,
-    currentBalance,
+    currentPayable,
   );
   elements.selfCurrentDue.textContent = currentFee ? getFeeDueDate(currentFee) : "Sin cuota cargada";
   elements.selfCurrentStatus.textContent = currentStatus.label;
@@ -718,10 +730,11 @@ function renderSelfService() {
   elements.selfNextEstimateDetail.textContent =
     `${formatMonthLabel(nextMonth)} estimada segun valores actuales.`;
   elements.selfPayButton.disabled = !state.treasuryConfig.paymentTestMode && !state.treasuryConfig.paymentLink;
-  elements.selfPayButton.hidden = currentExpected <= 0 || currentBalance <= 0;
+  elements.selfPayButton.hidden = currentExpected <= 0 || currentPayable <= 0;
   elements.selfPaymentStatus.textContent = pendingAmount
     ? `Pagos pendientes de validacion: ${formatMoney(pendingAmount)}`
     : formatLatestPaymentStatus(latestPayment);
+  updateSelfPaymentSuggestedAmount();
   updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, monthPercent);
   updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, yearPercent);
 }
@@ -1951,6 +1964,32 @@ function getCurrentPaymentStatus(balance, fee) {
   return today > getFeeDueDate(fee)
     ? { label: "Moroso", className: "status-rechazado" }
     : { label: "Pendiente", className: "status-pendiente" };
+}
+
+function getCurrentInterestAmount(balance, fee) {
+  if (!fee || balance <= 0 || !isFeeOverdue(fee)) return 0;
+  return getInterestAmount(balance, fee);
+}
+
+function getInterestAmountForPaymentDate(balance, fee, paidAt) {
+  if (!fee || balance <= 0 || !paidAt) return 0;
+  return paidAt > getFeeDueDate(fee) ? getInterestAmount(balance, fee) : 0;
+}
+
+function updateSelfPaymentSuggestedAmount(force = false) {
+  if (!force && elements.selfPaymentAmount.value) return;
+
+  const player = state.players.find((item) => item.id === state.selectedSelfServicePlayerId);
+  const fee = getSelectedSelfServiceFee();
+  if (!player || !fee || !canViewSelfServicePlayer(player)) return;
+
+  const expected = getExpectedFeeForPlayer(player, fee, state.players);
+  const paid = getPaidAmount(state.payments, player.id, fee.id);
+  const balance = Math.max(expected - paid, 0);
+  const interest = getInterestAmountForPaymentDate(balance, fee, elements.selfPaymentDate.value);
+  const suggestedAmount = balance + interest;
+
+  elements.selfPaymentAmount.value = suggestedAmount > 0 ? String(suggestedAmount) : "";
 }
 
 function getMainPaymentText(player, expected, balance) {
