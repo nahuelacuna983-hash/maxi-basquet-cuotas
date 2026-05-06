@@ -1367,6 +1367,7 @@ function removeSampleData() {
 }
 
 function applyPersistentState(nextState) {
+  const selfServiceSnapshot = getSelfServiceUiSnapshot();
   state.players = nextState.players.map((player) => ({ ...player, accessCode: player.accessCode ?? "" }));
   state.fees = nextState.fees.map((fee) => ({ ...fee }));
   state.payments = nextState.payments.map((payment) => ({ ...payment }));
@@ -1378,12 +1379,16 @@ function applyPersistentState(nextState) {
   state.treasuryConfig = { ...nextState.treasuryConfig };
   state.playerFilter = "todos";
   state.selectedSelfServicePlayerId =
+    state.players.find((player) => player.id === selfServiceSnapshot.playerId)?.id ??
     state.players.find((player) => player.id === initialUrlPlayerId)?.id ??
     state.selectedSelfServicePlayerId ??
     state.players[0]?.id ??
     "";
-  state.selectedSelfServiceMonth = getValidSelfServiceMonth(state.selectedSelfServiceMonth);
+  state.selectedSelfServiceMonth = getValidSelfServiceMonth(
+    selfServiceSnapshot.month || state.selectedSelfServiceMonth,
+  );
   syncFormValuesFromState();
+  restoreSelfServiceUiSnapshot(selfServiceSnapshot);
 }
 
 function syncFormValuesFromState() {
@@ -1393,6 +1398,32 @@ function syncFormValuesFromState() {
   elements.treasuryPaymentLink.value = state.treasuryConfig.paymentLink;
   elements.treasuryPaymentTestMode.checked = Boolean(state.treasuryConfig.paymentTestMode);
   elements.treasuryInstructions.value = state.treasuryConfig.paymentInstructions;
+}
+
+function getSelfServiceUiSnapshot() {
+  return {
+    playerId: elements.selfServicePlayer.value || state.selectedSelfServicePlayerId,
+    month: elements.selfServiceMonth.value || state.selectedSelfServiceMonth,
+    paymentMethod: elements.selfPaymentMethod.value,
+    paymentAmount: elements.selfPaymentAmount.value,
+    paymentDate: elements.selfPaymentDate.value,
+    paymentNote: elements.selfPaymentNote.value,
+    activeElementId: document.activeElement?.id ?? "",
+  };
+}
+
+function restoreSelfServiceUiSnapshot(snapshot) {
+  state.selectedSelfServicePlayerId = snapshot.playerId || state.selectedSelfServicePlayerId;
+  state.selectedSelfServiceMonth = getValidSelfServiceMonth(snapshot.month);
+  elements.selfPaymentMethod.value = snapshot.paymentMethod || elements.selfPaymentMethod.value;
+  elements.selfPaymentAmount.value = snapshot.paymentAmount;
+  elements.selfPaymentDate.value = snapshot.paymentDate || elements.selfPaymentDate.value;
+  elements.selfPaymentNote.value = snapshot.paymentNote;
+
+  if (snapshot.activeElementId) {
+    const activeElement = document.getElementById(snapshot.activeElementId);
+    if (activeElement) activeElement.focus();
+  }
 }
 
 function importBulkPlayers(rawValue) {
