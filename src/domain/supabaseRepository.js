@@ -65,14 +65,77 @@ export async function saveSupabaseState(state) {
   });
 }
 
-export async function deleteSupabasePayment(paymentId) {
+export async function submitPayment(payment) {
   const client = await getSupabaseClient();
-  const result = await client
+  const rpcResult = await client.rpc("submit_payment", {
+    p_payment: toSupabasePayment(payment),
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "submit_payment");
+  }
+
+  const fallbackResult = await client.from("payments").insert(toSupabasePayment(payment));
+  assertSupabaseResult(fallbackResult, "payments");
+  return logMutationMode("fallback");
+}
+
+export async function adminReviewPayment(adminPin, paymentId, status) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("admin_review_payment", {
+    p_admin_pin: adminPin,
+    p_payment_id: paymentId,
+    p_status: status,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_review_payment");
+  }
+
+  const fallbackResult = await client
+    .from("payments")
+    .update({
+      status,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: "admin",
+    })
+    .eq("id", paymentId)
+    .is("deleted_at", null);
+
+  assertSupabaseResult(fallbackResult, "payments");
+  return logMutationMode("fallback");
+}
+
+export async function adminSoftDeletePayment(adminPin, paymentId) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("admin_soft_delete_payment", {
+    p_admin_pin: adminPin,
+    p_payment_id: paymentId,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_soft_delete_payment");
+  }
+
+  const fallbackResult = await client
     .from("payments")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", paymentId);
 
-  assertSupabaseResult(result, "payments");
+  assertSupabaseResult(fallbackResult, "payments");
+  return logMutationMode("fallback");
 }
 
 async function getSupabaseClient() {
@@ -93,6 +156,26 @@ function assertSupabaseResult(result, tableName) {
   if (result.error) {
     throw new Error(`${tableName}: ${result.error.message}`);
   }
+}
+
+function throwSupabaseError(result, tableName) {
+  throw new Error(`${tableName}: ${result.error.message}`);
+}
+
+function isRpcUnavailableError(error) {
+  const message = error?.message ?? "";
+  return (
+    error?.code === "PGRST202" ||
+    message.includes("Could not find the function") ||
+    message.includes("function") && message.includes("does not exist") ||
+    message.includes("function") && message.includes("schema cache")
+  );
+}
+
+function logMutationMode(mode) {
+  const detail = mode === "rpc" ? "RPC OK" : "Fallback temporal usado: RPC no disponible";
+  console.info(detail);
+  return { mode, detail };
 }
 
 function fromSupabasePlayer(row) {

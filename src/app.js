@@ -32,7 +32,8 @@ import {
   savePersistedState,
 } from "./domain/storage.js";
 import {
-  deleteSupabasePayment,
+  adminReviewPayment,
+  adminSoftDeletePayment,
   isSupabaseEnabled,
   loadSupabaseState,
   saveSupabaseState,
@@ -43,6 +44,7 @@ const persistedAppState = loadPersistedState(initialAppState);
 const initialUrlPlayerId = getUrlPlayerId();
 let supabaseHydrated = !isSupabaseEnabled();
 let supabaseSyncInProgress = false;
+let suppressNextSupabaseSync = false;
 const authorizedSelfServicePlayerIds = new Set();
 const state = {
   ...persistedAppState,
@@ -1790,9 +1792,12 @@ function requireAdmin() {
   return true;
 }
 
-function reviewPayment(paymentId, status) {
+async function reviewPayment(paymentId, status) {
   if (!requireAdmin()) return;
 
+  const previousPayments = state.payments;
+  const actionLabel = status === "aprobado" ? "aprobar" : "rechazar";
+  const resultLabel = status === "aprobado" ? "aprobado" : "rechazado";
   state.payments = state.payments.map((payment) =>
     payment.id === paymentId
       ? {
@@ -1803,6 +1808,26 @@ function reviewPayment(paymentId, status) {
         }
       : payment,
   );
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = status === "aprobado" ? "Aprobando pago..." : "Rechazando pago...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminReviewPayment(adminConfig.pin, paymentId, status);
+      state.syncStatus = getPaymentMutationMessage(`Pago ${resultLabel}`, mutationResult);
+    } catch (error) {
+      state.payments = previousPayments;
+      state.syncStatus = `Error al ${actionLabel} pago: ${error.message}`;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = `Pago ${resultLabel} localmente`;
+  }
+
+  suppressNextSupabaseSync = true;
   render();
 }
 
@@ -1823,16 +1848,24 @@ async function removePayments(paymentIds) {
     renderRoleVisibility();
 
     try {
-      await Promise.all(paymentIds.map((paymentId) => deleteSupabasePayment(paymentId)));
-      state.syncStatus = paymentIds.length > 1 ? "Pagos eliminados" : "Pago eliminado";
+      const mutationResults = await Promise.all(
+        paymentIds.map((paymentId) => adminSoftDeletePayment(adminConfig.pin, paymentId)),
+      );
+      state.syncStatus = getPaymentMutationMessage(
+        paymentIds.length > 1 ? "Pagos eliminados" : "Pago eliminado",
+        getCombinedMutationResult(mutationResults),
+      );
     } catch (error) {
       state.payments = previousPayments;
       state.syncStatus = `Error al eliminar pago: ${error.message}`;
     } finally {
       supabaseSyncInProgress = false;
     }
+  } else {
+    state.syncStatus = paymentIds.length > 1 ? "Pagos eliminados localmente" : "Pago eliminado localmente";
   }
 
+  suppressNextSupabaseSync = true;
   render();
 }
 
@@ -1929,6 +1962,18 @@ function formatPaymentStatus(status) {
   };
 
   return labels[status] ?? status;
+}
+
+function getPaymentMutationMessage(baseMessage, mutationResult) {
+  if (mutationResult?.mode === "rpc") return `${baseMessage} con RPC`;
+  if (mutationResult?.mode === "fallback") return `${baseMessage} con fallback temporal`;
+  return baseMessage;
+}
+
+function getCombinedMutationResult(results) {
+  return results.every((result) => result.mode === "rpc")
+    ? { mode: "rpc" }
+    : { mode: "fallback" };
 }
 
 function getPlayerNameById(playerId) {
@@ -2143,6 +2188,10 @@ async function refreshFromSupabase() {
 
 async function syncSupabaseState() {
   if (!isSupabaseEnabled()) {
+    return;
+  }
+  if (suppressNextSupabaseSync) {
+    suppressNextSupabaseSync = false;
     return;
   }
   if (!supabaseHydrated) {
