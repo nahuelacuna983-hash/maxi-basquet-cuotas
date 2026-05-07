@@ -47,6 +47,7 @@ const initialUrlPlayerId = getUrlPlayerId();
 let supabaseHydrated = !isSupabaseEnabled();
 let supabaseSyncInProgress = false;
 let suppressNextSupabaseSync = false;
+let treasuryFormDirty = false;
 const authorizedSelfServicePlayerIds = new Set();
 const state = {
   ...persistedAppState,
@@ -163,6 +164,18 @@ elements.treasuryHolder.value = state.treasuryConfig.accountHolder;
 elements.treasuryPaymentLink.value = state.treasuryConfig.paymentLink;
 elements.treasuryPaymentTestMode.checked = Boolean(state.treasuryConfig.paymentTestMode);
 elements.treasuryInstructions.value = state.treasuryConfig.paymentInstructions;
+
+[
+  elements.treasuryAlias,
+  elements.treasuryHolder,
+  elements.treasuryPaymentLink,
+  elements.treasuryPaymentTestMode,
+  elements.treasuryInstructions,
+].forEach((element) => {
+  element.addEventListener(element.type === "checkbox" ? "change" : "input", () => {
+    treasuryFormDirty = true;
+  });
+});
 
 elements.showAdminLoginButton.addEventListener("click", () => {
   state.isAdminLoginVisible = true;
@@ -524,27 +537,29 @@ elements.treasuryForm.addEventListener("submit", async (event) => {
 
   if (isSupabaseEnabled() && supabaseHydrated) {
     supabaseSyncInProgress = true;
-    state.syncStatus = "Actualizando tesoreria...";
+    state.syncStatus = "Actualizando tesorería...";
     renderRoleVisibility();
 
     try {
       const mutationResult = await adminUpdateTreasuryConfig(adminConfig.pin, nextTreasuryConfig);
-      state.syncStatus = getPaymentMutationMessage("Tesoreria actualizada", mutationResult);
+      state.syncStatus = getPaymentMutationMessage("Tesorería actualizada", mutationResult);
     } catch (error) {
       state.treasuryConfig = previousTreasuryConfig;
-      state.syncStatus = `Error al actualizar tesoreria: ${error.message}`;
+      state.syncStatus = `Error al actualizar tesorería: ${error.message}`;
       supabaseSyncInProgress = false;
       suppressNextSupabaseSync = true;
-      syncFormValuesFromState();
+      treasuryFormDirty = false;
+      syncFormValuesFromState({ forceTreasury: true });
       render();
       return;
     } finally {
       supabaseSyncInProgress = false;
     }
   } else {
-    state.syncStatus = "Tesoreria actualizada localmente";
+    state.syncStatus = "Tesorería actualizada localmente";
   }
 
+  treasuryFormDirty = false;
   suppressNextSupabaseSync = true;
   render();
 });
@@ -1518,8 +1533,10 @@ function applyPersistentState(nextState) {
   restoreSelfServiceUiSnapshot(selfServiceSnapshot);
 }
 
-function syncFormValuesFromState() {
+function syncFormValuesFromState({ forceTreasury = false } = {}) {
   elements.attendanceNoveltyDate.value = state.responsibilityConfig.attendanceStartDate;
+  if (treasuryFormDirty && !forceTreasury) return;
+
   elements.treasuryAlias.value = state.treasuryConfig.paymentAlias;
   elements.treasuryHolder.value = state.treasuryConfig.accountHolder;
   elements.treasuryPaymentLink.value = state.treasuryConfig.paymentLink;
