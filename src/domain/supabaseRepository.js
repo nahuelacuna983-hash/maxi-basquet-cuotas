@@ -43,20 +43,32 @@ export async function loadSupabaseState(fallbackState) {
 export async function saveSupabaseState(state) {
   const client = await getSupabaseClient();
   const players = state.players.map(toSupabasePlayer);
-  const fees = state.fees.map(toSupabaseFee);
+  const result = players.length
+    ? await client.from("players").upsert(players, { onConflict: "id" })
+    : { error: null };
 
-  const results = await Promise.all([
-    players.length
-      ? client.from("players").upsert(players, { onConflict: "id" })
-      : Promise.resolve({ error: null }),
-    fees.length
-      ? client.from("fees").upsert(fees, { onConflict: "id" })
-      : Promise.resolve({ error: null }),
-  ]);
+  assertSupabaseResult(result, "players");
+}
 
-  results.forEach((result, index) => {
-    assertSupabaseResult(result, ["players", "fees"][index]);
+export async function adminUpsertFee(adminPin, fee) {
+  const client = await getSupabaseClient();
+  const payload = toSupabaseFee(fee);
+  const rpcResult = await client.rpc("admin_upsert_fee", {
+    p_admin_pin: adminPin,
+    p_fee: payload,
   });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_upsert_fee");
+  }
+
+  const fallbackResult = await client.from("fees").upsert(payload, { onConflict: "id" });
+  assertSupabaseResult(fallbackResult, "fees");
+  return logMutationMode("fallback");
 }
 
 export async function adminUpdateTreasuryConfig(adminPin, treasuryConfig) {

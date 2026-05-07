@@ -35,6 +35,7 @@ import {
   adminReviewPayment,
   adminSoftDeletePayment,
   adminUpdateTreasuryConfig,
+  adminUpsertFee,
   isSupabaseEnabled,
   loadSupabaseState,
   saveSupabaseState,
@@ -393,7 +394,7 @@ elements.bulkPlayersForm.addEventListener("submit", (event) => {
   }
 });
 
-elements.feeForm.addEventListener("submit", (event) => {
+elements.feeForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requireAdmin()) return;
 
@@ -410,7 +411,8 @@ elements.feeForm.addEventListener("submit", (event) => {
     return;
   }
 
-  state.fees.push({
+  const previousFees = state.fees;
+  const fee = {
     id: createId("fee"),
     month,
     trainingSessionCost,
@@ -419,8 +421,30 @@ elements.feeForm.addEventListener("submit", (event) => {
     sundayBillingBase,
     interestPercent,
     dueDay: 10,
-  });
-  state.fees.sort((a, b) => a.month.localeCompare(b.month));
+  };
+  state.fees = [...state.fees, fee].sort((a, b) => a.month.localeCompare(b.month));
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Guardando cuota...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminUpsertFee(adminConfig.pin, fee);
+      state.syncStatus = getPaymentMutationMessage("Cuota guardada", mutationResult);
+    } catch (error) {
+      state.fees = previousFees;
+      state.syncStatus = `Error al guardar cuota: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = "Cuota guardada localmente";
+  }
 
   elements.feeForm.reset();
   document.querySelector("#feeTrainingCost").value = "55000";
@@ -428,6 +452,7 @@ elements.feeForm.addEventListener("submit", (event) => {
   document.querySelector("#feeTrainingBillingBase").value = "";
   document.querySelector("#feeSundayBillingBase").value = "";
   document.querySelector("#feeInterestPercent").value = "5";
+  suppressNextSupabaseSync = true;
   render();
 });
 
@@ -2060,18 +2085,46 @@ function updateResponsibilityAdjustment(playerId, field, value) {
   render();
 }
 
-function updateFeeBillingBase(feeId, field, value) {
+async function updateFeeBillingBase(feeId, field, value) {
   if (!requireAdmin()) return;
 
   const nextValue = Number(value) > 0 ? Number(value) : null;
+  const previousFees = state.fees;
+  let updatedFee = null;
   state.fees = state.fees.map((fee) =>
     fee.id === feeId
-      ? {
+      ? (updatedFee = {
           ...fee,
           [field]: nextValue,
-        }
+        })
       : fee,
   );
+
+  if (!updatedFee) return;
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Actualizando cuota...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminUpsertFee(adminConfig.pin, updatedFee);
+      state.syncStatus = getPaymentMutationMessage("Cuota actualizada", mutationResult);
+    } catch (error) {
+      state.fees = previousFees;
+      state.syncStatus = `Error al actualizar cuota: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = "Cuota actualizada localmente";
+  }
+
+  suppressNextSupabaseSync = true;
   render();
 }
 
