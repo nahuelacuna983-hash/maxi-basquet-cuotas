@@ -34,6 +34,7 @@ import {
 import {
   adminReviewPayment,
   adminSoftDeletePayment,
+  adminUpdateTreasuryConfig,
   isSupabaseEnabled,
   loadSupabaseState,
   saveSupabaseState,
@@ -507,18 +508,44 @@ elements.paymentForm.addEventListener("submit", async (event) => {
   render();
 });
 
-elements.treasuryForm.addEventListener("submit", (event) => {
+elements.treasuryForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requireAdmin()) return;
 
-  state.treasuryConfig = {
+  const previousTreasuryConfig = { ...state.treasuryConfig };
+  const nextTreasuryConfig = {
     paymentAlias: elements.treasuryAlias.value.trim(),
     accountHolder: elements.treasuryHolder.value.trim(),
     paymentLink: elements.treasuryPaymentLink.value.trim(),
     paymentTestMode: elements.treasuryPaymentTestMode.checked,
     paymentInstructions: elements.treasuryInstructions.value.trim(),
   };
+  state.treasuryConfig = nextTreasuryConfig;
 
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Actualizando tesoreria...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminUpdateTreasuryConfig(adminConfig.pin, nextTreasuryConfig);
+      state.syncStatus = getPaymentMutationMessage("Tesoreria actualizada", mutationResult);
+    } catch (error) {
+      state.treasuryConfig = previousTreasuryConfig;
+      state.syncStatus = `Error al actualizar tesoreria: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      syncFormValuesFromState();
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = "Tesoreria actualizada localmente";
+  }
+
+  suppressNextSupabaseSync = true;
   render();
 });
 
