@@ -827,9 +827,12 @@ function renderSelfService() {
     `${formatMonthLabel(nextMonth)} estimada segun valores actuales.`;
   elements.selfPayButton.disabled = !state.treasuryConfig.paymentTestMode && !state.treasuryConfig.paymentLink;
   elements.selfPayButton.hidden = currentExpected <= 0 || currentPayable <= 0;
-  elements.selfPaymentStatus.textContent = pendingAmount
-    ? `Pagos pendientes de validacion: ${formatMoney(pendingAmount)}`
-    : formatLatestPaymentStatus(latestPayment);
+  elements.selfPaymentStatus.textContent = formatSelfPaymentStatus(
+    latestPayment,
+    pendingAmount,
+    currentExpected,
+    currentPayable,
+  );
   updateSelfPaymentSuggestedAmount();
   updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, monthPercent);
   updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, yearPercent);
@@ -2235,15 +2238,18 @@ function getActivePaymentForPlayerFee(playerId, feeId) {
   return getActivePaymentsForPlayerFee(playerId, feeId)[0] ?? null;
 }
 
-function formatLatestPaymentStatus(payment) {
-  if (!payment) return "";
-  const statusLabels = {
-    aprobado: "aprobado",
-    pendiente: "pendiente de validacion",
-    rechazado: "rechazado",
+function formatSelfPaymentStatus(payment, pendingAmount, expectedAmount, payableAmount) {
+  if (expectedAmount <= 0) return "";
+  if (pendingAmount > 0) return "Informaste un pago, pendiente de validación";
+  if (!payment) return payableAmount > 0 ? "Tenés pendiente esta cuota" : "Pago confirmado";
+
+  const statusMessages = {
+    aprobado: "Pago confirmado",
+    pendiente: "Informaste un pago, pendiente de validación",
+    rechazado: "Pago rechazado, revisar con el administrador",
   };
 
-  return `Ultimo pago informado: ${statusLabels[payment.status] ?? payment.status} (${formatMoney(Number(payment.amount) || 0)})`;
+  return statusMessages[payment.status] ?? "";
 }
 
 async function hydrateFromSupabase() {
