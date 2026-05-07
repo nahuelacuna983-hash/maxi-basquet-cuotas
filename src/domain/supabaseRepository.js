@@ -44,7 +44,6 @@ export async function saveSupabaseState(state) {
   const client = await getSupabaseClient();
   const players = state.players.map(toSupabasePlayer);
   const fees = state.fees.map(toSupabaseFee);
-  const payments = state.payments.map(toSupabasePayment);
   const treasuryConfig = toSupabaseTreasuryConfig(state.treasuryConfig);
 
   const results = await Promise.all([
@@ -54,14 +53,11 @@ export async function saveSupabaseState(state) {
     fees.length
       ? client.from("fees").upsert(fees, { onConflict: "id" })
       : Promise.resolve({ error: null }),
-    payments.length
-      ? client.from("payments").upsert(payments, { onConflict: "id" })
-      : Promise.resolve({ error: null }),
     client.from("treasury_config").upsert(treasuryConfig, { onConflict: "id" }),
   ]);
 
   results.forEach((result, index) => {
-    assertSupabaseResult(result, ["players", "fees", "payments", "treasury_config"][index]);
+    assertSupabaseResult(result, ["players", "fees", "treasury_config"][index]);
   });
 }
 

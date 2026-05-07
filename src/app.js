@@ -37,6 +37,7 @@ import {
   isSupabaseEnabled,
   loadSupabaseState,
   saveSupabaseState,
+  submitPayment,
 } from "./domain/supabaseRepository.js";
 
 const initialAppState = createInitialAppState();
@@ -255,7 +256,7 @@ elements.selfPayButton.addEventListener("click", () => {
   window.open(paymentLink, "_blank", "noopener,noreferrer");
 });
 
-elements.selfPaymentForm.addEventListener("submit", (event) => {
+elements.selfPaymentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const playerId = elements.selfServicePlayer.value;
@@ -284,7 +285,7 @@ elements.selfPaymentForm.addEventListener("submit", (event) => {
     return;
   }
 
-  state.payments.unshift({
+  const payment = {
     id: createId("payment"),
     playerId,
     feeId: currentFee.id,
@@ -296,11 +297,33 @@ elements.selfPaymentForm.addEventListener("submit", (event) => {
     receiptNote: note,
     note,
     createdAt: new Date().toISOString(),
-  });
+  };
+
+  state.payments.unshift(payment);
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    elements.selfPaymentStatus.textContent = "Informando pago...";
+    try {
+      const mutationResult = await submitPayment(payment);
+      state.syncStatus = getPaymentMutationMessage("Pago informado", mutationResult);
+    } catch (error) {
+      state.payments = state.payments.filter((item) => item.id !== payment.id);
+      elements.selfPaymentStatus.textContent = `Error al informar pago: ${error.message}`;
+      state.syncStatus = `Error al informar pago: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  }
+
   elements.selfPaymentAmount.value = "";
   elements.selfPaymentNote.value = "";
   elements.selfPaymentStatus.textContent =
     "Pago informado. Queda pendiente hasta que lo valide el administrador.";
+  suppressNextSupabaseSync = true;
   render();
 });
 
@@ -417,22 +440,70 @@ elements.paymentForm.addEventListener("submit", async (event) => {
     await removePayments(existingPayments.map((payment) => payment.id));
   }
 
-  state.payments.unshift({
+  const previousPayments = state.payments;
+  const payment = {
     id: createId("payment"),
     playerId,
     feeId: selectedFee.id,
     amount,
     paidAt,
     method: "transferencia",
-    status: "aprobado",
+    status: "pendiente",
     operationNumber: "Carga admin",
     note,
     createdAt: new Date().toISOString(),
-    reviewedAt: new Date().toISOString(),
-    reviewedBy: "admin",
-  });
+  };
+
+  state.payments.unshift(payment);
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Registrando pago admin...";
+    renderRoleVisibility();
+
+    try {
+      const submitResult = await submitPayment(payment);
+      const reviewResult = await adminReviewPayment(adminConfig.pin, payment.id, "aprobado");
+      state.payments = state.payments.map((item) =>
+        item.id === payment.id
+          ? {
+              ...item,
+              status: "aprobado",
+              reviewedAt: new Date().toISOString(),
+              reviewedBy: "admin",
+            }
+          : item,
+      );
+      state.syncStatus = getPaymentMutationMessage(
+        "Pago admin registrado",
+        getCombinedMutationResult([submitResult, reviewResult]),
+      );
+    } catch (error) {
+      state.payments = previousPayments;
+      state.syncStatus = `Error al registrar pago admin: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.payments = state.payments.map((item) =>
+      item.id === payment.id
+        ? {
+            ...item,
+            status: "aprobado",
+            reviewedAt: new Date().toISOString(),
+            reviewedBy: "admin",
+          }
+        : item,
+    );
+    state.syncStatus = "Pago admin registrado localmente";
+  }
+
   document.querySelector("#paymentAmount").value = "";
   document.querySelector("#paymentNote").value = "";
+  suppressNextSupabaseSync = true;
   render();
 });
 
@@ -467,7 +538,7 @@ elements.copyAliasButton.addEventListener("click", async () => {
   }
 });
 
-elements.playerPaymentForm.addEventListener("submit", (event) => {
+elements.playerPaymentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const playerId = elements.playerPaymentPlayer.value;
@@ -489,7 +560,7 @@ elements.playerPaymentForm.addEventListener("submit", (event) => {
     return;
   }
 
-  state.payments.unshift({
+  const payment = {
     id: createId("payment"),
     playerId,
     feeId: selectedFee.id,
@@ -501,10 +572,33 @@ elements.playerPaymentForm.addEventListener("submit", (event) => {
     receiptNote: operationNumber,
     note,
     createdAt: new Date().toISOString(),
-  });
+  };
+
+  state.payments.unshift(payment);
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Informando pago...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await submitPayment(payment);
+      state.syncStatus = getPaymentMutationMessage("Pago informado", mutationResult);
+    } catch (error) {
+      state.payments = state.payments.filter((item) => item.id !== payment.id);
+      state.syncStatus = `Error al informar pago: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  }
+
   document.querySelector("#playerPaymentAmount").value = "";
   document.querySelector("#playerPaymentOperation").value = "";
   document.querySelector("#playerPaymentNote").value = "";
+  suppressNextSupabaseSync = true;
   render();
 });
 
