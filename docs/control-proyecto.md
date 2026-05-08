@@ -69,14 +69,13 @@ Ya permite:
 
 Antes de usar con todo el equipo:
 
-- Exportar backup limpio para prueba controlada.
 - Limpiar jugadores de ejemplo, duplicados o invalidos.
 - Revisar jugadores reales cargados.
 - Revisar cuotas de abril y mayo.
 - Dejar abril 2026 con monto fijo historico: competidor `$51.000`, solo entrenamientos `$30.000`.
 - Confirmar bases de cobro reales por mes.
 - Confirmar codigos de acceso de jugadores.
-- Exportar backup limpio para prueba controlada.
+- Definir metodo de pago real antes de mandar el mensaje general.
 - Probar circuito completo con 3 a 5 jugadores.
 - Documentar SQL final completo de Supabase en `supabase/schema.sql`.
 
@@ -175,5 +174,7 @@ Al 2026-05-08:
 - Tablas principales estan protegidas por RPC/policies.
 - La vista jugador sigue funcionando.
 - Se exporto backup previo y se eliminaron logicamente 10 pagos de prueba.
+- La prueba controlada salio bien.
+- Se exporto backup post-prueba, se eliminaron logicamente 5 pagos de prueba y se genero backup limpio final.
 - Quedan 0 pagos activos en Supabase.
-- El siguiente trabajo recomendado es revisar datos reales y exportar backup limpio para prueba controlada.
+- El siguiente trabajo recomendado es definir metodo de pago real y luego preparar el mensaje general al equipo.
