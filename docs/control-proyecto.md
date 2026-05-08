@@ -69,8 +69,7 @@ Ya permite:
 
 Antes de usar con todo el equipo:
 
-- Exportar backup completo previo a limpieza.
-- Limpiar pagos de prueba.
+- Exportar backup limpio para prueba controlada.
 - Limpiar jugadores de ejemplo, duplicados o invalidos.
 - Revisar jugadores reales cargados.
 - Revisar cuotas de abril y mayo.
@@ -175,4 +174,6 @@ Al 2026-05-08:
 - Supabase esta conectado.
 - Tablas principales estan protegidas por RPC/policies.
 - La vista jugador sigue funcionando.
-- El siguiente trabajo recomendado es estabilizacion de datos reales y prueba controlada.
+- Se exporto backup previo y se eliminaron logicamente 10 pagos de prueba.
+- Quedan 0 pagos activos en Supabase.
+- El siguiente trabajo recomendado es revisar datos reales y exportar backup limpio para prueba controlada.
