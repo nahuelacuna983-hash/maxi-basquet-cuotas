@@ -22,6 +22,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Proteccion para no duplicar pagos por jugador y cuota.
 - Borrado logico de pagos con `deleted_at`.
 - Modo prueba de pago configurable.
+- Metodo de pago real por alias Mercado Pago `maxisuda`.
 - Escrituras principales protegidas con RPC en Supabase.
 
 ## Vista jugador
@@ -37,6 +38,7 @@ El jugador puede:
 - ver si esta al dia, pendiente o moroso
 - ver deuda atrasada
 - ver proxima cuota estimada
+- ver alias e instrucciones de pago
 - informar pago
 
 Link directo por jugador:
@@ -132,6 +134,13 @@ Reglas:
 - Si el admin carga un pago para una cuota que ya tiene pago, la app pregunta si quiere reemplazar.
 - El pago se aplica al mes seleccionado, no automaticamente al mes de la fecha.
 - Los pagos eliminados quedan con `deleted_at` y no vuelven a aparecer.
+
+Metodo actual:
+
+- Alias Mercado Pago: `maxisuda`.
+- El jugador paga desde su billetera, banco o Mercado Pago.
+- Luego vuelve a la app y toca `Informar pago`.
+- El pago queda pendiente hasta validacion de Tesoreria.
 
 ## Cuotas
 

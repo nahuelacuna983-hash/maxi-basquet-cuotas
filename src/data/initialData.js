@@ -79,12 +79,12 @@ export const initialPayments = [
 ];
 
 export const initialTreasuryConfig = {
-  paymentAlias: "maxibasquet.alias",
-  accountHolder: "Tesoreria Maxi Basquet",
-  paymentLink: "https://link.mercadopago.com.ar/mi-alias",
-  paymentTestMode: true,
+  paymentAlias: "maxisuda",
+  accountHolder: "Mercado Pago",
+  paymentLink: "",
+  paymentTestMode: false,
   paymentInstructions:
-    "Transferi la cuota al alias, informa el pago y espera la validacion del administrador.",
+    "Paga por transferencia al alias maxisuda. Despues volve a la app, toca Informar pago y carga monto, fecha y comprobante u observacion. El pago queda pendiente hasta que Tesoreria lo valide.",
 };
 
 export const initialAttendances = [];

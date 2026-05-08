@@ -120,6 +120,7 @@ const elements = {
   selfYearPercentBar: document.querySelector("#selfYearPercentBar"),
   selfPayButton: document.querySelector("#selfPayButton"),
   selfPaymentStatus: document.querySelector("#selfPaymentStatus"),
+  selfPaymentInstructions: document.querySelector("#selfPaymentInstructions"),
   selfPaymentForm: document.querySelector("#selfPaymentForm"),
   selfPaymentMethod: document.querySelector("#selfPaymentMethod"),
   selfPaymentAmount: document.querySelector("#selfPaymentAmount"),
@@ -266,10 +267,14 @@ elements.selfPayButton.addEventListener("click", () => {
 
   const paymentLink = state.treasuryConfig.paymentLink?.trim();
   if (!paymentLink) {
-    elements.selfPaymentStatus.textContent = "Todavia no hay link de pago configurado.";
+    elements.selfPaymentStatus.textContent =
+      "Paga desde tu billetera al alias indicado. Despues volve a esta pantalla e informa el pago.";
+    elements.selfPaymentForm.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
 
+  elements.selfPaymentStatus.textContent =
+    "Se abrio el medio de pago. Despues volve a esta pantalla e informa el pago.";
   window.open(paymentLink, "_blank", "noopener,noreferrer");
 });
 
@@ -866,6 +871,7 @@ function renderSelfService() {
     elements.selfCurrentStatus.className = "payment-status status-pendiente";
     elements.selfLateDebt.textContent = formatMoney(0);
     elements.selfNextEstimate.textContent = formatMoney(0);
+    elements.selfPaymentInstructions.hidden = true;
     elements.selfPaymentStatus.textContent = "";
     elements.selfAccessMessage.textContent =
       playerHasAccessCode(fallbackPlayer)
@@ -915,8 +921,10 @@ function renderSelfService() {
   elements.selfNextEstimate.textContent = formatMoney(nextEstimate);
   elements.selfNextEstimateDetail.textContent =
     `${formatMonthLabel(nextMonth)} estimada segun valores actuales.`;
-  elements.selfPayButton.disabled = !state.treasuryConfig.paymentTestMode && !state.treasuryConfig.paymentLink;
+  elements.selfPayButton.disabled =
+    !state.treasuryConfig.paymentTestMode && !hasConfiguredPaymentMethod();
   elements.selfPayButton.hidden = currentExpected <= 0 || currentPayable <= 0;
+  renderSelfPaymentInstructions(currentPayable);
   elements.selfPaymentStatus.textContent = formatSelfPaymentStatus(
     latestPayment,
     pendingAmount,
@@ -1622,6 +1630,38 @@ function getSelfServiceUiSnapshot() {
     paymentNote: elements.selfPaymentNote.value,
     activeElementId: document.activeElement?.id ?? "",
   };
+}
+
+function hasConfiguredPaymentMethod() {
+  return Boolean(
+    state.treasuryConfig.paymentLink?.trim() ||
+      state.treasuryConfig.paymentAlias?.trim(),
+  );
+}
+
+function renderSelfPaymentInstructions(payableAmount) {
+  if (payableAmount <= 0 || !hasConfiguredPaymentMethod()) {
+    elements.selfPaymentInstructions.hidden = true;
+    elements.selfPaymentInstructions.innerHTML = "";
+    return;
+  }
+
+  const alias = state.treasuryConfig.paymentAlias?.trim();
+  const holder = state.treasuryConfig.accountHolder?.trim();
+  const instructions = state.treasuryConfig.paymentInstructions?.trim();
+  const paymentLink = state.treasuryConfig.paymentLink?.trim();
+  const primaryLine = state.treasuryConfig.paymentTestMode
+    ? "Modo prueba: no hagas pagos reales todavia."
+    : "Paga desde Mercado Pago, banco o billetera y despues informa el pago aca.";
+
+  elements.selfPaymentInstructions.hidden = false;
+  elements.selfPaymentInstructions.innerHTML = `
+    <strong>${escapeHtml(primaryLine)}</strong>
+    ${alias ? `<span>Alias: <b>${escapeHtml(alias)}</b></span>` : ""}
+    ${holder ? `<span>Titular: ${escapeHtml(holder)}</span>` : ""}
+    ${paymentLink ? "<span>El boton Pagar abre el medio de pago configurado.</span>" : ""}
+    ${instructions ? `<span>${escapeHtml(instructions)}</span>` : ""}
+  `;
 }
 
 function restoreSelfServiceUiSnapshot(snapshot) {

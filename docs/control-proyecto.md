@@ -176,5 +176,6 @@ Al 2026-05-08:
 - Se exporto backup previo y se eliminaron logicamente 10 pagos de prueba.
 - La prueba controlada salio bien.
 - Se exporto backup post-prueba, se eliminaron logicamente 5 pagos de prueba y se genero backup limpio final.
+- Se definio metodo de pago intermedio por alias Mercado Pago `maxisuda`.
 - Quedan 0 pagos activos en Supabase.
-- El siguiente trabajo recomendado es definir metodo de pago real y luego preparar el mensaje general al equipo.
+- El siguiente trabajo recomendado es validar instrucciones de pago en la app y luego preparar el mensaje general al equipo.
