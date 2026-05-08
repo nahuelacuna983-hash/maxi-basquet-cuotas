@@ -224,6 +224,12 @@ http://192.168.0.8:5173/
 
 ## Documentacion
 
+Control de avance, pendientes y estimacion:
+
+```txt
+docs/control-proyecto.md
+```
+
 Resumen general:
 
 ```txt
