@@ -68,14 +68,47 @@ Ya permite:
 
 Antes de usar con todo el equipo:
 
-- Exportar backup JSON.
+- Exportar backup completo previo a limpieza.
 - Limpiar pagos de prueba.
+- Limpiar jugadores de ejemplo, duplicados o invalidos.
 - Revisar jugadores reales cargados.
 - Revisar cuotas de abril y mayo.
 - Confirmar bases de cobro reales por mes.
 - Confirmar codigos de acceso de jugadores.
+- Exportar backup limpio para prueba controlada.
 - Probar circuito completo con 3 a 5 jugadores.
 - Documentar SQL final completo de Supabase en `supabase/schema.sql`.
+
+## Protocolo de backups
+
+Antes de ampliar el uso real, se deben guardar dos puntos de restauracion.
+
+1. Backup completo previo a limpieza:
+
+```txt
+backup-pre-limpieza-2026-05-08.json
+```
+
+Objetivo:
+
+- conservar una foto completa del estado actual
+- poder volver atras si la limpieza elimina algo necesario
+- mantener pagos, pruebas y datos tal como estaban antes de ordenar
+
+2. Backup limpio para prueba controlada:
+
+```txt
+backup-prueba-controlada-2026-05-08.json
+```
+
+Objetivo:
+
+- guardar un estado sano antes de sumar mas jugadores
+- dejar pagos de prueba fuera del circuito real
+- dejar jugadores reales, cuotas y codigos revisados
+- usarlo como punto de restauracion antes de operar con el equipo
+
+La prueba controlada no debe empezar hasta tener el backup limpio exportado.
 
 ## Pendiente siguiente
 
@@ -129,7 +162,7 @@ La MVP de cobro se considera cerrada cuando:
 - admin pudo aprobar/rechazar
 - deuda se recalculo bien
 - no reaparecen pagos eliminados
-- existe backup exportado
+- existen backup previo a limpieza y backup limpio de prueba controlada
 - README y control del proyecto estan actualizados
 
 ## Ultimo estado conocido

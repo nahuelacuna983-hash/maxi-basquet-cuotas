@@ -154,13 +154,23 @@ La app redondea hacia arriba al multiplo de `$5.000`.
 
 Prueba recomendada:
 
-1. Exportar backup JSON antes de tocar datos.
-2. Asignar codigos a 3-5 jugadores.
-3. Pedirles que entren a la URL publica.
-4. Cada jugador elige su nombre e ingresa su codigo.
-5. Cada jugador informa pago del mes correspondiente.
-6. Admin aprueba o rechaza.
-7. Verificar que la deuda baje solo con pagos aprobados.
+1. Exportar backup completo previo a limpieza.
+2. Limpiar pagos de prueba y datos invalidos.
+3. Revisar jugadores, codigos, tipos, estados y cuotas reales.
+4. Exportar backup limpio para prueba controlada.
+5. Asignar codigos a 3-5 jugadores.
+6. Pedirles que entren a la URL publica.
+7. Cada jugador elige su nombre e ingresa su codigo.
+8. Cada jugador informa pago del mes correspondiente.
+9. Admin aprueba o rechaza.
+10. Verificar que la deuda baje solo con pagos aprobados.
+
+Nombres sugeridos de backup:
+
+```txt
+backup-pre-limpieza-2026-05-08.json
+backup-prueba-controlada-2026-05-08.json
+```
 
 Mensaje base para jugadores:
 
