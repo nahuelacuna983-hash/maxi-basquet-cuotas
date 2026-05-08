@@ -326,6 +326,14 @@ function fromSupabaseFee(row) {
     sundayCost: Number(row.sunday_cost) || 0,
     trainingBillingBase: row.training_billing_base === null ? null : Number(row.training_billing_base),
     sundayBillingBase: row.sunday_billing_base === null ? null : Number(row.sunday_billing_base),
+    fixedTrainingOnlyAmount:
+      row.fixed_training_only_amount === null || row.fixed_training_only_amount === undefined
+        ? null
+        : Number(row.fixed_training_only_amount),
+    fixedCompetitorAmount:
+      row.fixed_competitor_amount === null || row.fixed_competitor_amount === undefined
+        ? null
+        : Number(row.fixed_competitor_amount),
     interestPercent: Number(row.interest_percent) || 0,
     dueDay: Number(row.due_day) || 10,
   };
@@ -339,6 +347,8 @@ function toSupabaseFee(fee) {
     sunday_cost: Number(fee.sundayCost) || 0,
     training_billing_base: fee.trainingBillingBase ?? null,
     sunday_billing_base: fee.sundayBillingBase ?? null,
+    fixed_training_only_amount: fee.fixedTrainingOnlyAmount ?? null,
+    fixed_competitor_amount: fee.fixedCompetitorAmount ?? null,
     interest_percent: Number(fee.interestPercent) || 0,
     due_day: Number(fee.dueDay) || 10,
     updated_at: new Date().toISOString(),

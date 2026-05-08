@@ -22,11 +22,19 @@ create table if not exists public.fees (
   sunday_cost numeric not null default 90000,
   training_billing_base numeric,
   sunday_billing_base numeric,
+  fixed_training_only_amount numeric,
+  fixed_competitor_amount numeric,
   interest_percent numeric not null default 5,
   due_day integer not null default 10,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.fees
+add column if not exists fixed_training_only_amount numeric;
+
+alter table public.fees
+add column if not exists fixed_competitor_amount numeric;
 
 create table if not exists public.payments (
   id text primary key,

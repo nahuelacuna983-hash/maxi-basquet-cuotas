@@ -99,6 +99,8 @@ function dedupeFeesByMonth(fees) {
       sundayCost: fee.sundayCost ?? existingFee.sundayCost,
       trainingBillingBase: fee.trainingBillingBase ?? existingFee.trainingBillingBase,
       sundayBillingBase: fee.sundayBillingBase ?? existingFee.sundayBillingBase,
+      fixedTrainingOnlyAmount: fee.fixedTrainingOnlyAmount ?? existingFee.fixedTrainingOnlyAmount,
+      fixedCompetitorAmount: fee.fixedCompetitorAmount ?? existingFee.fixedCompetitorAmount,
       interestPercent: fee.interestPercent ?? existingFee.interestPercent,
       dueDay: fee.dueDay ?? existingFee.dueDay,
     });

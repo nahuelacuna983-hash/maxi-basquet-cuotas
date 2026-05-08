@@ -80,9 +80,13 @@ export function getFeeBreakdown(fee, players) {
   const sundayCost = Number(fee.sundayCost ?? 90000);
   const trainingTotal = trainingSessions * trainingSessionCost;
   const sundayTotal = sundays * sundayCost;
-  const expectedPerTrainingOnly = trainingBillingBase > 0 ? trainingTotal / trainingBillingBase : 0;
+  const calculatedTrainingOnly = trainingBillingBase > 0 ? trainingTotal / trainingBillingBase : 0;
   const expectedSundayShare = sundayBillingBase > 0 ? sundayTotal / sundayBillingBase : 0;
-  const expectedPerCompetitor = expectedPerTrainingOnly + expectedSundayShare;
+  const calculatedCompetitor = calculatedTrainingOnly + expectedSundayShare;
+  const fixedTrainingOnlyAmount = getPositiveAmountOrNull(fee.fixedTrainingOnlyAmount);
+  const fixedCompetitorAmount = getPositiveAmountOrNull(fee.fixedCompetitorAmount);
+  const expectedPerTrainingOnly = fixedTrainingOnlyAmount ?? calculatedTrainingOnly;
+  const expectedPerCompetitor = fixedCompetitorAmount ?? calculatedCompetitor;
 
   return {
     tuesdays,
@@ -97,6 +101,11 @@ export function getFeeBreakdown(fee, players) {
     sundayCost,
     trainingTotal,
     sundayTotal,
+    fixedTrainingOnlyAmount,
+    fixedCompetitorAmount,
+    usesFixedAmounts: Boolean(fixedTrainingOnlyAmount || fixedCompetitorAmount),
+    calculatedTrainingOnly,
+    calculatedCompetitor,
     expectedPerTrainingOnly,
     expectedSundayShare,
     expectedPerCompetitor,
@@ -109,11 +118,22 @@ export function getExpectedFeeForPlayer(player, fee, players) {
   if (!isBillablePlayer(player)) return 0;
 
   const breakdown = getFeeBreakdown(fee, players);
+  const fixedExpected =
+    player.type === "competidor"
+      ? breakdown.fixedCompetitorAmount
+      : breakdown.fixedTrainingOnlyAmount;
+  if (fixedExpected) return fixedExpected;
+
   const expected =
     player.type === "competidor"
       ? breakdown.expectedPerCompetitor
       : breakdown.expectedPerTrainingOnly;
   return roundUpToBillingStep(Number.isFinite(expected) ? expected : 0);
+}
+
+function getPositiveAmountOrNull(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
 }
 
 export function roundUpToBillingStep(value, step = 5000) {

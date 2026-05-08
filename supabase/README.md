@@ -1,65 +1,58 @@
-# Prueba multiusuario mínima con Supabase
+# Supabase
 
-## 1. Crear tablas
+Guia tecnica de Supabase para la MVP de cuotas.
 
-1. Entrá a tu proyecto de Supabase.
-2. Andá a `SQL Editor`.
-3. Tocá `New query`.
-4. Copiá todo el contenido de `supabase/schema.sql`.
-5. Ejecutá con `Run`.
+## Tablas principales
 
-Para esta prueba MVP las policies son abiertas. Sirve para probar con 3 o 4 jugadores, pero no es seguridad final.
+- `players`
+- `fees`
+- `payments`
+- `treasury_config`
 
-## 2. Cargar URL y anon key en la app
+## Seguridad actual
 
-1. En Supabase, andá a `Project Settings`.
-2. Entrá en `API`.
-3. Copiá:
-   - `Project URL`
-   - `anon public key`
-4. Abrí `src/config/supabaseConfig.js`.
-5. Cambiá:
+La app ya no depende de policies abiertas para las escrituras principales.
 
-```js
-export const supabaseConfig = {
-  enabled: true,
-  url: "TU_PROJECT_URL",
-  anonKey: "TU_ANON_PUBLIC_KEY",
-};
-```
+Estado:
 
-No uses la `service_role key` en el navegador.
+- `players`: listado publico por RPC sin `access_code`; validacion de codigo por RPC; escritura admin por RPC.
+- `fees`: lectura permitida; escritura directa bloqueada; escritura admin por RPC.
+- `payments`: lectura de pagos activos; insercion de pagos pendientes; aprobacion/rechazo/eliminacion por RPC.
+- `treasury_config`: lectura permitida; escritura admin por RPC.
 
-## 3. Subir tus datos actuales
+## RPC usadas
 
-1. Abrí la app en la PC.
-2. Entrá en modo admin.
-3. Verificá que aparezca `Supabase conectado`.
-4. Hacé un cambio chico, por ejemplo guardar tesorería o editar una base de cuota.
-5. La app sincroniza `players`, `fees`, `payments` y `treasury_config` con Supabase.
-6. En Supabase, revisá `Table Editor` para confirmar que se cargaron datos.
+- `list_public_players`
+- `admin_list_players`
+- `validate_player_access`
+- `admin_upsert_player`
+- `admin_upsert_fee`
+- `submit_payment`
+- `admin_review_payment`
+- `admin_soft_delete_payment`
+- `admin_update_treasury_config`
 
-## 4. Probar con un jugador
+## Campos relevantes
 
-1. En el celular del jugador abrí la URL publicada o la URL LAN.
-2. Elegí su nombre.
-3. Elegí el mes.
-4. Tocá `Pagar`.
-5. Como `Modo prueba de pago` está activo, no abre Mercado Pago.
-6. Cargá `Informar pago`.
-7. Ese pago queda `pendiente` en Supabase.
+`players`:
 
-## 5. Aprobar desde admin
+- `access_code`: codigo simple del jugador. No debe salir en el listado publico.
 
-1. En tu PC abrí modo admin.
-2. Esperá hasta 10 segundos o recargá.
-3. En `Validacion de pagos`, debería aparecer el pago pendiente.
-4. Tocá `Aprobar`.
-5. Solo desde ese momento descuenta deuda.
+`fees`:
 
-## Problemas comunes
+- `training_billing_base`: base de cobro para entrenamientos.
+- `sunday_billing_base`: base de cobro para domingos.
+- `fixed_training_only_amount`: monto fijo historico para solo entrenamientos.
+- `fixed_competitor_amount`: monto fijo historico para competidores.
 
-- Si aparece `Error Supabase: Failed to fetch`, revisá URL, anon key o conexión.
-- Si aparece error de RLS/policies, volvé a ejecutar `supabase/schema.sql`.
-- Si el jugador informa pago y no aparece, esperá 10 segundos o recargá admin.
-- Si no hay jugadores en Supabase, abrí primero la app desde tu PC con tus datos locales y modo admin.
+`payments`:
+
+- `status`: `pendiente`, `aprobado` o `rechazado`.
+- `deleted_at`: borrado logico.
+
+## Nota de seguridad
+
+La `anon key` puede estar en frontend si RLS y policies estan bien configuradas.
+No usar ni publicar la `service_role key` en la app.
+
+Antes de una version publica definitiva, el siguiente paso es Supabase Auth con roles reales.

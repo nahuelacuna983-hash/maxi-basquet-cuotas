@@ -1119,6 +1119,9 @@ function renderFeesList() {
       const expectedCompetitor = competitorPlayer
         ? getExpectedFeeForPlayer(competitorPlayer, fee, state.players)
         : 0;
+      const fixedAmountLabel = breakdown.usesFixedAmounts
+        ? `<span>Monto fijo historico: solo entrenamientos ${formatMoney(breakdown.fixedTrainingOnlyAmount ?? 0)} / competidor ${formatMoney(breakdown.fixedCompetitorAmount ?? 0)}</span>`
+        : "";
 
       return `
         <article class="fee-row">
@@ -1132,6 +1135,7 @@ function renderFeesList() {
             <span>Jugadores reales: ${breakdown.totalPlayers} / Competidores reales: ${breakdown.competitors}</span>
             <span>Base de cobro: ${breakdown.trainingBillingBase} entrenamientos / ${breakdown.sundayBillingBase} domingos</span>
             <span>Solo entrenamientos ${formatMoney(expectedTrainingOnly)} / Competidor ${formatMoney(expectedCompetitor)}</span>
+            ${fixedAmountLabel}
             <div class="fee-base-controls">
               <label>
                 Base entrenamientos
@@ -1140,6 +1144,14 @@ function renderFeesList() {
               <label>
                 Base domingos
                 <input class="score-input" data-fee-base-field="sundayBillingBase" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.sundayBillingBase ?? ""}" placeholder="Auto" />
+              </label>
+              <label>
+                Fijo solo entrenamientos
+                <input class="score-input" data-fee-base-field="fixedTrainingOnlyAmount" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.fixedTrainingOnlyAmount ?? ""}" placeholder="Formula" />
+              </label>
+              <label>
+                Fijo competidor
+                <input class="score-input" data-fee-base-field="fixedCompetitorAmount" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.fixedCompetitorAmount ?? ""}" placeholder="Formula" />
               </label>
             </div>
           </div>

@@ -45,6 +45,7 @@ Ya permite:
 - Tipo de jugador: competidor o solo entrenamientos.
 - Carga mensual de cuotas.
 - Bases de cobro para entrenamientos y domingos.
+- Montos fijos historicos por mes para cuotas ya cobradas.
 - Redondeo de cuota hacia arriba al multiplo de `$5.000`.
 - Interes desde el dia 11.
 - Informar pago como jugador.
@@ -73,6 +74,7 @@ Antes de usar con todo el equipo:
 - Limpiar jugadores de ejemplo, duplicados o invalidos.
 - Revisar jugadores reales cargados.
 - Revisar cuotas de abril y mayo.
+- Dejar abril 2026 con monto fijo historico: competidor `$51.000`, solo entrenamientos `$30.000`.
 - Confirmar bases de cobro reales por mes.
 - Confirmar codigos de acceso de jugadores.
 - Exportar backup limpio para prueba controlada.

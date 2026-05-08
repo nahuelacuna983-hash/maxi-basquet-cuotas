@@ -146,9 +146,13 @@ Cada cuota puede definir:
 
 - base de cobro entrenamientos
 - base de cobro domingos
+- monto fijo historico para solo entrenamientos
+- monto fijo historico para competidor
 - porcentaje de interes desde el dia 11
 
 La app redondea hacia arriba al multiplo de `$5.000`.
+
+Si una cuota tiene montos fijos historicos, esos montos reemplazan la formula normal solo para ese mes.
 
 ## Prueba real actual
 
