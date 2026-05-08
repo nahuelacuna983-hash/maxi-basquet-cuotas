@@ -73,6 +73,11 @@ function normalizePlayer(player) {
   return {
     ...player,
     accessCode: player.accessCode ?? "",
+    hasAccessCode:
+      player.hasAccessCode === null || player.hasAccessCode === undefined
+        ? Boolean(player.accessCode?.trim())
+        : Boolean(player.hasAccessCode),
+    hasPrivateAccessCode: Boolean(player.hasPrivateAccessCode),
   };
 }
 

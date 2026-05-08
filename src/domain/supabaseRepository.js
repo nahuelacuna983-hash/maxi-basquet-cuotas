@@ -6,10 +6,10 @@ export function isSupabaseEnabled() {
   return Boolean(supabaseConfig.enabled && supabaseConfig.url && supabaseConfig.anonKey);
 }
 
-export async function loadSupabaseState(fallbackState) {
+export async function loadSupabaseState(fallbackState, options = {}) {
   const client = await getSupabaseClient();
   const [playersResult, feesResult, paymentsResult, treasuryResult] = await Promise.all([
-    client.from("players").select("*").order("first_name", { ascending: true }),
+    loadPlayers(client, options),
     client.from("fees").select("*").order("month", { ascending: true }),
     client
       .from("payments")
@@ -40,14 +40,54 @@ export async function loadSupabaseState(fallbackState) {
   };
 }
 
-export async function saveSupabaseState(state) {
-  const client = await getSupabaseClient();
-  const players = state.players.map(toSupabasePlayer);
-  const result = players.length
-    ? await client.from("players").upsert(players, { onConflict: "id" })
-    : { error: null };
+export async function saveSupabaseState() {
+  return;
+}
 
-  assertSupabaseResult(result, "players");
+export async function validatePlayerAccess(playerId, accessCode) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("validate_player_access", {
+    p_player_id: playerId,
+    p_access_code: accessCode,
+  });
+
+  if (!rpcResult.error) {
+    return Boolean(rpcResult.data);
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "validate_player_access");
+  }
+
+  const fallbackResult = await client
+    .from("players")
+    .select("access_code")
+    .eq("id", playerId)
+    .maybeSingle();
+
+  assertSupabaseResult(fallbackResult, "players");
+  return Boolean(fallbackResult.data?.access_code?.trim() === accessCode);
+}
+
+export async function adminUpsertPlayer(adminPin, player) {
+  const client = await getSupabaseClient();
+  const payload = toSupabasePlayer(player);
+  const rpcResult = await client.rpc("admin_upsert_player", {
+    p_admin_pin: adminPin,
+    p_player: payload,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_upsert_player");
+  }
+
+  const fallbackResult = await client.from("players").upsert(payload, { onConflict: "id" });
+  assertSupabaseResult(fallbackResult, "players");
+  return logMutationMode("fallback");
 }
 
 export async function adminUpsertFee(adminPin, fee) {
@@ -182,6 +222,34 @@ async function getSupabaseClient() {
   return clientPromise;
 }
 
+async function loadPlayers(client, options = {}) {
+  if (options.adminPin) {
+    const adminResult = await client.rpc("admin_list_players", {
+      p_admin_pin: options.adminPin,
+    });
+
+    if (!adminResult.error) {
+      return adminResult;
+    }
+
+    if (!isRpcUnavailableError(adminResult.error)) {
+      return adminResult;
+    }
+  } else {
+    const publicResult = await client.rpc("list_public_players");
+
+    if (!publicResult.error) {
+      return publicResult;
+    }
+
+    if (!isRpcUnavailableError(publicResult.error)) {
+      return publicResult;
+    }
+  }
+
+  return client.from("players").select("*").order("first_name", { ascending: true });
+}
+
 function assertSupabaseResult(result, tableName) {
   if (result.error) {
     throw new Error(`${tableName}: ${result.error.message}`);
@@ -209,6 +277,9 @@ function logMutationMode(mode) {
 }
 
 function fromSupabasePlayer(row) {
+  const hasAccessCodeColumn = Object.prototype.hasOwnProperty.call(row, "access_code");
+  const accessCode = hasAccessCodeColumn ? row.access_code ?? "" : "";
+
   return {
     id: row.id,
     firstName: row.first_name,
@@ -218,12 +289,17 @@ function fromSupabasePlayer(row) {
     status: row.status,
     internalEnabled: Boolean(row.internal_enabled),
     responsibilityScore: Number(row.responsibility_score) || 0,
-    accessCode: row.access_code ?? "",
+    accessCode,
+    hasAccessCode:
+      row.has_access_code === null || row.has_access_code === undefined
+        ? Boolean(accessCode.trim())
+        : Boolean(row.has_access_code),
+    hasPrivateAccessCode: hasAccessCodeColumn,
   };
 }
 
 function toSupabasePlayer(player) {
-  return {
+  const row = {
     id: player.id,
     first_name: player.firstName,
     last_name: player.lastName ?? "",
@@ -232,9 +308,14 @@ function toSupabasePlayer(player) {
     status: player.status,
     internal_enabled: Boolean(player.internalEnabled),
     responsibility_score: Number(player.responsibilityScore) || 0,
-    access_code: player.accessCode ?? "",
     updated_at: new Date().toISOString(),
   };
+
+  if (player.hasPrivateAccessCode || player.accessCode?.trim()) {
+    row.access_code = player.accessCode ?? "";
+  }
+
+  return row;
 }
 
 function fromSupabaseFee(row) {

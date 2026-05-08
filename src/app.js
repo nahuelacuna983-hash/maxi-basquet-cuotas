@@ -36,10 +36,12 @@ import {
   adminSoftDeletePayment,
   adminUpdateTreasuryConfig,
   adminUpsertFee,
+  adminUpsertPlayer,
   isSupabaseEnabled,
   loadSupabaseState,
   saveSupabaseState,
   submitPayment,
+  validatePlayerAccess,
 } from "./domain/supabaseRepository.js";
 
 const initialAppState = createInitialAppState();
@@ -350,7 +352,7 @@ elements.playerFilters.addEventListener("click", (event) => {
   render();
 });
 
-elements.playerForm.addEventListener("submit", (event) => {
+elements.playerForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requireAdmin()) return;
 
@@ -364,33 +366,54 @@ elements.playerForm.addEventListener("submit", (event) => {
 
   if (!firstName || !lastName) return;
 
-  state.players.push({
+  const previousPlayers = state.players;
+  const player = {
     id: createId("player"),
     firstName,
     lastName,
     phone,
     accessCode,
+    hasAccessCode: Boolean(accessCode),
+    hasPrivateAccessCode: true,
     type,
     status,
     internalEnabled,
-  });
+  };
+  state.players = [...state.players, player];
+
+  const saved = await persistAdminPlayers(
+    [player],
+    previousPlayers,
+    "Jugador guardado",
+    "Error al guardar jugador",
+  );
+  if (!saved) return;
 
   elements.playerForm.reset();
   document.querySelector("#playerInternalEnabled").checked = true;
-  render();
 });
 
-elements.bulkPlayersForm.addEventListener("submit", (event) => {
+elements.bulkPlayersForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requireAdmin()) return;
 
+  const previousPlayers = state.players;
+  const previousPlayerIds = new Set(previousPlayers.map((player) => player.id));
   const result = importBulkPlayers(elements.bulkPlayersInput.value);
+  const importedPlayers = state.players.filter((player) => !previousPlayerIds.has(player.id));
   elements.bulkPlayersMessage.textContent =
     `Importados: ${result.imported}. Ignorados: ${result.ignored}. Duplicados: ${result.duplicates}. Errores: ${result.errors}.`;
 
   if (result.imported > 0) {
+    const saved = await persistAdminPlayers(
+      importedPlayers,
+      previousPlayers,
+      "Jugadores importados",
+      "Error al importar jugadores",
+    );
+    if (!saved) return;
+
     elements.bulkPlayersInput.value = "";
-    render();
   }
 });
 
@@ -845,7 +868,7 @@ function renderSelfService() {
     elements.selfNextEstimate.textContent = formatMoney(0);
     elements.selfPaymentStatus.textContent = "";
     elements.selfAccessMessage.textContent =
-      fallbackPlayer.accessCode?.trim()
+      playerHasAccessCode(fallbackPlayer)
         ? "Ingresa tu codigo para ver tu cuota."
         : "Este jugador todavia no tiene codigo asignado.";
     updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, 0);
@@ -1535,7 +1558,15 @@ function removeSampleData() {
 function applyPersistentState(nextState) {
   const selfServiceSnapshot = getSelfServiceUiSnapshot();
   const previousPlayerFilter = state.playerFilter;
-  state.players = nextState.players.map((player) => ({ ...player, accessCode: player.accessCode ?? "" }));
+  state.players = nextState.players.map((player) => ({
+    ...player,
+    accessCode: player.accessCode ?? "",
+    hasAccessCode:
+      player.hasAccessCode === null || player.hasAccessCode === undefined
+        ? Boolean(player.accessCode?.trim())
+        : Boolean(player.hasAccessCode),
+    hasPrivateAccessCode: Boolean(player.hasPrivateAccessCode),
+  }));
   state.fees = nextState.fees.map((fee) => ({ ...fee }));
   state.payments = nextState.payments.map((payment) => ({ ...payment }));
   state.attendances = nextState.attendances.map((attendance) => ({ ...attendance }));
@@ -1644,6 +1675,8 @@ function importBulkPlayers(rawValue) {
       internalEnabled,
       responsibilityScore,
       accessCode,
+      hasAccessCode: Boolean(accessCode),
+      hasPrivateAccessCode: true,
     });
     result.imported += 1;
   });
@@ -1896,18 +1929,40 @@ function canViewSelfServicePlayer(player) {
   return state.isAdminMode || authorizedSelfServicePlayerIds.has(player.id);
 }
 
-function authorizeSelfServicePlayer() {
+function playerHasAccessCode(player) {
+  return Boolean(player.accessCode?.trim()) || Boolean(player.hasAccessCode);
+}
+
+async function authorizeSelfServicePlayer() {
   const player = state.players.find((item) => item.id === state.selectedSelfServicePlayerId);
   const accessCode = elements.selfAccessCode.value.trim();
 
   if (!player) return;
 
-  if (!player.accessCode?.trim()) {
+  if (!playerHasAccessCode(player)) {
     elements.selfAccessMessage.textContent = "Este jugador todavia no tiene codigo asignado.";
     return;
   }
 
-  if (accessCode !== player.accessCode.trim()) {
+  if (!accessCode) {
+    elements.selfAccessMessage.textContent = "Ingresa tu codigo.";
+    return;
+  }
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    elements.selfAccessMessage.textContent = "Validando codigo...";
+
+    try {
+      const isValid = await validatePlayerAccess(player.id, accessCode);
+      if (!isValid) {
+        elements.selfAccessMessage.textContent = "Codigo incorrecto.";
+        return;
+      }
+    } catch (error) {
+      elements.selfAccessMessage.textContent = `No se pudo validar codigo: ${error.message}`;
+      return;
+    }
+  } else if (accessCode !== player.accessCode?.trim()) {
     elements.selfAccessMessage.textContent = "Codigo incorrecto.";
     return;
   }
@@ -1918,7 +1973,7 @@ function authorizeSelfServicePlayer() {
   renderSelfService();
 }
 
-function enterAdmin(pin) {
+async function enterAdmin(pin) {
   if (pin !== adminConfig.pin) {
     elements.adminModeStatus.textContent = "PIN incorrecto.";
     return;
@@ -1928,13 +1983,42 @@ function enterAdmin(pin) {
   state.isAdminLoginVisible = false;
   elements.adminPin.value = "";
   elements.adminModeStatus.textContent = "Modo admin activo.";
+  state.syncStatus = "Modo admin activo.";
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Cargando datos de admin...";
+    renderRoleVisibility();
+
+    try {
+      const remoteState = await loadSupabaseState(createPersistedState(state), {
+        adminPin: adminConfig.pin,
+      });
+      applyPersistentState(remoteState);
+      state.syncStatus = "Modo admin activo.";
+    } catch (error) {
+      state.syncStatus = `Error al cargar datos de admin: ${error.message}`;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  }
+
+  suppressNextSupabaseSync = true;
   render();
 }
 
 function exitAdmin() {
   state.isAdminMode = false;
   state.isAdminLoginVisible = false;
+  if (isSupabaseEnabled()) {
+    state.players = state.players.map((player) => ({
+      ...player,
+      accessCode: "",
+      hasPrivateAccessCode: false,
+    }));
+  }
   elements.adminModeStatus.textContent = "";
+  suppressNextSupabaseSync = true;
   render();
 }
 
@@ -2035,6 +2119,41 @@ async function removePayments(paymentIds) {
   render();
 }
 
+async function persistAdminPlayers(players, previousPlayers, successMessage, errorMessage) {
+  if (!players.length) return true;
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = `${successMessage}...`;
+    renderRoleVisibility();
+
+    try {
+      const mutationResults = await Promise.all(
+        players.map((player) => adminUpsertPlayer(adminConfig.pin, player)),
+      );
+      state.syncStatus = getPaymentMutationMessage(
+        successMessage,
+        getCombinedMutationResult(mutationResults),
+      );
+    } catch (error) {
+      state.players = previousPlayers;
+      state.syncStatus = `${errorMessage}: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return false;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = `${successMessage} localmente`;
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+  return true;
+}
+
 function updateAttendanceStatus(attendanceId, status) {
   if (!requireAdmin()) return;
 
@@ -2044,24 +2163,50 @@ function updateAttendanceStatus(attendanceId, status) {
   render();
 }
 
-function toggleInternalEnabled(playerId) {
+async function toggleInternalEnabled(playerId) {
   if (!requireAdmin()) return;
 
+  const previousPlayers = state.players;
+  let updatedPlayer = null;
   state.players = state.players.map((player) =>
     player.id === playerId
-      ? { ...player, internalEnabled: !player.internalEnabled }
+      ? (updatedPlayer = { ...player, internalEnabled: !player.internalEnabled })
       : player,
   );
-  render();
+
+  if (!updatedPlayer) return;
+  await persistAdminPlayers(
+    [updatedPlayer],
+    previousPlayers,
+    "Jugador actualizado",
+    "Error al actualizar jugador",
+  );
 }
 
-function updatePlayerAccessCode(playerId, value) {
+async function updatePlayerAccessCode(playerId, value) {
   if (!requireAdmin()) return;
 
+  const accessCode = value.trim();
+  const previousPlayers = state.players;
+  let updatedPlayer = null;
   state.players = state.players.map((player) =>
-    player.id === playerId ? { ...player, accessCode: value.trim() } : player,
+    player.id === playerId
+      ? (updatedPlayer = {
+          ...player,
+          accessCode,
+          hasAccessCode: Boolean(accessCode),
+          hasPrivateAccessCode: true,
+        })
+      : player,
   );
-  render();
+
+  if (!updatedPlayer) return;
+  await persistAdminPlayers(
+    [updatedPlayer],
+    previousPlayers,
+    "Codigo actualizado",
+    "Error al actualizar codigo",
+  );
 }
 
 function updateResponsibilityAdjustment(playerId, field, value) {
@@ -2373,7 +2518,9 @@ async function refreshFromSupabase() {
   if (!isSupabaseEnabled() || !supabaseHydrated || supabaseSyncInProgress) return;
 
   try {
-    const remoteState = await loadSupabaseState(createPersistedState(state));
+    const remoteState = await loadSupabaseState(createPersistedState(state), {
+      adminPin: state.isAdminMode ? adminConfig.pin : null,
+    });
     applyPersistentState(remoteState);
     state.syncStatus = "Datos actualizados";
     render();
