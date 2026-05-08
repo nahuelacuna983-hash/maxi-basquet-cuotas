@@ -2,25 +2,27 @@
 
 App web MVP para gestionar cuotas, pagos y deuda de un equipo de Maxi Basquet.
 
+URL publica:
+
+```txt
+https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
+```
+
 ## Estado actual
 
 - App publicada en GitHub Pages.
 - Datos compartidos con Supabase.
 - Vista jugador enfocada en pago: `Mi cuota`.
 - Acceso simple por codigo de jugador.
+- Link directo por jugador con `?player=ID_DEL_JUGADOR`.
 - Modo admin con PIN simple.
 - Seleccion de mes para consultar abril, mayo u otras cuotas cargadas.
-- Pagos informados con estado `pendiente`, `aprobado` o `rechazado`.
+- Pagos con estado `pendiente`, `aprobado` o `rechazado`.
 - Solo pagos aprobados descuentan deuda.
 - Proteccion para no duplicar pagos por jugador y cuota.
 - Borrado logico de pagos con `deleted_at`.
 - Modo prueba de pago configurable.
-
-URL publica:
-
-```txt
-https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
-```
+- Escrituras principales protegidas con RPC en Supabase.
 
 ## Vista jugador
 
@@ -33,9 +35,11 @@ El jugador puede:
 - ver pagado aprobado
 - ver saldo pendiente
 - ver si esta al dia, pendiente o moroso
+- ver deuda atrasada
+- ver proxima cuota estimada
 - informar pago
 
-Tambien se puede preparar un link directo por jugador:
+Link directo por jugador:
 
 ```txt
 https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/?player=ID_DEL_JUGADOR
@@ -53,41 +57,65 @@ Permite:
 - cargar jugadores
 - importar jugadores masivamente
 - asignar codigo de acceso
+- modificar habilitado interno
 - cargar cuotas
 - ajustar bases de cobro
-- registrar pagos manuales
-- aprobar pagos
-- rechazar pagos
+- registrar pagos manuales aprobados
+- aprobar pagos pendientes
+- rechazar pagos pendientes
 - eliminar pagos de prueba
-- ver historial
+- ver historial de pagos
 - exportar/importar backup JSON
-- editar tesoreria
+- editar configuracion de tesoreria
 
 ## Supabase
 
-La configuracion esta en:
+Configuracion:
 
 ```txt
 src/config/supabaseConfig.js
 ```
 
-SQL del esquema:
+SQL base:
 
 ```txt
 supabase/schema.sql
 ```
 
-Tablas sincronizadas:
+Tablas principales:
 
 - `players`
 - `fees`
 - `payments`
 - `treasury_config`
 
-Campos importantes:
+Funciones RPC usadas por la app:
 
-- `players.access_code`: codigo simple de acceso por jugador.
-- `payments.deleted_at`: borrado logico para evitar que pagos eliminados reaparezcan.
+- `list_public_players`
+- `admin_list_players`
+- `validate_player_access`
+- `admin_upsert_player`
+- `admin_upsert_fee`
+- `submit_payment`
+- `admin_review_payment`
+- `admin_soft_delete_payment`
+- `admin_update_treasury_config`
+
+## Seguridad MVP
+
+Estado actual:
+
+- `payments`: lectura permitida de pagos activos; insercion de pagos pendientes; update/delete directo bloqueado.
+- `treasury_config`: lectura permitida; escritura directa bloqueada; cambios por RPC admin.
+- `fees`: lectura permitida; escritura directa bloqueada; cambios por RPC admin.
+- `players`: lectura directa bloqueada; listado publico por RPC sin `access_code`; validacion de codigo por RPC; cambios admin por RPC.
+
+Importante:
+
+- Todavia no hay login real.
+- El PIN admin y el codigo de jugador son barreras simples para una prueba controlada.
+- Antes de uso publico definitivo conviene agregar Supabase Auth y roles reales.
+- La `anon key` de Supabase puede vivir en frontend si RLS/policies estan bien configuradas; no se debe exponer una `service_role key`.
 
 ## Pagos
 
@@ -103,6 +131,7 @@ Reglas:
 - Un jugador no puede informar dos pagos activos para la misma cuota.
 - Si el admin carga un pago para una cuota que ya tiene pago, la app pregunta si quiere reemplazar.
 - El pago se aplica al mes seleccionado, no automaticamente al mes de la fecha.
+- Los pagos eliminados quedan con `deleted_at` y no vuelven a aparecer.
 
 ## Cuotas
 
@@ -125,30 +154,53 @@ La app redondea hacia arriba al multiplo de `$5.000`.
 
 Prueba recomendada:
 
-1. Limpiar pagos de prueba si hace falta.
+1. Exportar backup JSON antes de tocar datos.
 2. Asignar codigos a 3-5 jugadores.
 3. Pedirles que entren a la URL publica.
-4. Cada jugador informa pago de abril.
-5. Cada jugador informa pago de mayo.
+4. Cada jugador elige su nombre e ingresa su codigo.
+5. Cada jugador informa pago del mes correspondiente.
 6. Admin aprueba o rechaza.
 7. Verificar que la deuda baje solo con pagos aprobados.
 
 Mensaje base para jugadores:
 
 ```txt
-Entrá acá:
+Entra aca:
 https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 
-1. Elegí tu nombre.
-2. Ingresá tu código.
-3. Elegí 04/2026.
-4. Informá pago de abril con observación "prueba abril".
-5. Después elegí 05/2026.
-6. Informá pago de mayo con observación "prueba mayo".
-7. Avisame cuando termines.
+1. Elegi tu nombre.
+2. Ingresa tu codigo.
+3. Elegi el mes a pagar.
+4. Revisa el monto.
+5. Informa el pago con monto, fecha, metodo y observacion.
+6. Avisame cuando termines.
 
-No hace falta transferir plata real durante la prueba.
+El pago queda pendiente hasta que lo valide el administrador.
 ```
+
+## Lo que falta
+
+Para cerrar una version mas firme:
+
+- documentar SQL final completo de Supabase en `supabase/schema.sql`
+- revisar datos de prueba y limpiar pagos de prueba antes de operar real
+- agregar Supabase Auth para admin real
+- separar roles reales: jugador, admin y posible usuario extendido
+- mejorar auditoria de acciones admin
+- definir si se mantiene GitHub Pages o se migra a Next.js/Vercel
+- evaluar dominio propio
+
+Funcionalidades pendientes:
+
+- asistencia real de martes/jueves por jugador
+- cierre de jornada con destacados
+- ranking de responsabilidad calculado desde eventos
+- reporte WhatsApp mas completo
+- Mercado Pago API o debito automatico
+- PDF
+- graficos
+- modulo VIP/extendido
+- cocina/lavado, si finalmente se decide incluir
 
 ## Desarrollo local
 
@@ -192,4 +244,4 @@ supabase/README.md
 
 ## Advertencia MVP
 
-Esta version todavia no tiene login real. El codigo de jugador y el PIN admin son barreras simples para una prueba controlada. Las policies de Supabase estan abiertas para MVP; antes de usarlo como app publica definitiva hay que agregar autenticacion y permisos reales.
+Esta version es usable para prueba controlada con jugadores reales, pero todavia no debe considerarse una app publica definitiva. El proximo salto de seguridad serio es agregar autenticacion real con Supabase Auth y roles.
