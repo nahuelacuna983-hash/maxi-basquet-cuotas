@@ -122,6 +122,30 @@ h1 {
   margin-bottom: 18px;
 }
 
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.admin-tab-button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: #354038;
+  background: #fffefa;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.admin-tab-button.active {
+  color: #fff;
+  border-color: #1f6d4a;
+  background: #1f6d4a;
+}
+
 .data-panel {
   margin-bottom: 18px;
 }

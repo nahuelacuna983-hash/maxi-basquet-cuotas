@@ -64,6 +64,7 @@ const state = {
     "",
   selectedSelfServiceMonth: "",
   activePlayerTab: "quota",
+  activeAdminTab: "resumen",
   isAdminMode: false,
   isAdminLoginVisible: false,
   attendanceSyncReady: !isSupabaseEnabled(),
@@ -81,6 +82,10 @@ const elements = {
   backToPlayerViewButton: document.querySelector("#backToPlayerViewButton"),
   adminModeStatus: document.querySelector("#adminModeStatus"),
   adminSummary: document.querySelector("#adminSummary"),
+  adminTabs: document.querySelector("#adminTabs"),
+  adminTabButtons: document.querySelectorAll("[data-admin-tab]"),
+  adminTabPanels: document.querySelectorAll("[data-admin-panel]"),
+  adminWorkspace: document.querySelector("#adminWorkspace"),
   exportBackupButton: document.querySelector("#exportBackupButton"),
   importBackupButton: document.querySelector("#importBackupButton"),
   importBackupFile: document.querySelector("#importBackupFile"),
@@ -264,6 +269,13 @@ elements.playerTabs.addEventListener("click", (event) => {
   if (!button) return;
   state.activePlayerTab = button.dataset.playerTab;
   renderPlayerTabs();
+});
+
+elements.adminTabs.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-admin-tab]");
+  if (!button) return;
+  state.activeAdminTab = button.dataset.adminTab;
+  renderAdminTabs();
 });
 
 elements.selfPaymentDate.addEventListener("change", () => {
@@ -978,6 +990,30 @@ function renderPlayerTabs() {
   elements.playerTabPanels.forEach((panel) => {
     panel.hidden = panel.dataset.playerPanel !== activeTab;
   });
+}
+
+function renderAdminTabs() {
+  const activeTab = state.activeAdminTab || "resumen";
+  const workspaceTabs = new Set([
+    "jugadores",
+    "cuotas",
+    "pagos",
+    "entrenamientos",
+    "reportes",
+    "configuracion",
+  ]);
+
+  elements.adminTabButtons.forEach((button) => {
+    const isActive = button.dataset.adminTab === activeTab;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  elements.adminTabPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.adminPanel !== activeTab;
+  });
+
+  elements.adminWorkspace.hidden = !workspaceTabs.has(activeTab);
 }
 
 function renderPaymentOptions() {
@@ -2368,6 +2404,7 @@ function renderRoleVisibility() {
   elements.showAdminLoginButton.hidden = state.isAdminMode;
   elements.adminLogoutButton.hidden = !state.isAdminMode;
   elements.backToPlayerViewButton.hidden = !state.isAdminMode;
+  renderAdminTabs();
   if (state.syncStatus) elements.adminModeStatus.textContent = state.syncStatus;
 }
 
