@@ -193,3 +193,4 @@ Al 2026-05-09:
 - La tabla `attendances` responde correctamente.
 - Las RPC `submit_training_attendance` y `admin_upsert_attendance` quedaron disponibles.
 - Se ajusto la PWA para que la app instalada revise versiones nuevas, evite cache viejo y se recargue sola cuando haya cambios publicados.
+- Se separo la vista publica en pestanas `Mi cuota` y `Entrenamientos`, sin modificar logica de cobro ni asistencia.

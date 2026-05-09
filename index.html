@@ -51,124 +51,137 @@
           </div>
 
           <div id="selfServiceProtectedContent" hidden>
-          <div class="self-dashboard">
-            <article class="metric-card main-payment-card">
-              <span>Monto a pagar</span>
-              <strong id="selfCurrentBalance">$0</strong>
-              <span class="payment-status" id="selfCurrentStatus">Pendiente</span>
-              <dl>
-                <div>
-                  <dt>Vencimiento</dt>
-                  <dd id="selfCurrentDue">-</dd>
+            <nav class="self-tabs" id="playerTabs" aria-label="Secciones del jugador">
+              <button class="self-tab-button active" type="button" data-player-tab="quota" aria-controls="selfQuotaTab">
+                Mi cuota
+              </button>
+              <button class="self-tab-button" type="button" data-player-tab="training" aria-controls="selfTrainingTab">
+                Entrenamientos
+              </button>
+            </nav>
+
+            <section class="self-tab-panel" id="selfQuotaTab" data-player-panel="quota">
+              <div class="self-dashboard">
+                <article class="metric-card main-payment-card">
+                  <span>Monto a pagar</span>
+                  <strong id="selfCurrentBalance">$0</strong>
+                  <span class="payment-status" id="selfCurrentStatus">Pendiente</span>
+                  <dl>
+                    <div>
+                      <dt>Vencimiento</dt>
+                      <dd id="selfCurrentDue">-</dd>
+                    </div>
+                    <div>
+                      <dt>Cuota esperada</dt>
+                      <dd id="selfCurrentExpected">$0</dd>
+                    </div>
+                    <div>
+                      <dt>Interes por vencimiento</dt>
+                      <dd id="selfCurrentInterest">$0</dd>
+                    </div>
+                    <div>
+                      <dt>Pagado aprobado</dt>
+                      <dd id="selfCurrentPaid">$0</dd>
+                    </div>
+                  </dl>
+                </article>
+              </div>
+
+              <div class="pay-actions">
+                <button class="primary-button pay-button" id="selfPayButton" type="button">Pagar</button>
+                <span id="selfPaymentStatus" class="muted-detail"></span>
+              </div>
+
+              <div class="payment-instructions-card" id="selfPaymentInstructions" hidden></div>
+
+              <form class="form-grid self-payment-form" id="selfPaymentForm">
+                <label>
+                  Metodo
+                  <select id="selfPaymentMethod">
+                    <option value="transferencia">Transferencia</option>
+                    <option value="efectivo">Efectivo</option>
+                  </select>
+                </label>
+                <label>
+                  Monto
+                  <input id="selfPaymentAmount" type="number" min="1" required />
+                </label>
+                <label>
+                  Fecha
+                  <input id="selfPaymentDate" type="date" required />
+                </label>
+                <label class="wide-field">
+                  Numero de operacion u observacion
+                  <input id="selfPaymentNote" placeholder="Ej: numero de operacion, efectivo a..." />
+                </label>
+                <button class="primary-button" type="submit">Informar pago</button>
+              </form>
+
+              <div class="support-dashboard">
+                <article class="metric-card">
+                  <span>Deuda atrasada</span>
+                  <strong id="selfLateDebt">$0</strong>
+                  <p>Saldo pendiente de meses anteriores.</p>
+                </article>
+
+                <article class="metric-card">
+                  <span>Proxima cuota estimada</span>
+                  <strong id="selfNextEstimate">$0</strong>
+                  <p id="selfNextEstimateDetail">Estimada segun valores actuales.</p>
+                </article>
+              </div>
+
+              <div class="progress-grid compact-progress">
+                <div class="progress-row">
+                  <div>
+                    <strong>Pago del mes</strong>
+                    <span id="selfMonthPercentText">0%</span>
+                  </div>
+                  <div class="progress-track" aria-hidden="true">
+                    <div class="progress-fill" id="selfMonthPercentBar"></div>
+                  </div>
                 </div>
-                <div>
-                  <dt>Cuota esperada</dt>
-                  <dd id="selfCurrentExpected">$0</dd>
+                <div class="progress-row">
+                  <div>
+                    <strong>Pago anual</strong>
+                    <span id="selfYearPercentText">0%</span>
+                  </div>
+                  <div class="progress-track" aria-hidden="true">
+                    <div class="progress-fill" id="selfYearPercentBar"></div>
+                  </div>
                 </div>
-                <div>
-                  <dt>Interes por vencimiento</dt>
-                  <dd id="selfCurrentInterest">$0</dd>
+              </div>
+            </section>
+
+            <section class="self-tab-panel" id="selfTrainingTab" data-player-panel="training" hidden>
+              <section class="training-signup-card" id="selfTrainingCard" hidden>
+                <div class="training-card-header">
+                  <div>
+                    <span class="section-kicker">Entrenamiento</span>
+                    <h3 id="selfTrainingTitle">Listado temporal</h3>
+                    <p id="selfTrainingWindow"></p>
+                  </div>
                 </div>
-                <div>
-                  <dt>Pagado aprobado</dt>
-                  <dd id="selfCurrentPaid">$0</dd>
+                <div class="training-action-grid" id="selfTrainingActions">
+                  <button class="secondary-button" type="button" data-self-training-status="voy">Voy</button>
+                  <button class="secondary-button" type="button" data-self-training-status="no_voy">No voy</button>
+                  <button class="secondary-button" type="button" data-self-training-status="avisa_mas_tarde">Avisa mas tarde</button>
+                  <button class="secondary-button" type="button" data-self-training-status="llega_sobre_la_hora">Llega sobre la hora</button>
+                  <button class="secondary-button danger-button" type="button" data-self-training-status="baja_sobre_la_hora">Baja sobre la hora</button>
                 </div>
-              </dl>
-            </article>
-          </div>
-
-          <div class="pay-actions">
-            <button class="primary-button pay-button" id="selfPayButton" type="button">Pagar</button>
-            <span id="selfPaymentStatus" class="muted-detail"></span>
-          </div>
-
-          <div class="payment-instructions-card" id="selfPaymentInstructions" hidden></div>
-
-          <form class="form-grid self-payment-form" id="selfPaymentForm">
-            <label>
-              Metodo
-              <select id="selfPaymentMethod">
-                <option value="transferencia">Transferencia</option>
-                <option value="efectivo">Efectivo</option>
-              </select>
-            </label>
-            <label>
-              Monto
-              <input id="selfPaymentAmount" type="number" min="1" required />
-            </label>
-            <label>
-              Fecha
-              <input id="selfPaymentDate" type="date" required />
-            </label>
-            <label class="wide-field">
-              Numero de operacion u observacion
-              <input id="selfPaymentNote" placeholder="Ej: numero de operacion, efectivo a..." />
-            </label>
-            <button class="primary-button" type="submit">Informar pago</button>
-          </form>
-
-          <div class="support-dashboard">
-            <article class="metric-card">
-              <span>Deuda atrasada</span>
-              <strong id="selfLateDebt">$0</strong>
-              <p>Saldo pendiente de meses anteriores.</p>
-            </article>
-
-            <article class="metric-card">
-              <span>Proxima cuota estimada</span>
-              <strong id="selfNextEstimate">$0</strong>
-              <p id="selfNextEstimateDetail">Estimada segun valores actuales.</p>
-            </article>
-          </div>
-
-          <div class="progress-grid compact-progress">
-            <div class="progress-row">
-              <div>
-                <strong>Pago del mes</strong>
-                <span id="selfMonthPercentText">0%</span>
-              </div>
-              <div class="progress-track" aria-hidden="true">
-                <div class="progress-fill" id="selfMonthPercentBar"></div>
-              </div>
-            </div>
-            <div class="progress-row">
-              <div>
-                <strong>Pago anual</strong>
-                <span id="selfYearPercentText">0%</span>
-              </div>
-              <div class="progress-track" aria-hidden="true">
-                <div class="progress-fill" id="selfYearPercentBar"></div>
-              </div>
-            </div>
-          </div>
-
-          <section class="training-signup-card" id="selfTrainingCard" hidden>
-            <div class="training-card-header">
-              <div>
-                <span class="section-kicker">Entrenamiento</span>
-                <h3 id="selfTrainingTitle">Listado temporal</h3>
-                <p id="selfTrainingWindow"></p>
-              </div>
-            </div>
-            <div class="training-action-grid" id="selfTrainingActions">
-              <button class="secondary-button" type="button" data-self-training-status="voy">Voy</button>
-              <button class="secondary-button" type="button" data-self-training-status="no_voy">No voy</button>
-              <button class="secondary-button" type="button" data-self-training-status="avisa_mas_tarde">Avisa mas tarde</button>
-              <button class="secondary-button" type="button" data-self-training-status="llega_sobre_la_hora">Llega sobre la hora</button>
-              <button class="secondary-button danger-button" type="button" data-self-training-status="baja_sobre_la_hora">Baja sobre la hora</button>
-            </div>
-            <p class="form-message" id="selfTrainingMessage"></p>
-            <div class="training-list-grid">
-              <div>
-                <h4>Listado</h4>
-                <ol class="training-list" id="selfTrainingMainList"></ol>
-              </div>
-              <div>
-                <h4 id="selfTrainingNoResponseTitle">No me interesa</h4>
-                <ol class="training-list muted-list" id="selfTrainingNoResponseList"></ol>
-              </div>
-            </div>
-          </section>
+                <p class="form-message" id="selfTrainingMessage"></p>
+                <div class="training-list-grid" id="selfTrainingLists">
+                  <div>
+                    <h4>Listado</h4>
+                    <ol class="training-list" id="selfTrainingMainList"></ol>
+                  </div>
+                  <div>
+                    <h4 id="selfTrainingNoResponseTitle">No me interesa</h4>
+                    <ol class="training-list muted-list" id="selfTrainingNoResponseList"></ol>
+                  </div>
+                </div>
+              </section>
+            </section>
           </div>
         </section>
 
@@ -640,7 +653,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=training-list-2"></script>
+    <script type="module" src="./src/app.js?v=player-tabs-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-2"></script>
   </body>
 </html>

@@ -63,6 +63,7 @@ const state = {
     persistedAppState.players[0]?.id ??
     "",
   selectedSelfServiceMonth: "",
+  activePlayerTab: "quota",
   isAdminMode: false,
   isAdminLoginVisible: false,
   attendanceSyncReady: !isSupabaseEnabled(),
@@ -109,6 +110,9 @@ const elements = {
   selfAccessButton: document.querySelector("#selfAccessButton"),
   selfAccessMessage: document.querySelector("#selfAccessMessage"),
   selfServiceProtectedContent: document.querySelector("#selfServiceProtectedContent"),
+  playerTabs: document.querySelector("#playerTabs"),
+  playerTabButtons: document.querySelectorAll("[data-player-tab]"),
+  playerTabPanels: document.querySelectorAll("[data-player-panel]"),
   selfCurrentExpected: document.querySelector("#selfCurrentExpected"),
   selfCurrentInterest: document.querySelector("#selfCurrentInterest"),
   selfCurrentPaid: document.querySelector("#selfCurrentPaid"),
@@ -135,6 +139,7 @@ const elements = {
   selfTrainingWindow: document.querySelector("#selfTrainingWindow"),
   selfTrainingActions: document.querySelector("#selfTrainingActions"),
   selfTrainingMessage: document.querySelector("#selfTrainingMessage"),
+  selfTrainingLists: document.querySelector("#selfTrainingLists"),
   selfTrainingMainList: document.querySelector("#selfTrainingMainList"),
   selfTrainingNoResponseTitle: document.querySelector("#selfTrainingNoResponseTitle"),
   selfTrainingNoResponseList: document.querySelector("#selfTrainingNoResponseList"),
@@ -252,6 +257,13 @@ elements.selfServiceMonth.addEventListener("change", () => {
   state.selectedSelfServiceMonth = elements.selfServiceMonth.value;
   clearSelfPaymentDraft();
   renderSelfService();
+});
+
+elements.playerTabs.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-player-tab]");
+  if (!button) return;
+  state.activePlayerTab = button.dataset.playerTab;
+  renderPlayerTabs();
 });
 
 elements.selfPaymentDate.addEventListener("change", () => {
@@ -950,6 +962,21 @@ function renderSelfService() {
   updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, monthPercent);
   updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, yearPercent);
   renderSelfTrainingSignup(fallbackPlayer);
+  renderPlayerTabs();
+}
+
+function renderPlayerTabs() {
+  const activeTab = state.activePlayerTab || "quota";
+
+  elements.playerTabButtons.forEach((button) => {
+    const isActive = button.dataset.playerTab === activeTab;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  elements.playerTabPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.playerPanel !== activeTab;
+  });
 }
 
 function renderPaymentOptions() {
@@ -1703,13 +1730,27 @@ function renderSelfPaymentInstructions(payableAmount) {
 
 function renderSelfTrainingSignup(player) {
   const session = getOpenTrainingSession();
-  if (
-    !session ||
-    !isBillablePlayer(player) ||
-    (isSupabaseEnabled() && !state.attendanceSyncReady)
-  ) {
-    elements.selfTrainingCard.hidden = true;
-    elements.selfTrainingMessage.textContent = "";
+  if (!isBillablePlayer(player)) {
+    renderSelfTrainingUnavailable(
+      "Entrenamientos",
+      "Este jugador no participa de los listados de entrenamiento.",
+    );
+    return;
+  }
+
+  if (isSupabaseEnabled() && !state.attendanceSyncReady) {
+    renderSelfTrainingUnavailable(
+      "Entrenamientos",
+      "La asistencia todavia no esta disponible en este dispositivo. Volve a abrir la app en unos minutos.",
+    );
+    return;
+  }
+
+  if (!session) {
+    renderSelfTrainingUnavailable(
+      "Entrenamientos",
+      "No hay listado temporal abierto en este momento.",
+    );
     return;
   }
 
@@ -1727,6 +1768,8 @@ function renderSelfTrainingSignup(player) {
   );
 
   elements.selfTrainingCard.hidden = false;
+  elements.selfTrainingActions.hidden = false;
+  elements.selfTrainingLists.hidden = false;
   elements.selfTrainingTitle.textContent = `${formatTrainingDateLabel(session.date)} - listado temporal`;
   elements.selfTrainingWindow.textContent =
     `Abierto hasta ${state.attendanceConfig.closeAt}. Minimo sugerido: ${state.attendanceConfig.trainingMinimumPlayers}.`;
@@ -1762,6 +1805,17 @@ function renderSelfTrainingSignup(player) {
       button.hidden = isLastMinuteDrop && !canDrop;
       button.classList.toggle("active", currentAttendance?.status === status);
     });
+}
+
+function renderSelfTrainingUnavailable(title, message) {
+  elements.selfTrainingCard.hidden = false;
+  elements.selfTrainingActions.hidden = true;
+  elements.selfTrainingLists.hidden = true;
+  elements.selfTrainingTitle.textContent = title;
+  elements.selfTrainingWindow.textContent = "";
+  elements.selfTrainingMessage.textContent = message;
+  elements.selfTrainingMainList.innerHTML = "";
+  elements.selfTrainingNoResponseList.innerHTML = "";
 }
 
 function renderTrainingListItems(items) {

@@ -12,7 +12,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 
 - App publicada en GitHub Pages.
 - Datos compartidos con Supabase.
-- Vista jugador enfocada en pago: `Mi cuota`.
+- Vista jugador separada en pestanas: `Mi cuota` y `Entrenamientos`.
 - Acceso simple por codigo de jugador.
 - Link directo por jugador con `?player=ID_DEL_JUGADOR`.
 - Modo admin con PIN simple.

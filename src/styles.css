@@ -153,7 +153,28 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin: 0 0 14px;
+}
+
+.self-tab-button {
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: #354038;
+  background: #fffefa;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.self-tab-button.active {
+  color: #fff;
+  border-color: #1f6d4a;
+  background: #1f6d4a;
+}
+
+.self-tab-panel {
+  min-width: 0;
 }
 
 .locked-tab {
@@ -339,7 +360,7 @@ h1 {
 
 .training-signup-card {
   max-width: 980px;
-  margin-top: 16px;
+  margin-top: 0;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
