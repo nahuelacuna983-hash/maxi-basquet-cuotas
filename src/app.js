@@ -60,7 +60,7 @@ const state = {
   playerFilter: "todos",
   selectedSelfServicePlayerId:
     persistedAppState.players.find((player) => player.id === initialUrlPlayerId)?.id ??
-    persistedAppState.players[0]?.id ??
+    getSortedPlayers(persistedAppState.players)[0]?.id ??
     "",
   selectedSelfServiceMonth: "",
   activePlayerTab: "quota",
@@ -853,14 +853,15 @@ function render() {
 }
 
 function renderSelfService() {
+  const sortedPlayers = getSortedPlayers();
   const selectedPlayer = state.players.find(
     (player) => player.id === state.selectedSelfServicePlayerId,
   );
-  const fallbackPlayer = selectedPlayer ?? state.players[0];
+  const fallbackPlayer = selectedPlayer ?? sortedPlayers[0];
   const selectedMonth = getSelectedSelfServiceMonth();
 
   state.selectedSelfServicePlayerId = fallbackPlayer?.id ?? "";
-  elements.selfServicePlayer.innerHTML = state.players
+  elements.selfServicePlayer.innerHTML = sortedPlayers
     .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
     .join("");
   elements.selfServicePlayer.value = state.selectedSelfServicePlayerId;
@@ -982,8 +983,9 @@ function renderPlayerTabs() {
 function renderPaymentOptions() {
   const selectedPlayer = elements.paymentPlayer.value;
   const selectedFee = elements.paymentFee.value;
+  const sortedPlayers = getSortedPlayers();
 
-  elements.paymentPlayer.innerHTML = state.players
+  elements.paymentPlayer.innerHTML = sortedPlayers
     .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
     .join("");
 
@@ -991,15 +993,16 @@ function renderPaymentOptions() {
     .map((fee) => `<option value="${fee.id}">${fee.month}</option>`)
     .join("");
 
-  elements.paymentPlayer.value = selectedPlayer || state.players[0]?.id || "";
+  elements.paymentPlayer.value = selectedPlayer || sortedPlayers[0]?.id || "";
   elements.paymentFee.value = selectedFee || state.fees[0]?.id || "";
 }
 
 function renderPlayerPaymentOptions() {
   const selectedPlayer = elements.playerPaymentPlayer.value;
   const selectedFee = elements.playerPaymentFee.value;
+  const sortedPlayers = getSortedPlayers();
 
-  elements.playerPaymentPlayer.innerHTML = state.players
+  elements.playerPaymentPlayer.innerHTML = sortedPlayers
     .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
     .join("");
 
@@ -1007,7 +1010,7 @@ function renderPlayerPaymentOptions() {
     .map((fee) => `<option value="${fee.id}">${fee.month}</option>`)
     .join("");
 
-  elements.playerPaymentPlayer.value = selectedPlayer || state.players[0]?.id || "";
+  elements.playerPaymentPlayer.value = selectedPlayer || sortedPlayers[0]?.id || "";
   elements.playerPaymentFee.value = selectedFee || state.fees[state.fees.length - 1]?.id || "";
 }
 
@@ -1025,22 +1028,24 @@ function renderSelfServiceMonthOptions(selectedMonth) {
 
 function renderAttendanceOptions() {
   const selectedPlayer = elements.attendancePlayer.value;
+  const sortedPlayers = getSortedPlayers();
 
-  elements.attendancePlayer.innerHTML = state.players
+  elements.attendancePlayer.innerHTML = sortedPlayers
     .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
     .join("");
 
-  elements.attendancePlayer.value = selectedPlayer || state.players[0]?.id || "";
+  elements.attendancePlayer.value = selectedPlayer || sortedPlayers[0]?.id || "";
 }
 
 function renderAttendanceNoveltyOptions() {
   const selectedPlayer = elements.attendanceNoveltyPlayer.value;
+  const sortedPlayers = getSortedPlayers();
 
-  elements.attendanceNoveltyPlayer.innerHTML = state.players
+  elements.attendanceNoveltyPlayer.innerHTML = sortedPlayers
     .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
     .join("");
 
-  elements.attendanceNoveltyPlayer.value = selectedPlayer || state.players[0]?.id || "";
+  elements.attendanceNoveltyPlayer.value = selectedPlayer || sortedPlayers[0]?.id || "";
 }
 
 function renderPlayerPaymentSummary() {
@@ -1064,7 +1069,9 @@ function renderPlayerPaymentSummary() {
 function renderPlayersTable(debts) {
   updateFilterButtons();
 
-  const filteredDebts = debts.filter((debt) => matchesPlayerFilter(debt, state.playerFilter));
+  const filteredDebts = debts
+    .filter((debt) => matchesPlayerFilter(debt, state.playerFilter))
+    .sort((a, b) => comparePlayersByName(a.player, b.player));
 
   elements.playersTable.innerHTML = filteredDebts
     .map((debt) => {
@@ -1462,7 +1469,7 @@ function renderResponsibilityAdjustments() {
     <span>Inicio ${state.responsibilityConfig.attendanceStartDate} / ${trainingCount} entrenamientos de martes y jueves / ${state.responsibilityConfig.pointsPerTraining} pts posibles por entrenamiento</span>
   `;
 
-  elements.responsibilityAdjustmentsTable.innerHTML = state.players
+  elements.responsibilityAdjustmentsTable.innerHTML = getSortedPlayers()
     .map((player) => {
       const adjustment = getResponsibilityAdjustment(player.id);
       const details = getResponsibilityDetails(player.id);
@@ -1952,7 +1959,12 @@ function restoreSelfServiceUiSnapshot(snapshot) {
 }
 
 function importBulkPlayers(rawValue) {
-  const existingNames = new Set(state.players.map((player) => normalizePlayerName(getPlayerName(player))));
+  const existingNames = new Set(
+    state.players.flatMap((player) => [
+      normalizePlayerName(getPlayerName(player)),
+      normalizePlayerName(`${player.firstName ?? ""} ${player.lastName ?? ""}`.trim()),
+    ]),
+  );
   const records = getBulkPlayerRecords(rawValue);
   const result = {
     imported: 0,
@@ -2660,6 +2672,16 @@ function getCombinedMutationResult(results) {
   return results.every((result) => result.mode === "rpc")
     ? { mode: "rpc" }
     : { mode: "fallback" };
+}
+
+function getSortedPlayers(players = state.players) {
+  return [...players].sort(comparePlayersByName);
+}
+
+function comparePlayersByName(a, b) {
+  return getPlayerName(a).localeCompare(getPlayerName(b), "es", {
+    sensitivity: "base",
+  });
 }
 
 function getPlayerNameById(playerId) {

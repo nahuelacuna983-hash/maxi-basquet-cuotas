@@ -65,20 +65,30 @@ export function normalizePersistedState(parsedState, fallbackState) {
         : fallbackState.responsibilityConfig,
     attendanceConfig:
       parsedState.attendanceConfig && typeof parsedState.attendanceConfig === "object"
-        ? {
-            ...fallbackState.attendanceConfig,
-            ...parsedState.attendanceConfig,
-            openWeekdays: {
-              ...fallbackState.attendanceConfig.openWeekdays,
-              ...(parsedState.attendanceConfig.openWeekdays ?? {}),
-            },
-          }
+        ? normalizeAttendanceConfig(parsedState.attendanceConfig, fallbackState.attendanceConfig)
         : fallbackState.attendanceConfig,
     treasuryConfig:
       parsedState.treasuryConfig && typeof parsedState.treasuryConfig === "object"
         ? { ...fallbackState.treasuryConfig, ...parsedState.treasuryConfig }
         : fallbackState.treasuryConfig,
   };
+}
+
+function normalizeAttendanceConfig(attendanceConfig, fallbackAttendanceConfig) {
+  const mergedConfig = {
+    ...fallbackAttendanceConfig,
+    ...attendanceConfig,
+    openWeekdays: {
+      ...fallbackAttendanceConfig.openWeekdays,
+      ...(attendanceConfig.openWeekdays ?? {}),
+    },
+  };
+
+  if (mergedConfig.publicNoResponseLabel === "No me interesa") {
+    mergedConfig.publicNoResponseLabel = fallbackAttendanceConfig.publicNoResponseLabel;
+  }
+
+  return mergedConfig;
 }
 
 function normalizePlayer(player) {

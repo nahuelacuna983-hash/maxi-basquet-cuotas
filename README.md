@@ -13,6 +13,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - App publicada en GitHub Pages.
 - Datos compartidos con Supabase.
 - Vista jugador separada en pestanas: `Mi cuota` y `Entrenamientos`.
+- Jugadores mostrados por apellido y nombre, ordenados alfabeticamente.
 - Acceso simple por codigo de jugador.
 - Link directo por jugador con `?player=ID_DEL_JUGADOR`.
 - Modo admin con PIN simple.
@@ -43,6 +44,7 @@ El jugador puede:
 - ver alias e instrucciones de pago
 - informar pago
 - responder al listado temporal de entrenamiento cuando esta abierto
+- ver el listado de entrenamiento separado de la cuota
 
 Link directo por jugador:
 
@@ -188,7 +190,7 @@ Reglas de la primera version:
 - Desde las `12:00` aparece `Baja sobre la hora`.
 - Entrenamientos no tienen maximo de jugadores.
 - Minimo sugerido para entrenar: `10`.
-- `No me interesa` muestra jugadores activos sin respuesta.
+- `Todavia no respondieron` muestra jugadores activos sin respuesta.
 - `No voy` queda registrado, pero no aparece en el listado publico.
 - Admin conserva el historico para presentismo y estadisticas.
 

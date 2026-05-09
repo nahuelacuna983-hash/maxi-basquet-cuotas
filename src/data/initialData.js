@@ -100,7 +100,7 @@ export const initialResponsibilityConfig = {
 };
 
 export const initialAttendanceConfig = {
-  publicNoResponseLabel: "No me interesa",
+  publicNoResponseLabel: "Todavia no respondieron",
   trainingMinimumPlayers: 10,
   closeAt: "20:30",
   lastMinuteDropStartsAt: "12:00",

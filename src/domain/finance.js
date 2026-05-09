@@ -8,7 +8,16 @@ export function formatMoney(value) {
 }
 
 export function getPlayerName(player) {
-  return `${player.firstName} ${player.lastName}`.trim();
+  const firstName = String(player.firstName ?? "").trim();
+  const lastName = String(player.lastName ?? "").trim();
+  if (lastName) return `${lastName} ${firstName}`.trim();
+
+  const nameParts = firstName.split(/\s+/).filter(Boolean);
+  if (nameParts.length <= 1) return firstName;
+
+  const inferredLastName = nameParts[nameParts.length - 1];
+  const inferredFirstNames = nameParts.slice(0, -1).join(" ");
+  return `${inferredLastName} ${inferredFirstNames}`.trim();
 }
 
 export function isBillablePlayer(player) {
