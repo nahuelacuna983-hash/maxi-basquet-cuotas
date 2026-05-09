@@ -232,11 +232,13 @@ elements.selfServicePlayer.addEventListener("change", () => {
   state.selectedSelfServicePlayerId = elements.selfServicePlayer.value;
   elements.selfAccessCode.value = "";
   elements.selfAccessMessage.textContent = "";
+  clearSelfPaymentDraft();
   renderSelfService();
 });
 
 elements.selfServiceMonth.addEventListener("change", () => {
   state.selectedSelfServiceMonth = elements.selfServiceMonth.value;
+  clearSelfPaymentDraft();
   renderSelfService();
 });
 
@@ -2458,6 +2460,12 @@ function updateSelfPaymentSuggestedAmount(force = false) {
   const suggestedAmount = balance + interest;
 
   elements.selfPaymentAmount.value = suggestedAmount > 0 ? String(suggestedAmount) : "";
+}
+
+function clearSelfPaymentDraft() {
+  elements.selfPaymentAmount.value = "";
+  elements.selfPaymentNote.value = "";
+  elements.selfPaymentStatus.textContent = "";
 }
 
 function getMainPaymentText(player, expected, balance) {
