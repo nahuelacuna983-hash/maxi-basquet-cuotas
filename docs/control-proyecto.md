@@ -34,6 +34,7 @@ Ya permite:
 - configurar tesoreria
 - registrar pagos manuales aprobados
 - proteger escrituras principales con RPC
+- registrar respuestas de listado temporal de entrenamientos
 
 ## Avances cerrados
 
@@ -58,6 +59,7 @@ Ya permite:
 - Boton de pago configurable por link.
 - Supabase conectado.
 - GitHub Pages publicado.
+- Listado temporal de entrenamientos para jugador comun.
 - Policies endurecidas para `payments`.
 - Policies endurecidas para `treasury_config`.
 - Policies endurecidas para `fees`.
@@ -180,5 +182,7 @@ Al 2026-05-08:
 - Se corrigio el monto sugerido al cambiar jugador o mes en `Mi cuota`.
 - Se ajustaron textos de pago para no prometer adjunto de comprobante.
 - Se agrego instalacion simple en celular como PWA, sin cache agresivo.
+- Se comenzo Asistencia v1 con listado temporal martes/jueves y estados de respuesta.
+- Para activar Asistencia v1 multiusuario falta ejecutar `supabase/attendance-v1.sql`.
 - Quedan 0 pagos activos en Supabase.
 - El siguiente trabajo recomendado es validar instrucciones de pago en la app y luego preparar el mensaje general al equipo.

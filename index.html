@@ -141,6 +141,34 @@
               </div>
             </div>
           </div>
+
+          <section class="training-signup-card" id="selfTrainingCard" hidden>
+            <div class="training-card-header">
+              <div>
+                <span class="section-kicker">Entrenamiento</span>
+                <h3 id="selfTrainingTitle">Listado temporal</h3>
+                <p id="selfTrainingWindow"></p>
+              </div>
+            </div>
+            <div class="training-action-grid" id="selfTrainingActions">
+              <button class="secondary-button" type="button" data-self-training-status="voy">Voy</button>
+              <button class="secondary-button" type="button" data-self-training-status="no_voy">No voy</button>
+              <button class="secondary-button" type="button" data-self-training-status="avisa_mas_tarde">Avisa mas tarde</button>
+              <button class="secondary-button" type="button" data-self-training-status="llega_sobre_la_hora">Llega sobre la hora</button>
+              <button class="secondary-button danger-button" type="button" data-self-training-status="baja_sobre_la_hora">Baja sobre la hora</button>
+            </div>
+            <p class="form-message" id="selfTrainingMessage"></p>
+            <div class="training-list-grid">
+              <div>
+                <h4>Listado</h4>
+                <ol class="training-list" id="selfTrainingMainList"></ol>
+              </div>
+              <div>
+                <h4 id="selfTrainingNoResponseTitle">No me interesa</h4>
+                <ol class="training-list muted-list" id="selfTrainingNoResponseList"></ol>
+              </div>
+            </div>
+          </section>
           </div>
         </section>
 
@@ -612,7 +640,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=payment-suggest-1"></script>
+    <script type="module" src="./src/app.js?v=training-list-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-1"></script>
   </body>
 </html>

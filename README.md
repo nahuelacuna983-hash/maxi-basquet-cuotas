@@ -24,6 +24,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Modo prueba de pago configurable.
 - Metodo de pago real por alias Mercado Pago `maxisuda`.
 - Instalable en celular como PWA simple.
+- Listado temporal de entrenamientos martes/jueves.
 - Escrituras principales protegidas con RPC en Supabase.
 
 ## Vista jugador
@@ -41,6 +42,7 @@ El jugador puede:
 - ver proxima cuota estimada
 - ver alias e instrucciones de pago
 - informar pago
+- responder al listado temporal de entrenamiento cuando esta abierto
 
 Link directo por jugador:
 
@@ -90,6 +92,7 @@ Tablas principales:
 - `players`
 - `fees`
 - `payments`
+- `attendances`
 - `treasury_config`
 
 Funciones RPC usadas por la app:
@@ -100,6 +103,8 @@ Funciones RPC usadas por la app:
 - `admin_upsert_player`
 - `admin_upsert_fee`
 - `submit_payment`
+- `submit_training_attendance`
+- `admin_upsert_attendance`
 - `admin_review_payment`
 - `admin_soft_delete_payment`
 - `admin_update_treasury_config`
@@ -164,6 +169,36 @@ Cada cuota puede definir:
 La app redondea hacia arriba al multiplo de `$5.000`.
 
 Si una cuota tiene montos fijos historicos, esos montos reemplazan la formula normal solo para ese mes.
+
+## Asistencia / listado temporal
+
+Para activar esta parte en Supabase hay que ejecutar:
+
+```txt
+supabase/attendance-v1.sql
+```
+
+Hasta que ese SQL no este ejecutado, la app oculta el listado temporal en la vista publica para no romper pagos.
+
+Reglas de la primera version:
+
+- Martes abre el viernes anterior.
+- Jueves abre el miercoles anterior.
+- El listado publico cierra el mismo dia a las `20:30`.
+- Desde las `12:00` aparece `Baja sobre la hora`.
+- Entrenamientos no tienen maximo de jugadores.
+- Minimo sugerido para entrenar: `10`.
+- `No me interesa` muestra jugadores activos sin respuesta.
+- `No voy` queda registrado, pero no aparece en el listado publico.
+- Admin conserva el historico para presentismo y estadisticas.
+
+Estados de jugador:
+
+- `Voy`
+- `No voy`
+- `Avisa mas tarde`
+- `Llega sobre la hora`
+- `Baja sobre la hora`
 
 ## Prueba real actual
 

@@ -56,6 +56,30 @@ create table if not exists public.payments (
 alter table public.payments
 add column if not exists deleted_at timestamptz;
 
+create table if not exists public.attendances (
+  id text primary key,
+  date date not null,
+  event_type text not null default 'entrenamiento',
+  player_id text not null references public.players(id) on delete cascade,
+  status text not null check (
+    status in (
+      'voy',
+      'no_voy',
+      'avisa_mas_tarde',
+      'llega_sobre_la_hora',
+      'baja_sobre_la_hora',
+      'anotado',
+      'asistio',
+      'falto',
+      'aviso_tarde'
+    )
+  ),
+  source text not null default 'jugador',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (date, player_id, event_type)
+);
+
 create table if not exists public.treasury_config (
   id text primary key default 'main',
   payment_alias text default '',
@@ -70,6 +94,7 @@ create table if not exists public.treasury_config (
 alter table public.players enable row level security;
 alter table public.fees enable row level security;
 alter table public.payments enable row level security;
+alter table public.attendances enable row level security;
 alter table public.treasury_config enable row level security;
 
 drop policy if exists "mvp_players_select" on public.players;
@@ -78,6 +103,8 @@ drop policy if exists "mvp_fees_select" on public.fees;
 drop policy if exists "mvp_fees_write" on public.fees;
 drop policy if exists "mvp_payments_select" on public.payments;
 drop policy if exists "mvp_payments_write" on public.payments;
+drop policy if exists "mvp_attendances_select" on public.attendances;
+drop policy if exists "mvp_attendances_write" on public.attendances;
 drop policy if exists "mvp_treasury_select" on public.treasury_config;
 drop policy if exists "mvp_treasury_write" on public.treasury_config;
 
@@ -89,6 +116,8 @@ create policy "mvp_fees_write" on public.fees for all using (true) with check (t
 
 create policy "mvp_payments_select" on public.payments for select using (true);
 create policy "mvp_payments_write" on public.payments for all using (true) with check (true);
+
+create policy "mvp_attendances_select" on public.attendances for select using (true);
 
 create policy "mvp_treasury_select" on public.treasury_config for select using (true);
 create policy "mvp_treasury_write" on public.treasury_config for all using (true) with check (true);
@@ -108,3 +137,111 @@ insert into public.treasury_config (
   true,
   'Transferi la cuota al alias, informa el pago y espera la validacion del administrador.'
 ) on conflict (id) do nothing;
+
+create or replace function public.submit_training_attendance(
+  p_player_id text,
+  p_access_code text,
+  p_attendance jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1
+    from public.players
+    where id = p_player_id
+      and access_code = p_access_code
+      and coalesce(access_code, '') <> ''
+  ) then
+    raise exception 'Codigo de jugador invalido';
+  end if;
+
+  if p_attendance->>'player_id' <> p_player_id then
+    raise exception 'Jugador invalido';
+  end if;
+
+  if p_attendance->>'status' not in (
+    'voy',
+    'no_voy',
+    'avisa_mas_tarde',
+    'llega_sobre_la_hora',
+    'baja_sobre_la_hora'
+  ) then
+    raise exception 'Estado de asistencia invalido';
+  end if;
+
+  insert into public.attendances (
+    id,
+    date,
+    event_type,
+    player_id,
+    status,
+    source,
+    created_at,
+    updated_at
+  )
+  values (
+    p_attendance->>'id',
+    (p_attendance->>'date')::date,
+    coalesce(p_attendance->>'event_type', 'entrenamiento'),
+    p_player_id,
+    p_attendance->>'status',
+    'jugador',
+    coalesce(nullif(p_attendance->>'created_at', '')::timestamptz, now()),
+    now()
+  )
+  on conflict (date, player_id, event_type) do update
+  set
+    status = excluded.status,
+    source = 'jugador',
+    updated_at = now();
+end;
+$$;
+
+create or replace function public.admin_upsert_attendance(
+  p_admin_pin text,
+  p_attendance jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_admin_pin <> '1234' then
+    raise exception 'PIN admin invalido';
+  end if;
+
+  insert into public.attendances (
+    id,
+    date,
+    event_type,
+    player_id,
+    status,
+    source,
+    created_at,
+    updated_at
+  )
+  values (
+    p_attendance->>'id',
+    (p_attendance->>'date')::date,
+    coalesce(p_attendance->>'event_type', 'entrenamiento'),
+    p_attendance->>'player_id',
+    p_attendance->>'status',
+    coalesce(p_attendance->>'source', 'admin'),
+    coalesce(nullif(p_attendance->>'created_at', '')::timestamptz, now()),
+    now()
+  )
+  on conflict (date, player_id, event_type) do update
+  set
+    status = excluded.status,
+    source = excluded.source,
+    updated_at = now();
+end;
+$$;
+
+grant execute on function public.submit_training_attendance(text, text, jsonb) to anon, authenticated;
+grant execute on function public.admin_upsert_attendance(text, jsonb) to anon, authenticated;

@@ -337,6 +337,74 @@ h1 {
   opacity: 0.92;
 }
 
+.training-signup-card {
+  max-width: 980px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+}
+
+.training-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-kicker {
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.training-card-header h3,
+.training-list-grid h4 {
+  margin: 0;
+}
+
+.training-card-header p {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+}
+
+.training-action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.training-action-grid .active {
+  border-color: var(--green);
+  color: #fff;
+  background: var(--green);
+}
+
+.training-list-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.training-list {
+  min-height: 42px;
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
+
+.training-list li {
+  margin-bottom: 6px;
+  font-weight: 800;
+}
+
+.muted-list li {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
 .forms-column,
 .tables-column {
   display: grid;
@@ -770,7 +838,8 @@ tbody tr:last-child td {
 
   .self-dashboard,
   .support-dashboard,
-  .progress-grid {
+  .progress-grid,
+  .training-list-grid {
     grid-template-columns: 1fr;
   }
 }

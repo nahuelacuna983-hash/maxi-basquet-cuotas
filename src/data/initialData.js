@@ -99,6 +99,17 @@ export const initialResponsibilityConfig = {
   lastMinuteDropPenalty: 15,
 };
 
+export const initialAttendanceConfig = {
+  publicNoResponseLabel: "No me interesa",
+  trainingMinimumPlayers: 10,
+  closeAt: "20:30",
+  lastMinuteDropStartsAt: "12:00",
+  openWeekdays: {
+    2: 5,
+    4: 3,
+  },
+};
+
 export const initialResponsibilityAdjustments = [];
 
 export const adminConfig = {
@@ -116,6 +127,10 @@ export function createInitialAppState() {
       ...adjustment,
     })),
     responsibilityConfig: { ...initialResponsibilityConfig },
+    attendanceConfig: {
+      ...initialAttendanceConfig,
+      openWeekdays: { ...initialAttendanceConfig.openWeekdays },
+    },
     treasuryConfig: { ...initialTreasuryConfig },
   };
 }

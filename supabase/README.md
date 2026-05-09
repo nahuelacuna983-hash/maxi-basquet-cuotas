@@ -2,11 +2,18 @@
 
 Guia tecnica de Supabase para la MVP de cuotas.
 
+SQL incremental de asistencia:
+
+```txt
+supabase/attendance-v1.sql
+```
+
 ## Tablas principales
 
 - `players`
 - `fees`
 - `payments`
+- `attendances`
 - `treasury_config`
 
 ## Seguridad actual
@@ -18,6 +25,7 @@ Estado:
 - `players`: listado publico por RPC sin `access_code`; validacion de codigo por RPC; escritura admin por RPC.
 - `fees`: lectura permitida; escritura directa bloqueada; escritura admin por RPC.
 - `payments`: lectura de pagos activos; insercion de pagos pendientes; aprobacion/rechazo/eliminacion por RPC.
+- `attendances`: lectura de listados; respuestas de jugador por RPC con codigo; correcciones admin por RPC.
 - `treasury_config`: lectura permitida; escritura admin por RPC.
 
 ## RPC usadas
@@ -31,6 +39,8 @@ Estado:
 - `admin_review_payment`
 - `admin_soft_delete_payment`
 - `admin_update_treasury_config`
+- `submit_training_attendance`
+- `admin_upsert_attendance`
 
 ## Campos relevantes
 
@@ -49,6 +59,13 @@ Estado:
 
 - `status`: `pendiente`, `aprobado` o `rechazado`.
 - `deleted_at`: borrado logico.
+
+`attendances`:
+
+- `date`: fecha del entrenamiento.
+- `event_type`: por ahora `entrenamiento`.
+- `status`: `voy`, `no_voy`, `avisa_mas_tarde`, `llega_sobre_la_hora`, `baja_sobre_la_hora`, `asistio`, `falto` o `aviso_tarde`.
+- `source`: `jugador` o `admin`.
 
 ## Nota de seguridad
 

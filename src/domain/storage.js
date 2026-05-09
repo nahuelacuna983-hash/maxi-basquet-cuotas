@@ -10,6 +10,7 @@ export function createPersistedState(source) {
     attendances: source.attendances,
     responsibilityAdjustments: source.responsibilityAdjustments,
     responsibilityConfig: source.responsibilityConfig,
+    attendanceConfig: source.attendanceConfig,
     treasuryConfig: source.treasuryConfig,
   };
 }
@@ -62,6 +63,17 @@ export function normalizePersistedState(parsedState, fallbackState) {
       parsedState.responsibilityConfig && typeof parsedState.responsibilityConfig === "object"
         ? { ...fallbackState.responsibilityConfig, ...parsedState.responsibilityConfig }
         : fallbackState.responsibilityConfig,
+    attendanceConfig:
+      parsedState.attendanceConfig && typeof parsedState.attendanceConfig === "object"
+        ? {
+            ...fallbackState.attendanceConfig,
+            ...parsedState.attendanceConfig,
+            openWeekdays: {
+              ...fallbackState.attendanceConfig.openWeekdays,
+              ...(parsedState.attendanceConfig.openWeekdays ?? {}),
+            },
+          }
+        : fallbackState.attendanceConfig,
     treasuryConfig:
       parsedState.treasuryConfig && typeof parsedState.treasuryConfig === "object"
         ? { ...fallbackState.treasuryConfig, ...parsedState.treasuryConfig }

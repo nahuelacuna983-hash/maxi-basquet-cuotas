@@ -8,7 +8,7 @@ export function isSupabaseEnabled() {
 
 export async function loadSupabaseState(fallbackState, options = {}) {
   const client = await getSupabaseClient();
-  const [playersResult, feesResult, paymentsResult, treasuryResult] = await Promise.all([
+  const [playersResult, feesResult, paymentsResult, treasuryResult, attendancesResult] = await Promise.all([
     loadPlayers(client, options),
     client.from("fees").select("*").order("month", { ascending: true }),
     client
@@ -17,16 +17,19 @@ export async function loadSupabaseState(fallbackState, options = {}) {
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     client.from("treasury_config").select("*").eq("id", "main").maybeSingle(),
+    loadAttendances(client),
   ]);
 
   assertSupabaseResult(playersResult, "players");
   assertSupabaseResult(feesResult, "fees");
   assertSupabaseResult(paymentsResult, "payments");
   assertSupabaseResult(treasuryResult, "treasury_config");
+  assertSupabaseResult(attendancesResult, "attendances");
 
   const players = playersResult.data.map(fromSupabasePlayer);
   const fees = feesResult.data.map(fromSupabaseFee);
   const payments = paymentsResult.data.map(fromSupabasePayment);
+  const attendances = attendancesResult.data.map(fromSupabaseAttendance);
   const treasuryConfig = treasuryResult.data
     ? fromSupabaseTreasuryConfig(treasuryResult.data)
     : fallbackState.treasuryConfig;
@@ -36,6 +39,8 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     players: players.length > 0 ? players : fallbackState.players,
     fees: fees.length > 0 ? fees : fallbackState.fees,
     payments,
+    attendances,
+    attendanceSyncReady: !attendancesResult.disabled,
     treasuryConfig,
   };
 }
@@ -154,6 +159,53 @@ export async function submitPayment(payment) {
   return logMutationMode("fallback");
 }
 
+export async function submitTrainingAttendance(playerId, accessCode, attendance) {
+  const client = await getSupabaseClient();
+  const payload = toSupabaseAttendance(attendance);
+  const rpcResult = await client.rpc("submit_training_attendance", {
+    p_player_id: playerId,
+    p_access_code: accessCode,
+    p_attendance: payload,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "submit_training_attendance");
+  }
+
+  const fallbackResult = await client
+    .from("attendances")
+    .upsert(payload, { onConflict: "date,player_id,event_type" });
+  assertSupabaseResult(fallbackResult, "attendances");
+  return logMutationMode("fallback");
+}
+
+export async function adminUpsertAttendance(adminPin, attendance) {
+  const client = await getSupabaseClient();
+  const payload = toSupabaseAttendance(attendance);
+  const rpcResult = await client.rpc("admin_upsert_attendance", {
+    p_admin_pin: adminPin,
+    p_attendance: payload,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_upsert_attendance");
+  }
+
+  const fallbackResult = await client
+    .from("attendances")
+    .upsert(payload, { onConflict: "date,player_id,event_type" });
+  assertSupabaseResult(fallbackResult, "attendances");
+  return logMutationMode("fallback");
+}
+
 export async function adminReviewPayment(adminPin, paymentId, status) {
   const client = await getSupabaseClient();
   const rpcResult = await client.rpc("admin_review_payment", {
@@ -250,6 +302,20 @@ async function loadPlayers(client, options = {}) {
   return client.from("players").select("*").order("first_name", { ascending: true });
 }
 
+async function loadAttendances(client) {
+  const result = await client
+    .from("attendances")
+    .select("*")
+    .order("date", { ascending: false })
+    .order("updated_at", { ascending: false });
+
+  if (result.error && isMissingRelationError(result.error)) {
+    return { data: [], error: null, disabled: true };
+  }
+
+  return result;
+}
+
 function assertSupabaseResult(result, tableName) {
   if (result.error) {
     throw new Error(`${tableName}: ${result.error.message}`);
@@ -267,6 +333,15 @@ function isRpcUnavailableError(error) {
     message.includes("Could not find the function") ||
     message.includes("function") && message.includes("does not exist") ||
     message.includes("function") && message.includes("schema cache")
+  );
+}
+
+function isMissingRelationError(error) {
+  const message = error?.message ?? "";
+  return (
+    error?.code === "PGRST205" ||
+    message.includes("Could not find the table") ||
+    message.includes("relation") && message.includes("does not exist")
   );
 }
 
@@ -374,6 +449,19 @@ function fromSupabasePayment(row) {
   };
 }
 
+function fromSupabaseAttendance(row) {
+  return {
+    id: row.id,
+    date: row.date,
+    eventType: row.event_type ?? "entrenamiento",
+    playerId: row.player_id,
+    status: row.status,
+    source: row.source ?? "jugador",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function toSupabasePayment(payment) {
   return {
     id: payment.id,
@@ -389,6 +477,19 @@ function toSupabasePayment(payment) {
     created_at: payment.createdAt ?? new Date().toISOString(),
     reviewed_at: payment.reviewedAt ?? null,
     reviewed_by: payment.reviewedBy ?? null,
+  };
+}
+
+function toSupabaseAttendance(attendance) {
+  return {
+    id: attendance.id,
+    date: attendance.date,
+    event_type: attendance.eventType ?? "entrenamiento",
+    player_id: attendance.playerId,
+    status: attendance.status,
+    source: attendance.source ?? "jugador",
+    created_at: attendance.createdAt ?? new Date().toISOString(),
+    updated_at: attendance.updatedAt ?? new Date().toISOString(),
   };
 }
 
