@@ -197,3 +197,4 @@ Al 2026-05-09:
 - Se ordenaron los jugadores por apellido/nombre, se cambio el texto publico de no respuesta a `Todavia no respondieron` y el modulo admin de asistencia quedo nombrado como correccion.
 - Se agrego `docs/manual-admin.md` con explicacion de que es cada modulo, para que sirve, por que se usa asi, como usarlo y que evitar.
 - Se reorganizo el panel admin en pestanas para evitar la vista tipo sabana sin cambiar logica ni datos.
+- Se agregaron secciones base de `Estadisticas`, `Convocatorias` y `VIP` para que el mapa funcional de la app quede completo.

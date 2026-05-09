@@ -177,6 +177,8 @@ const elements = {
   pendingPaymentsList: document.querySelector("#pendingPaymentsList"),
   paymentsHistoryList: document.querySelector("#paymentsHistoryList"),
   attendanceList: document.querySelector("#attendanceList"),
+  adminStatsPanel: document.querySelector("#adminStatsPanel"),
+  adminCallupsPanel: document.querySelector("#adminCallupsPanel"),
   whatsappReport: document.querySelector("#whatsappReport"),
 };
 
@@ -860,6 +862,8 @@ function render() {
   renderAttendances();
   renderResponsibilityAdjustments();
   renderWhatsappReport(debts);
+  renderAdminStats(debts);
+  renderAdminCallups(debts);
   savePersistedState(state);
   syncSupabaseState();
 }
@@ -999,7 +1003,10 @@ function renderAdminTabs() {
     "cuotas",
     "pagos",
     "entrenamientos",
+    "estadisticas",
+    "convocatorias",
     "reportes",
+    "vip",
     "configuracion",
   ]);
 
@@ -1543,6 +1550,94 @@ function renderResponsibilityAdjustments() {
       );
     });
   });
+}
+
+function renderAdminStats(debts) {
+  const totalExpected = debts.reduce((sum, debt) => sum + debt.expectedMonthly, 0);
+  const totalPaid = debts.reduce((sum, debt) => sum + debt.totalPaid, 0);
+  const totalDebt = debts.reduce((sum, debt) => sum + debt.balance, 0);
+  const paymentPercent = getPaymentPercent(totalPaid, totalExpected);
+  const activePlayers = state.players.filter((player) => player.status === "activo").length;
+  const visibleAttendances = state.attendances.filter((attendance) =>
+    ["voy", "avisa_mas_tarde", "llega_sobre_la_hora", "asistio"].includes(attendance.status),
+  );
+  const uniqueTrainingDates = new Set(state.attendances.map((attendance) => attendance.date));
+  const averageAttendance = uniqueTrainingDates.size
+    ? Math.round(visibleAttendances.length / uniqueTrainingDates.size)
+    : 0;
+  const topResponsibilityPlayers = getSortedPlayers()
+    .slice()
+    .sort((a, b) => getResponsibilityDetails(b.id).score - getResponsibilityDetails(a.id).score)
+    .slice(0, 5);
+
+  elements.adminStatsPanel.innerHTML = `
+    <div class="stats-grid">
+      <article class="metric-card compact-stat">
+        <span>Cobranza mensual</span>
+        <strong>${paymentPercent}%</strong>
+        <p>${formatMoney(totalPaid)} cobrados de ${formatMoney(totalExpected)}</p>
+      </article>
+      <article class="metric-card compact-stat">
+        <span>Deuda actual</span>
+        <strong>${formatMoney(totalDebt)}</strong>
+        <p>${getDefaulters(debts).length} morosos detectados.</p>
+      </article>
+      <article class="metric-card compact-stat">
+        <span>Jugadores activos</span>
+        <strong>${activePlayers}</strong>
+        <p>Base para cuotas y entrenamientos.</p>
+      </article>
+      <article class="metric-card compact-stat">
+        <span>Promedio asistencia</span>
+        <strong>${averageAttendance}</strong>
+        <p>Promedio por entrenamiento con registros.</p>
+      </article>
+    </div>
+    <div class="placeholder-list">
+      <strong>Responsabilidad destacada</strong>
+      ${topResponsibilityPlayers
+        .map(
+          (player) =>
+            `<span>${escapeHtml(getPlayerName(player))}: ${getResponsibilityDetails(player.id).score} pts</span>`,
+        )
+        .join("")}
+      <span>Proximo paso: separar estadisticas por mes, jugador y tipo de evento.</span>
+    </div>
+  `;
+}
+
+function renderAdminCallups(debts) {
+  const debtByPlayerId = new Map(debts.map((debt) => [debt.player.id, debt]));
+  const competitors = state.players.filter(
+    (player) =>
+      player.type === "competidor" &&
+      player.status === "activo" &&
+      player.internalEnabled &&
+      !debtByPlayerId.get(player.id)?.overdueFees.length,
+  );
+  const suggested = competitors
+    .slice()
+    .sort((a, b) => getResponsibilityDetails(b.id).score - getResponsibilityDetails(a.id).score);
+  const sundayMinimum = 8;
+  const sundayMaximum = 12;
+
+  elements.adminCallupsPanel.innerHTML = `
+    <div class="placeholder-list">
+      <strong>Convocatoria domingo</strong>
+      <span>Minimo reglamentario: ${sundayMinimum}. Maximo reglamentario: ${sundayMaximum}.</span>
+      <span>Estado actual: sugerencia visible para admin, todavia sin publicacion editable.</span>
+      <span>Proximo paso: permitir editar lista antes de mostrarla a jugadores.</span>
+    </div>
+    <ol class="training-list">
+      ${suggested
+        .slice(0, sundayMaximum)
+        .map(
+          (player) =>
+            `<li>${escapeHtml(getPlayerName(player))} <span class="muted-detail">(${getResponsibilityDetails(player.id).score} pts)</span></li>`,
+        )
+        .join("") || '<li class="muted-detail">Sin jugadores sugeridos.</li>'}
+    </ol>
+  `;
 }
 
 function renderWhatsappReport(debts) {

@@ -17,7 +17,7 @@ La regla de seguridad de esta MVP es simple: si algo impacta deuda, habilitacion
 
 El modo admin muestra las herramientas internas de gestion.
 
-En la pantalla admin, las herramientas estan ordenadas por pestanas: `Resumen`, `Jugadores`, `Cuotas`, `Pagos`, `Entrenamientos`, `Reportes`, `Configuracion` y `Backups`.
+En la pantalla admin, las herramientas estan ordenadas por pestanas: `Resumen`, `Jugadores`, `Cuotas`, `Pagos`, `Entrenamientos`, `Estadisticas`, `Convocatorias`, `Reportes`, `VIP`, `Configuracion` y `Backups`.
 
 **Para que sirve**
 

@@ -445,6 +445,30 @@ h1 {
   font-weight: 800;
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.compact-stat {
+  min-height: 136px;
+}
+
+.placeholder-list {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+}
+
+.placeholder-list span {
+  color: var(--ink-soft);
+}
+
 .muted-list li {
   color: var(--ink-soft);
   font-weight: 700;
@@ -884,6 +908,7 @@ tbody tr:last-child td {
   .self-dashboard,
   .support-dashboard,
   .progress-grid,
+  .stats-grid,
   .training-list-grid {
     grid-template-columns: 1fr;
   }

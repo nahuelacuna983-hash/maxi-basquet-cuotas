@@ -204,7 +204,10 @@
         <button class="admin-tab-button" type="button" data-admin-tab="cuotas">Cuotas</button>
         <button class="admin-tab-button" type="button" data-admin-tab="pagos">Pagos</button>
         <button class="admin-tab-button" type="button" data-admin-tab="entrenamientos">Entrenamientos</button>
+        <button class="admin-tab-button" type="button" data-admin-tab="estadisticas">Estadisticas</button>
+        <button class="admin-tab-button" type="button" data-admin-tab="convocatorias">Convocatorias</button>
         <button class="admin-tab-button" type="button" data-admin-tab="reportes">Reportes</button>
+        <button class="admin-tab-button" type="button" data-admin-tab="vip">VIP</button>
         <button class="admin-tab-button" type="button" data-admin-tab="configuracion">Configuracion</button>
         <button class="admin-tab-button" type="button" data-admin-tab="backups">Backups</button>
       </nav>
@@ -521,6 +524,21 @@
               <button class="primary-button" type="submit">Guardar novedad admin</button>
             </form>
           </section>
+
+          <section class="panel" data-admin-panel="vip">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">V</div>
+              <div>
+                <h2>Configuracion VIP</h2>
+                <p>Preparado para definir que estadisticas o contenidos ve el acceso pago</p>
+              </div>
+            </div>
+            <div class="placeholder-list">
+              <span>Estado actual: preparado, sin cobro automatico.</span>
+              <span>Contenido previsto: morosos, estadisticas de pagos, asistencia, ranking y galeria.</span>
+              <span>Admin mantiene acceso total aunque no exista usuario VIP.</span>
+            </div>
+          </section>
         </div>
 
         <div class="tables-column">
@@ -649,6 +667,28 @@
             </div>
           </section>
 
+          <section class="panel" data-admin-panel="estadisticas">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">%</div>
+              <div>
+                <h2>Estadisticas</h2>
+                <p>Resumen de pagos, asistencia y responsabilidad</p>
+              </div>
+            </div>
+            <div id="adminStatsPanel"></div>
+          </section>
+
+          <section class="panel" data-admin-panel="convocatorias">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">C</div>
+              <div>
+                <h2>Convocatorias</h2>
+                <p>Base para sugerir, editar y publicar listas de partido</p>
+              </div>
+            </div>
+            <div id="adminCallupsPanel"></div>
+          </section>
+
           <section class="panel" data-admin-panel="reportes">
             <div class="panel-heading">
               <div class="panel-icon" aria-hidden="true">W</div>
@@ -663,7 +703,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=admin-tabs-1"></script>
+    <script type="module" src="./src/app.js?v=admin-sections-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-2"></script>
   </body>
 </html>
