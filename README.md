@@ -23,6 +23,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Borrado logico de pagos con `deleted_at`.
 - Modo prueba de pago configurable.
 - Metodo de pago real por alias Mercado Pago `maxisuda`.
+- Instalable en celular como PWA simple.
 - Escrituras principales protegidas con RPC en Supabase.
 
 ## Vista jugador
@@ -201,6 +202,26 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 
 El pago queda pendiente hasta que lo valide el administrador.
 ```
+
+## Instalar en celular
+
+La app funciona como PWA simple. No pasa por Play Store ni App Store.
+
+Android:
+
+1. Abrir la URL publica en Chrome.
+2. Tocar el menu de tres puntos.
+3. Elegir `Instalar app` o `Agregar a pantalla principal`.
+4. Abrirla desde el icono `Maxi Cuotas`.
+
+iPhone:
+
+1. Abrir la URL publica en Safari.
+2. Tocar compartir.
+3. Elegir `Agregar a inicio`.
+4. Abrirla desde el icono `Maxi Cuotas`.
+
+La app necesita internet para consultar Supabase. El service worker actual no cachea datos para evitar que el celular use versiones viejas.
 
 ## Lo que falta
 

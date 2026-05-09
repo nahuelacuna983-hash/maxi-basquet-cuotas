@@ -179,5 +179,6 @@ Al 2026-05-08:
 - Se definio metodo de pago intermedio por alias Mercado Pago `maxisuda`.
 - Se corrigio el monto sugerido al cambiar jugador o mes en `Mi cuota`.
 - Se ajustaron textos de pago para no prometer adjunto de comprobante.
+- Se agrego instalacion simple en celular como PWA, sin cache agresivo.
 - Quedan 0 pagos activos en Supabase.
 - El siguiente trabajo recomendado es validar instrucciones de pago en la app y luego preparar el mensaje general al equipo.
