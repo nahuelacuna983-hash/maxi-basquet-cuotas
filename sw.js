@@ -1,4 +1,4 @@
-const SERVICE_WORKER_VERSION = "maxi-cuotas-pwa-v1";
+const SERVICE_WORKER_VERSION = "maxi-cuotas-pwa-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -10,5 +10,5 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  event.respondWith(fetch(event.request));
+  event.respondWith(fetch(new Request(event.request, { cache: "no-store" })));
 });

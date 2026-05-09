@@ -186,3 +186,10 @@ Al 2026-05-08:
 - Para activar Asistencia v1 multiusuario falta ejecutar `supabase/attendance-v1.sql`.
 - Quedan 0 pagos activos en Supabase.
 - El siguiente trabajo recomendado es validar instrucciones de pago en la app y luego preparar el mensaje general al equipo.
+
+Al 2026-05-09:
+
+- Se ejecuto y verifico `supabase/attendance-v1.sql`.
+- La tabla `attendances` responde correctamente.
+- Las RPC `submit_training_attendance` y `admin_upsert_attendance` quedaron disponibles.
+- Se ajusto la PWA para que la app instalada revise versiones nuevas, evite cache viejo y se recargue sola cuando haya cambios publicados.

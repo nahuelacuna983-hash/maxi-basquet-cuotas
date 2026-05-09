@@ -256,7 +256,7 @@ iPhone:
 3. Elegir `Agregar a inicio`.
 4. Abrirla desde el icono `Maxi Cuotas`.
 
-La app necesita internet para consultar Supabase. El service worker actual no cachea datos para evitar que el celular use versiones viejas.
+La app necesita internet para consultar Supabase. El service worker no cachea datos para evitar que el celular use versiones viejas. Cuando se publica una version nueva, la app instalada revisa actualizaciones y se recarga sola.
 
 ## Lo que falta
 
