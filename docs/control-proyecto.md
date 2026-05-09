@@ -195,3 +195,4 @@ Al 2026-05-09:
 - Se ajusto la PWA para que la app instalada revise versiones nuevas, evite cache viejo y se recargue sola cuando haya cambios publicados.
 - Se separo la vista publica en pestanas `Mi cuota` y `Entrenamientos`, sin modificar logica de cobro ni asistencia.
 - Se ordenaron los jugadores por apellido/nombre, se cambio el texto publico de no respuesta a `Todavia no respondieron` y el modulo admin de asistencia quedo nombrado como correccion.
+- Se agrego `docs/manual-admin.md` con explicacion de que es cada modulo, para que sirve, por que se usa asi, como usarlo y que evitar.

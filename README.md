@@ -67,7 +67,7 @@ Permite:
 - modificar habilitado interno
 - cargar cuotas
 - ajustar bases de cobro
-- registrar pagos manuales aprobados
+- registrar pagos manuales desde admin
 - aprobar pagos pendientes
 - rechazar pagos pendientes
 - eliminar pagos de prueba
@@ -316,6 +316,12 @@ Resumen general:
 
 ```txt
 docs/resumen-proyecto.md
+```
+
+Manual de uso admin:
+
+```txt
+docs/manual-admin.md
 ```
 
 Publicacion en GitHub Pages:
