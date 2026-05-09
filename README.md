@@ -140,6 +140,7 @@ Metodo actual:
 - Alias Mercado Pago: `maxisuda`.
 - El jugador paga desde su billetera, banco o Mercado Pago.
 - Luego vuelve a la app y toca `Informar pago`.
+- La app no adjunta archivos todavia; solo registra numero de operacion u observacion.
 - El pago queda pendiente hasta validacion de Tesoreria.
 
 ## Cuotas
@@ -195,7 +196,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 2. Ingresa tu codigo.
 3. Elegi el mes a pagar.
 4. Revisa el monto.
-5. Informa el pago con monto, fecha, metodo y observacion.
+5. Informa el pago con monto, fecha, metodo y numero de operacion u observacion.
 6. Avisame cuando termines.
 
 El pago queda pendiente hasta que lo valide el administrador.

@@ -1235,7 +1235,7 @@ function renderPendingPayments() {
             <th>Metodo</th>
             <th>Monto</th>
             <th>Fecha</th>
-            <th>Operacion / nota</th>
+            <th>Operacion / observacion</th>
             <th>Estado</th>
             <th>Admin</th>
           </tr>
@@ -1303,7 +1303,7 @@ function renderPaymentsHistory() {
             <th>Monto</th>
             <th>Fecha</th>
             <th>Metodo</th>
-            <th>Observacion / comprobante</th>
+            <th>Operacion / observacion</th>
             <th>Estado</th>
             <th>Admin</th>
           </tr>

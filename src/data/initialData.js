@@ -84,7 +84,7 @@ export const initialTreasuryConfig = {
   paymentLink: "",
   paymentTestMode: false,
   paymentInstructions:
-    "Paga por transferencia al alias maxisuda. Despues volve a la app, toca Informar pago y carga monto, fecha y comprobante u observacion. El pago queda pendiente hasta que Tesoreria lo valide.",
+    "Paga por transferencia al alias maxisuda. Despues volve a la app, toca Informar pago y carga monto, fecha y numero de operacion u observacion. El pago queda pendiente hasta que Tesoreria lo valide.",
 };
 
 export const initialAttendances = [];
