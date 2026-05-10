@@ -304,6 +304,10 @@ El listado se abre antes del entrenamiento y se cierra al publico a las `20:30` 
 
 No usar el listado como deuda ni habilitacion. No cerrar manualmente registros si todavia se esta probando el flujo.
 
+**Dato historico inicial**
+
+La app ya tiene cargado un bloque historico inicial desde la planilla de abril/mayo 2026. Ese bloque sirve como arranque de estadisticas de asistencia y responsabilidad.
+
 ## Correccion de asistencia
 
 **Que es**

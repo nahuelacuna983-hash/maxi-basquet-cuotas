@@ -58,6 +58,7 @@ export function getStatusPenalty(status, config) {
   const penalties = {
     falto: config.absencePenalty,
     aviso_tarde: config.lateNoticePenalty,
+    baja_sobre_la_hora: config.lastMinuteDropPenalty,
     baja_sobre_hora: config.lastMinuteDropPenalty,
   };
 

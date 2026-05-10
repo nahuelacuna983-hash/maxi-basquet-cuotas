@@ -19,6 +19,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Modo admin con PIN simple.
 - Panel admin organizado por pestanas: resumen, jugadores, cuotas, pagos, entrenamientos, reportes, configuracion y backups.
 - Secciones base disponibles para estadisticas, convocatorias y VIP.
+- Asistencia historica inicial cargada para iniciar estadisticas reales.
 - Seleccion de mes para consultar abril, mayo u otras cuotas cargadas.
 - Pagos con estado `pendiente`, `aprobado` o `rechazado`.
 - Solo pagos aprobados descuentan deuda.
@@ -336,6 +337,12 @@ Guia Supabase:
 
 ```txt
 supabase/README.md
+```
+
+Asistencia historica inicial:
+
+```txt
+docs/asistencia-historica-2026-04.md
 ```
 
 ## Advertencia MVP

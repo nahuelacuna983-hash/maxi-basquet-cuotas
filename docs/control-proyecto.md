@@ -198,3 +198,5 @@ Al 2026-05-09:
 - Se agrego `docs/manual-admin.md` con explicacion de que es cada modulo, para que sirve, por que se usa asi, como usarlo y que evitar.
 - Se reorganizo el panel admin en pestanas para evitar la vista tipo sabana sin cambiar logica ni datos.
 - Se agregaron secciones base de `Estadisticas`, `Convocatorias` y `VIP` para que el mapa funcional de la app quede completo.
+- Se cargo asistencia historica inicial en Supabase: 113 registros, 110 asistencias y 3 bajas sobre la hora.
+- Se corrigio el descuento de responsabilidad para `baja_sobre_la_hora`.

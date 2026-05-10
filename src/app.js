@@ -1561,6 +1561,9 @@ function renderAdminStats(debts) {
   const visibleAttendances = state.attendances.filter((attendance) =>
     ["voy", "avisa_mas_tarde", "llega_sobre_la_hora", "asistio"].includes(attendance.status),
   );
+  const lastMinuteDrops = state.attendances.filter((attendance) =>
+    ["baja_sobre_la_hora", "baja_sobre_hora"].includes(attendance.status),
+  );
   const uniqueTrainingDates = new Set(state.attendances.map((attendance) => attendance.date));
   const averageAttendance = uniqueTrainingDates.size
     ? Math.round(visibleAttendances.length / uniqueTrainingDates.size)
@@ -1591,6 +1594,11 @@ function renderAdminStats(debts) {
         <span>Promedio asistencia</span>
         <strong>${averageAttendance}</strong>
         <p>Promedio por entrenamiento con registros.</p>
+      </article>
+      <article class="metric-card compact-stat">
+        <span>Bajas sobre hora</span>
+        <strong>${lastMinuteDrops.length}</strong>
+        <p>Descuentan responsabilidad.</p>
       </article>
     </div>
     <div class="placeholder-list">
