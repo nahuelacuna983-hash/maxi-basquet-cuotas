@@ -1556,6 +1556,9 @@ function renderAdminStats(debts) {
   const totalExpected = debts.reduce((sum, debt) => sum + debt.expectedMonthly, 0);
   const totalPaid = debts.reduce((sum, debt) => sum + debt.totalPaid, 0);
   const totalDebt = debts.reduce((sum, debt) => sum + debt.balance, 0);
+  const defaulterCount = debts.filter(
+    (debt) => debt.balance > 0 && debt.overdueFees.length > 0,
+  ).length;
   const paymentPercent = getPaymentPercent(totalPaid, totalExpected);
   const activePlayers = state.players.filter((player) => player.status === "activo").length;
   const visibleAttendances = state.attendances.filter((attendance) =>
@@ -1583,7 +1586,7 @@ function renderAdminStats(debts) {
       <article class="metric-card compact-stat">
         <span>Deuda actual</span>
         <strong>${formatMoney(totalDebt)}</strong>
-        <p>${getDefaulters(debts).length} morosos detectados.</p>
+        <p>${defaulterCount} morosos detectados.</p>
       </article>
       <article class="metric-card compact-stat">
         <span>Jugadores activos</span>
