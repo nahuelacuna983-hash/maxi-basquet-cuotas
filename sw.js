@@ -1,4 +1,4 @@
-const SERVICE_WORKER_VERSION = "maxi-cuotas-pwa-v8";
+const SERVICE_WORKER_VERSION = "maxi-cuotas-pwa-v9";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

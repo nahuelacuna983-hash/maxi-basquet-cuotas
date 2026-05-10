@@ -1506,16 +1506,18 @@ function renderResponsibilityAdjustments() {
     state.responsibilityConfig,
   );
   const baseScore = getBaseResponsibilityScore(state.responsibilityConfig);
+  const completedTrainingDates = getCompletedTrainingDates();
 
   elements.responsibilityBaseInfo.innerHTML = `
     <strong>Base anual: ${baseScore} pts</strong>
     <span>Inicio ${state.responsibilityConfig.attendanceStartDate} / ${trainingCount} entrenamientos de martes y jueves / ${state.responsibilityConfig.pointsPerTraining} pts posibles por entrenamiento</span>
+    <span>${completedTrainingDates.length} entrenamientos cerrados con control de ausentes activos.</span>
   `;
 
   elements.responsibilityAdjustmentsTable.innerHTML = getSortedPlayers()
     .map((player) => {
       const adjustment = getResponsibilityAdjustment(player.id);
-      const details = getResponsibilityDetails(player.id);
+      const details = getResponsibilityDetails(player.id, completedTrainingDates);
 
       return `
         <tr>
@@ -1535,6 +1537,7 @@ function renderResponsibilityAdjustments() {
           <td>
             <strong>${details.score}</strong>
             <span class="muted-detail">-${details.historicalDiscount + details.attendanceDiscount} pts</span>
+            <span class="muted-detail">Ausentes inferidos: -${details.implicitAbsenceDiscount} pts</span>
           </td>
         </tr>
       `;
@@ -1561,19 +1564,28 @@ function renderAdminStats(debts) {
   ).length;
   const paymentPercent = getPaymentPercent(totalPaid, totalExpected);
   const activePlayers = state.players.filter((player) => player.status === "activo").length;
+  const completedTrainingDates = getCompletedTrainingDates();
+  const completedTrainingDateSet = new Set(completedTrainingDates);
   const visibleAttendances = state.attendances.filter((attendance) =>
+    completedTrainingDateSet.has(attendance.date) &&
     ["voy", "avisa_mas_tarde", "llega_sobre_la_hora", "asistio"].includes(attendance.status),
   );
   const lastMinuteDrops = state.attendances.filter((attendance) =>
+    completedTrainingDateSet.has(attendance.date) &&
     ["baja_sobre_la_hora", "baja_sobre_hora"].includes(attendance.status),
   );
-  const uniqueTrainingDates = new Set(state.attendances.map((attendance) => attendance.date));
-  const averageAttendance = uniqueTrainingDates.size
-    ? Math.round(visibleAttendances.length / uniqueTrainingDates.size)
+  const implicitAbsenceCount = getImplicitAbsenceCount(completedTrainingDates);
+  const averageAttendance = completedTrainingDates.length
+    ? Math.round(visibleAttendances.length / completedTrainingDates.length)
     : 0;
   const topResponsibilityPlayers = getSortedPlayers()
+    .filter((player) => player.status === "activo")
     .slice()
-    .sort((a, b) => getResponsibilityDetails(b.id).score - getResponsibilityDetails(a.id).score)
+    .sort(
+      (a, b) =>
+        getResponsibilityDetails(b.id, completedTrainingDates).score -
+        getResponsibilityDetails(a.id, completedTrainingDates).score,
+    )
     .slice(0, 5);
 
   elements.adminStatsPanel.innerHTML = `
@@ -1599,6 +1611,11 @@ function renderAdminStats(debts) {
         <p>Promedio por entrenamiento con registros.</p>
       </article>
       <article class="metric-card compact-stat">
+        <span>Ausencias inferidas</span>
+        <strong>${implicitAbsenceCount}</strong>
+        <p>Activos sin registro en entrenamientos cerrados.</p>
+      </article>
+      <article class="metric-card compact-stat">
         <span>Bajas sobre hora</span>
         <strong>${lastMinuteDrops.length}</strong>
         <p>Descuentan responsabilidad.</p>
@@ -1609,10 +1626,10 @@ function renderAdminStats(debts) {
       ${topResponsibilityPlayers
         .map(
           (player) =>
-            `<span>${escapeHtml(getPlayerName(player))}: ${getResponsibilityDetails(player.id).score} pts</span>`,
+            `<span>${escapeHtml(getPlayerName(player))}: ${getResponsibilityDetails(player.id, completedTrainingDates).score} pts</span>`,
         )
         .join("")}
-      <span>Proximo paso: separar estadisticas por mes, jugador y tipo de evento.</span>
+      <span>Las ausencias inferidas se calculan comparando jugadores activos contra listas cerradas.</span>
     </div>
   `;
 }
@@ -2918,6 +2935,47 @@ function getAttendancesForDate(date) {
   );
 }
 
+function getCompletedTrainingDates(now = new Date()) {
+  return [
+    ...new Set(
+      state.attendances
+        .filter(
+          (attendance) =>
+            (attendance.eventType ?? "entrenamiento") === "entrenamiento" &&
+            isTrainingDate(attendance.date) &&
+            attendance.date >= state.responsibilityConfig.attendanceStartDate &&
+            isTrainingSessionClosed(attendance.date, now),
+        )
+        .map((attendance) => attendance.date),
+    ),
+  ].sort();
+}
+
+function isTrainingSessionClosed(dateValue, now = new Date()) {
+  const session = getTrainingSessionWindow(dateValue);
+  if (session) return now > session.closeAt;
+
+  const date = parseDateInputValue(dateValue);
+  if (!date) return false;
+  date.setHours(23, 59, 59, 999);
+  return now > date;
+}
+
+function getImplicitAbsenceCount(completedTrainingDates = getCompletedTrainingDates()) {
+  const activePlayers = state.players.filter((player) => player.status === "activo");
+
+  return completedTrainingDates.reduce((total, date) => {
+    const registeredPlayerIds = new Set(
+      getAttendancesForDate(date).map((attendance) => attendance.playerId),
+    );
+
+    return (
+      total +
+      activePlayers.filter((player) => !registeredPlayerIds.has(player.id)).length
+    );
+  }, 0);
+}
+
 function getAttendanceForPlayerDate(playerId, date) {
   return (
     state.attendances.find(
@@ -3205,12 +3263,14 @@ function getResponsibilityAdjustment(playerId) {
   );
 }
 
-function getResponsibilityDetails(playerId) {
+function getResponsibilityDetails(playerId, completedTrainingDates = getCompletedTrainingDates()) {
   return calculateResponsibilityScore({
     playerId,
     attendances: state.attendances,
     adjustments: state.responsibilityAdjustments,
     config: state.responsibilityConfig,
+    players: state.players,
+    completedTrainingDates,
   });
 }
 

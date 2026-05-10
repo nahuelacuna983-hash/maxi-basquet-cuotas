@@ -200,3 +200,4 @@ Al 2026-05-09:
 - Se agregaron secciones base de `Estadisticas`, `Convocatorias` y `VIP` para que el mapa funcional de la app quede completo.
 - Se cargo asistencia historica inicial en Supabase: 113 registros, 110 asistencias y 3 bajas sobre la hora.
 - Se corrigio el descuento de responsabilidad para `baja_sobre_la_hora`.
+- Se agrego descuento por ausencias inferidas: si un jugador activo no aparece en un entrenamiento cerrado, la app lo cuenta como ausente para responsabilidad y estadisticas sin crear registros falsos.

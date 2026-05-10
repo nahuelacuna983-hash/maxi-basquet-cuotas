@@ -20,6 +20,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Panel admin organizado por pestanas: resumen, jugadores, cuotas, pagos, entrenamientos, reportes, configuracion y backups.
 - Secciones base disponibles para estadisticas, convocatorias y VIP.
 - Asistencia historica inicial cargada para iniciar estadisticas reales.
+- Responsabilidad descuenta bajas, faltas explicitas y ausencias inferidas de jugadores activos en entrenamientos cerrados.
 - Seleccion de mes para consultar abril, mayo u otras cuotas cargadas.
 - Pagos con estado `pendiente`, `aprobado` o `rechazado`.
 - Solo pagos aprobados descuentan deuda.

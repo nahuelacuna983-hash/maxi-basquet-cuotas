@@ -12,6 +12,7 @@ Regla aplicada:
 - Cada texto `se bajo sobre la hora` se cargo como `baja_sobre_la_hora`.
 - `baja_sobre_la_hora` descuenta responsabilidad.
 - Los nombres se mapearon contra los jugadores reales de Supabase, respetando tildes en la base.
+- Los jugadores activos que no aparecen en una lista cerrada cuentan como ausentes inferidos para responsabilidad y estadisticas. No se crean registros historicos falsos: la app lo calcula comparando activos contra la lista de esa fecha.
 
 ## Resumen
 
