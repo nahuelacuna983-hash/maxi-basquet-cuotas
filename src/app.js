@@ -1850,7 +1850,9 @@ function applyPersistentState(nextState) {
 }
 
 function syncFormValuesFromState({ forceTreasury = false } = {}) {
-  elements.attendanceNoveltyDate.value = state.responsibilityConfig.attendanceStartDate;
+  if (!elements.attendanceNoveltyDate.value) {
+    elements.attendanceNoveltyDate.value = getDefaultTrainingResponseDate();
+  }
   if (treasuryFormDirty && !forceTreasury) return;
 
   elements.treasuryAlias.value = state.treasuryConfig.paymentAlias;
@@ -2918,7 +2920,26 @@ function getDefaultTrainingResponseDate() {
   if (session) return session.date;
 
   const today = getTodayString();
-  return isTrainingDate(today) ? today : state.responsibilityConfig.attendanceStartDate;
+  const baseDate =
+    today < state.responsibilityConfig.attendanceStartDate
+      ? state.responsibilityConfig.attendanceStartDate
+      : today;
+
+  return getNextTrainingDate(baseDate) ?? baseDate;
+}
+
+function getNextTrainingDate(dateValue) {
+  const date = parseDateInputValue(dateValue);
+  if (!date) return null;
+
+  for (let offset = 0; offset <= 7; offset += 1) {
+    const nextDate = new Date(date);
+    nextDate.setDate(nextDate.getDate() + offset);
+    const nextDateValue = formatDateInputValue(nextDate);
+    if (isTrainingDate(nextDateValue)) return nextDateValue;
+  }
+
+  return null;
 }
 
 function getTrainingSessionWindow(dateValue) {

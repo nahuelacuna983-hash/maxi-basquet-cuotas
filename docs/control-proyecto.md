@@ -207,3 +207,4 @@ Al 2026-05-19:
 - Se mejoro la claridad del informe de pago en celular: el jugador ve una tarjeta visible cuando ya informo, cuando esta aprobado o cuando fue rechazado.
 - Si un pago esta pendiente o aprobado para ese mes, la app oculta el boton de pagar y el formulario para evitar duplicados.
 - Se agrego `Respuesta admin` para que el administrador pueda anotar `Voy`, `No voy`, `Avisa mas tarde`, `Llega sobre la hora`, `Falto`, `Aviso tarde` o `Baja sobre la hora` por un jugador que no pudo usar la app.
+- Se corrigio la fecha de `Respuesta admin`: la sincronizacion con Supabase ya no pisa la fecha elegida ni vuelve automaticamente al 06/04/2026.
