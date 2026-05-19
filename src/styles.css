@@ -373,6 +373,40 @@ h1 {
   color: var(--ink-soft);
 }
 
+.self-payment-alert {
+  display: grid;
+  gap: 5px;
+  max-width: 760px;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+}
+
+.self-payment-alert strong {
+  font-size: 1.02rem;
+}
+
+.self-payment-alert span {
+  color: var(--ink-soft);
+}
+
+.self-payment-alert.pending {
+  border-color: #e5c46b;
+  background: #fff6df;
+}
+
+.self-payment-alert.approved {
+  border-color: #a8d4b9;
+  background: #eef7f1;
+}
+
+.self-payment-alert.rejected {
+  border-color: #e3aaa4;
+  background: #fff0ee;
+}
+
 .self-payment-form {
   max-width: 760px;
   margin-bottom: 14px;

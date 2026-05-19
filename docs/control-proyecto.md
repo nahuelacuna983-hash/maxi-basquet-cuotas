@@ -201,3 +201,9 @@ Al 2026-05-09:
 - Se cargo asistencia historica inicial en Supabase: 113 registros, 110 asistencias y 3 bajas sobre la hora.
 - Se corrigio el descuento de responsabilidad para `baja_sobre_la_hora`.
 - Se agrego descuento por ausencias inferidas: si un jugador activo no aparece en un entrenamiento cerrado, la app lo cuenta como ausente para responsabilidad y estadisticas sin crear registros falsos.
+
+Al 2026-05-19:
+
+- Se mejoro la claridad del informe de pago en celular: el jugador ve una tarjeta visible cuando ya informo, cuando esta aprobado o cuando fue rechazado.
+- Si un pago esta pendiente o aprobado para ese mes, la app oculta el boton de pagar y el formulario para evitar duplicados.
+- Se agrego `Respuesta admin` para que el administrador pueda anotar `Voy`, `No voy`, `Avisa mas tarde`, `Llega sobre la hora`, `Falto`, `Aviso tarde` o `Baja sobre la hora` por un jugador que no pudo usar la app.

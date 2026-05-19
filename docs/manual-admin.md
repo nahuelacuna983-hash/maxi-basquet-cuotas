@@ -154,6 +154,7 @@ Un jugador puede equivocarse de monto, mes, fecha o metodo. Por eso el pago qued
 4. Vuelve a la app.
 5. Completa metodo, monto, fecha y observacion o numero de operacion.
 6. Toca `Informar pago`.
+7. La pantalla muestra una tarjeta indicando si el pago quedo pendiente, aprobado o rechazado.
 
 **Que no hacer**
 
@@ -334,31 +335,31 @@ La carga principal debe hacerla cada jugador. La correccion admin existe para ca
 
 No cargar toda la asistencia manualmente si el objetivo es que cada jugador responda desde la app. No usar correccion para castigar o modificar puntos sin una regla clara.
 
-## Novedad admin
+## Respuesta admin
 
 **Que es**
 
-Es el modulo para cargar incumplimientos que afectan responsabilidad.
+Es el modulo para anotar o corregir la respuesta de un jugador cuando no pudo usar la app.
 
 **Para que sirve**
 
-Sirve para registrar faltas, avisos tarde o bajas sobre la hora.
+Sirve para cargar `Voy`, `No voy`, `Avisa mas tarde`, `Llega sobre la hora`, `Falto`, `Aviso tarde` o `Baja sobre la hora` desde modo admin.
 
 **Por que se usa asi**
 
-Asistir no suma puntos extra; mantiene la base. Las novedades negativas descuentan puntos.
+La carga principal debe hacerla cada jugador, pero el admin necesita una salida practica cuando alguien avisa por WhatsApp o no puede entrar.
 
 **Como se usa**
 
 1. Entrar en modo admin.
 2. Elegir fecha.
 3. Elegir jugador.
-4. Elegir novedad.
+4. Elegir estado.
 5. Guardar.
 
 **Que no hacer**
 
-No mezclar esta carga con cocina/lavado. No cargar historial completo positivo. Solo novedades o ajustes necesarios.
+No mezclar esta carga con cocina/lavado. No usarla para reemplazar siempre la respuesta del jugador si la app ya esta funcionando.
 
 ## Reporte WhatsApp
 

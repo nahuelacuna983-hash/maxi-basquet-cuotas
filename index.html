@@ -93,6 +93,7 @@
               </div>
 
               <div class="payment-instructions-card" id="selfPaymentInstructions" hidden></div>
+              <div class="self-payment-alert" id="selfPaymentAlert" hidden></div>
 
               <form class="form-grid self-payment-form" id="selfPaymentForm">
                 <label>
@@ -499,8 +500,8 @@
             <div class="panel-heading">
               <div class="panel-icon" aria-hidden="true">N</div>
               <div>
-                <h2>Novedad admin</h2>
-                <p>Incumplimientos desde el 06/04/2026</p>
+                <h2>Respuesta admin</h2>
+                <p>Anotar o corregir por un jugador que no pudo usar la app</p>
               </div>
             </div>
             <form class="form-grid" id="attendanceNoveltyForm">
@@ -513,15 +514,19 @@
                 <select id="attendanceNoveltyPlayer" required></select>
               </label>
               <label class="wide-field">
-                Novedad
+                Estado
                 <select id="attendanceNoveltyStatus">
+                  <option value="voy">Voy</option>
+                  <option value="no_voy">No voy</option>
+                  <option value="avisa_mas_tarde">Avisa mas tarde</option>
+                  <option value="llega_sobre_la_hora">Llega sobre la hora</option>
                   <option value="falto">Falto</option>
                   <option value="aviso_tarde">Aviso tarde</option>
                   <option value="baja_sobre_la_hora">Baja sobre la hora</option>
                 </select>
               </label>
               <p class="form-message wide-field" id="attendanceNoveltyMessage"></p>
-              <button class="primary-button" type="submit">Guardar novedad admin</button>
+              <button class="primary-button" type="submit">Guardar respuesta admin</button>
             </form>
           </section>
 
@@ -703,7 +708,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=implicit-absences-1"></script>
+    <script type="module" src="./src/app.js?v=payment-training-clarity-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-2"></script>
   </body>
 </html>

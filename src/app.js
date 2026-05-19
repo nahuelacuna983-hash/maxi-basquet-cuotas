@@ -134,6 +134,7 @@ const elements = {
   selfPayButton: document.querySelector("#selfPayButton"),
   selfPaymentStatus: document.querySelector("#selfPaymentStatus"),
   selfPaymentInstructions: document.querySelector("#selfPaymentInstructions"),
+  selfPaymentAlert: document.querySelector("#selfPaymentAlert"),
   selfPaymentForm: document.querySelector("#selfPaymentForm"),
   selfPaymentMethod: document.querySelector("#selfPaymentMethod"),
   selfPaymentAmount: document.querySelector("#selfPaymentAmount"),
@@ -186,7 +187,7 @@ elements.paymentDate.value = new Date().toISOString().slice(0, 10);
 elements.selfPaymentDate.value = new Date().toISOString().slice(0, 10);
 elements.playerPaymentDate.value = new Date().toISOString().slice(0, 10);
 elements.attendanceDate.value = new Date().toISOString().slice(0, 10);
-elements.attendanceNoveltyDate.value = state.responsibilityConfig.attendanceStartDate;
+elements.attendanceNoveltyDate.value = getDefaultTrainingResponseDate();
 elements.treasuryAlias.value = state.treasuryConfig.paymentAlias;
 elements.treasuryHolder.value = state.treasuryConfig.accountHolder;
 elements.treasuryPaymentLink.value = state.treasuryConfig.paymentLink;
@@ -802,13 +803,13 @@ elements.attendanceNoveltyForm.addEventListener("submit", async (event) => {
 
   if (!isTrainingDate(date)) {
     elements.attendanceNoveltyMessage.textContent =
-      "Las novedades solo se pueden cargar para martes o jueves.";
+      "Las respuestas solo se pueden cargar para martes o jueves.";
     return;
   }
 
   if (date < state.responsibilityConfig.attendanceStartDate) {
     elements.attendanceNoveltyMessage.textContent =
-      `La fecha minima para novedades es ${state.responsibilityConfig.attendanceStartDate}.`;
+      `La fecha minima para respuestas es ${state.responsibilityConfig.attendanceStartDate}.`;
     return;
   }
 
@@ -826,8 +827,8 @@ elements.attendanceNoveltyForm.addEventListener("submit", async (event) => {
 
   const saved = await persistAttendance(
     attendance,
-    "Novedad guardada",
-    "Error al guardar novedad",
+    "Respuesta admin guardada",
+    "Error al guardar respuesta admin",
     { admin: true },
   );
   elements.attendanceNoveltyMessage.textContent = saved ? "" : state.syncStatus;
@@ -895,6 +896,9 @@ function renderSelfService() {
     elements.selfCurrentStatus.textContent = "Sin jugador";
     elements.selfLateDebt.textContent = formatMoney(0);
     elements.selfNextEstimate.textContent = formatMoney(0);
+    elements.selfPaymentInstructions.hidden = true;
+    elements.selfPaymentAlert.hidden = true;
+    elements.selfPaymentForm.hidden = true;
     updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, 0);
     updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, 0);
     return;
@@ -915,6 +919,8 @@ function renderSelfService() {
     elements.selfLateDebt.textContent = formatMoney(0);
     elements.selfNextEstimate.textContent = formatMoney(0);
     elements.selfPaymentInstructions.hidden = true;
+    elements.selfPaymentAlert.hidden = true;
+    elements.selfPaymentForm.hidden = true;
     elements.selfTrainingCard.hidden = true;
     elements.selfPaymentStatus.textContent = "";
     elements.selfAccessMessage.textContent =
@@ -949,6 +955,7 @@ function renderSelfService() {
   const yearPercent = getYearPaymentPercent(fallbackPlayer, currentMonth.slice(0, 4));
   const pendingAmount = getPendingAmountForPlayer(fallbackPlayer.id, currentFee?.id);
   const latestPayment = currentFee ? getLatestPaymentForPlayerFee(fallbackPlayer.id, currentFee.id) : null;
+  const hasBlockingPayment = ["pendiente", "aprobado"].includes(latestPayment?.status);
 
   elements.selfCurrentExpected.textContent = formatMoney(currentExpected);
   elements.selfCurrentInterest.textContent = formatMoney(currentInterest);
@@ -967,14 +974,17 @@ function renderSelfService() {
     `${formatMonthLabel(nextMonth)} estimada segun valores actuales.`;
   elements.selfPayButton.disabled =
     !state.treasuryConfig.paymentTestMode && !hasConfiguredPaymentMethod();
-  elements.selfPayButton.hidden = currentExpected <= 0 || currentPayable <= 0;
-  renderSelfPaymentInstructions(currentPayable);
+  elements.selfPayButton.hidden = currentExpected <= 0 || currentPayable <= 0 || hasBlockingPayment;
+  renderSelfPaymentInstructions(hasBlockingPayment ? 0 : currentPayable);
+  renderSelfPaymentAlert(latestPayment, pendingAmount, currentExpected, currentPayable, currentFee);
   elements.selfPaymentStatus.textContent = formatSelfPaymentStatus(
     latestPayment,
     pendingAmount,
     currentExpected,
     currentPayable,
   );
+  elements.selfPaymentForm.hidden =
+    currentExpected <= 0 || currentPayable <= 0 || hasBlockingPayment;
   updateSelfPaymentSuggestedAmount();
   updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, monthPercent);
   updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, yearPercent);
@@ -1891,6 +1901,41 @@ function renderSelfPaymentInstructions(payableAmount) {
     ${holder ? `<span>Titular: ${escapeHtml(holder)}</span>` : ""}
     ${paymentLink ? "<span>El boton Pagar abre el medio de pago configurado.</span>" : ""}
     ${instructions ? `<span>${escapeHtml(instructions)}</span>` : ""}
+  `;
+}
+
+function renderSelfPaymentAlert(payment, pendingAmount, expectedAmount, payableAmount, fee) {
+  if (expectedAmount <= 0) {
+    elements.selfPaymentAlert.hidden = true;
+    elements.selfPaymentAlert.innerHTML = "";
+    return;
+  }
+
+  const monthLabel = fee ? formatMonthLabel(fee.month) : "este mes";
+  let className = "pending";
+  let title = "Tenes pendiente esta cuota";
+  let detail = `Para ${monthLabel}, primero paga y despues informa el pago con monto, fecha y observacion.`;
+
+  if (pendingAmount > 0 || payment?.status === "pendiente") {
+    className = "pending";
+    title = "Ya informaste un pago";
+    detail =
+      `Tu pago de ${monthLabel} esta pendiente de validacion. No hace falta cargarlo otra vez; si hay un error, avisale al administrador.`;
+  } else if (payment?.status === "aprobado" || payableAmount <= 0) {
+    className = "approved";
+    title = "Pago confirmado";
+    detail = `Tu pago de ${monthLabel} ya fue aprobado.`;
+  } else if (payment?.status === "rechazado") {
+    className = "rejected";
+    title = "Pago rechazado";
+    detail = "Revisa el dato con el administrador y volve a informar el pago si corresponde.";
+  }
+
+  elements.selfPaymentAlert.hidden = false;
+  elements.selfPaymentAlert.className = `self-payment-alert ${className}`;
+  elements.selfPaymentAlert.innerHTML = `
+    <strong>${escapeHtml(title)}</strong>
+    <span>${escapeHtml(detail)}</span>
   `;
 }
 
@@ -2866,6 +2911,14 @@ function getOpenTrainingSession(now = new Date()) {
   }
 
   return null;
+}
+
+function getDefaultTrainingResponseDate() {
+  const session = getOpenTrainingSession();
+  if (session) return session.date;
+
+  const today = getTodayString();
+  return isTrainingDate(today) ? today : state.responsibilityConfig.attendanceStartDate;
 }
 
 function getTrainingSessionWindow(dateValue) {

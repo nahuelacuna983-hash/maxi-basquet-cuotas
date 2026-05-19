@@ -47,6 +47,7 @@ El jugador puede:
 - ver proxima cuota estimada
 - ver alias e instrucciones de pago
 - informar pago
+- ver un aviso claro cuando el pago ya fue informado, aprobado o rechazado
 - responder al listado temporal de entrenamiento cuando esta abierto
 - ver el listado de entrenamiento separado de la cuota
 
@@ -76,6 +77,7 @@ Permite:
 - rechazar pagos pendientes
 - eliminar pagos de prueba
 - ver historial de pagos
+- anotar o corregir una respuesta de entrenamiento por un jugador que no pudo usar la app
 - exportar/importar backup JSON
 - editar configuracion de tesoreria
 
