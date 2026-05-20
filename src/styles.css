@@ -449,22 +449,38 @@ h1 {
   color: var(--ink-soft);
 }
 
-.training-action-grid {
+.training-action-grid,
+.training-tag-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 10px;
 }
 
-.training-action-grid .active {
+.training-action-grid .active,
+.training-tag-grid .active {
   border-color: var(--green);
   color: #fff;
   background: var(--green);
 }
 
+.training-tag-grid {
+  padding-top: 2px;
+}
+
+.emoji-button {
+  min-width: 42px;
+  font-size: 1.05rem;
+}
+
+.emoji-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .training-list-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 

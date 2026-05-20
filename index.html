@@ -166,15 +166,27 @@
                 <div class="training-action-grid" id="selfTrainingActions">
                   <button class="secondary-button" type="button" data-self-training-status="voy">Voy</button>
                   <button class="secondary-button" type="button" data-self-training-status="no_voy">No voy</button>
+                  <button class="secondary-button" type="button" data-self-training-status="no_voy" data-self-training-dinner-only="true">Solo cena</button>
                   <button class="secondary-button" type="button" data-self-training-status="avisa_mas_tarde">Avisa mas tarde</button>
                   <button class="secondary-button" type="button" data-self-training-status="llega_sobre_la_hora">Llega sobre la hora</button>
                   <button class="secondary-button danger-button" type="button" data-self-training-status="baja_sobre_la_hora">Baja sobre la hora</button>
+                </div>
+                <div class="training-tag-grid" id="selfTrainingTags" aria-label="Emoticones opcionales">
+                  <button class="secondary-button emoji-button" type="button" data-self-training-tag="meat" aria-label="Cena">🥩</button>
+                  <button class="secondary-button emoji-button" type="button" data-self-training-tag="cook" aria-label="Cocinero">👨‍🍳</button>
+                  <button class="secondary-button emoji-button" type="button" data-self-training-tag="wine" aria-label="Vino">🍷</button>
+                  <button class="secondary-button emoji-button" type="button" data-self-training-tag="bread" aria-label="Pan">🍞</button>
+                  <button class="secondary-button emoji-button" type="button" data-self-training-tag="beer" aria-label="Bebida">🍺</button>
                 </div>
                 <p class="form-message" id="selfTrainingMessage"></p>
                 <div class="training-list-grid" id="selfTrainingLists">
                   <div>
                     <h4>Listado</h4>
                     <ol class="training-list" id="selfTrainingMainList"></ol>
+                  </div>
+                  <div id="selfTrainingDinnerPanel">
+                    <h4>Cena</h4>
+                    <ol class="training-list" id="selfTrainingDinnerList"></ol>
                   </div>
                   <div>
                     <h4 id="selfTrainingNoResponseTitle">Todavia no respondieron</h4>
@@ -517,6 +529,8 @@
                 Estado
                 <select id="attendanceNoveltyStatus">
                   <option value="voy">Voy</option>
+                  <option value="voy_cena">Voy y cena</option>
+                  <option value="solo_cena">Solo cena</option>
                   <option value="no_voy">No voy</option>
                   <option value="avisa_mas_tarde">Avisa mas tarde</option>
                   <option value="llega_sobre_la_hora">Llega sobre la hora</option>
@@ -708,7 +722,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=training-date-fix-1"></script>
+    <script type="module" src="./src/app.js?v=training-dinner-tags-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-2"></script>
   </body>
 </html>

@@ -49,6 +49,7 @@ El jugador puede:
 - informar pago
 - ver un aviso claro cuando el pago ya fue informado, aprobado o rechazado
 - responder al listado temporal de entrenamiento cuando esta abierto
+- marcar `Solo cena` los jueves y sumar emoticones opcionales como cena, cocinero, vino, pan o bebida
 - ver el listado de entrenamiento separado de la cuota
 
 Link directo por jugador:
@@ -116,6 +117,12 @@ Funciones RPC usadas por la app:
 - `admin_review_payment`
 - `admin_soft_delete_payment`
 - `admin_update_treasury_config`
+
+SQL adicional para emoticones de entrenamiento:
+
+```txt
+supabase/attendance-tags-v1.sql
+```
 
 ## Seguridad MVP
 

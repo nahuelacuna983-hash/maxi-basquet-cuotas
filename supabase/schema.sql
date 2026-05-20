@@ -148,6 +148,8 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_source text;
 begin
   if not exists (
     select 1
@@ -173,6 +175,11 @@ begin
     raise exception 'Estado de asistencia invalido';
   end if;
 
+  v_source := coalesce(p_attendance->>'source', 'jugador');
+  if v_source <> 'jugador' and v_source not like 'jugador|tags=%' then
+    v_source := 'jugador';
+  end if;
+
   insert into public.attendances (
     id,
     date,
@@ -189,14 +196,14 @@ begin
     coalesce(p_attendance->>'event_type', 'entrenamiento'),
     p_player_id,
     p_attendance->>'status',
-    'jugador',
+    v_source,
     coalesce(nullif(p_attendance->>'created_at', '')::timestamptz, now()),
     now()
   )
   on conflict (date, player_id, event_type) do update
   set
     status = excluded.status,
-    source = 'jugador',
+    source = v_source,
     updated_at = now();
 end;
 $$;

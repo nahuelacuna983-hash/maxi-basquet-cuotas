@@ -6,6 +6,7 @@ SQL incremental de asistencia:
 
 ```txt
 supabase/attendance-v1.sql
+supabase/attendance-tags-v1.sql
 ```
 
 ## Tablas principales
@@ -65,7 +66,7 @@ Estado:
 - `date`: fecha del entrenamiento.
 - `event_type`: por ahora `entrenamiento`.
 - `status`: `voy`, `no_voy`, `avisa_mas_tarde`, `llega_sobre_la_hora`, `baja_sobre_la_hora`, `asistio`, `falto` o `aviso_tarde`.
-- `source`: `jugador` o `admin`.
+- `source`: `jugador` o `admin`. Para emoticones puede incluir tags, por ejemplo `jugador|tags=meat,cook`.
 
 ## Nota de seguridad
 

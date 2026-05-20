@@ -295,11 +295,13 @@ El listado se abre antes del entrenamiento y se cierra al publico a las `20:30` 
 2. Va a la pestana `Entrenamientos`.
 3. Elige una opcion:
    - `Voy`
+   - `Solo cena`
    - `No voy`
    - `Avisa mas tarde`
    - `Llega sobre la hora`
    - `Baja sobre la hora`, cuando corresponde.
-4. La lista publica muestra quienes confirmaron y quienes todavia no respondieron.
+4. Despues de responder puede sumar emoticones opcionales como cena, cocinero, vino, pan o bebida. Cada emoticon se puede usar una sola vez por jugador.
+5. La lista publica muestra quienes confirmaron, la lista secundaria de cena y quienes todavia no respondieron.
 
 **Que no hacer**
 

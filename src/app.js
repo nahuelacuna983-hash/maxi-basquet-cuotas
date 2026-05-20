@@ -55,6 +55,14 @@ let suppressNextSupabaseSync = false;
 let treasuryFormDirty = false;
 const authorizedSelfServicePlayerIds = new Set();
 const selfServiceAccessCodesByPlayerId = new Map();
+const attendanceTagOptions = [
+  { id: "meat", emoji: "🥩" },
+  { id: "cook", emoji: "👨‍🍳" },
+  { id: "wine", emoji: "🍷" },
+  { id: "bread", emoji: "🍞" },
+  { id: "beer", emoji: "🍺" },
+];
+const dinnerAttendanceTags = new Set(attendanceTagOptions.map((tag) => tag.id));
 const state = {
   ...persistedAppState,
   playerFilter: "todos",
@@ -144,9 +152,12 @@ const elements = {
   selfTrainingTitle: document.querySelector("#selfTrainingTitle"),
   selfTrainingWindow: document.querySelector("#selfTrainingWindow"),
   selfTrainingActions: document.querySelector("#selfTrainingActions"),
+  selfTrainingTags: document.querySelector("#selfTrainingTags"),
   selfTrainingMessage: document.querySelector("#selfTrainingMessage"),
   selfTrainingLists: document.querySelector("#selfTrainingLists"),
   selfTrainingMainList: document.querySelector("#selfTrainingMainList"),
+  selfTrainingDinnerPanel: document.querySelector("#selfTrainingDinnerPanel"),
+  selfTrainingDinnerList: document.querySelector("#selfTrainingDinnerList"),
   selfTrainingNoResponseTitle: document.querySelector("#selfTrainingNoResponseTitle"),
   selfTrainingNoResponseList: document.querySelector("#selfTrainingNoResponseList"),
   paymentPlayer: document.querySelector("#paymentPlayer"),
@@ -394,7 +405,16 @@ elements.selfTrainingActions.addEventListener("click", (event) => {
   const button = event.target.closest("[data-self-training-status]");
   if (!button) return;
 
-  submitSelfTrainingStatus(button.dataset.selfTrainingStatus);
+  submitSelfTrainingStatus(button.dataset.selfTrainingStatus, {
+    dinnerOnly: button.dataset.selfTrainingDinnerOnly === "true",
+  });
+});
+
+elements.selfTrainingTags.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-self-training-tag]");
+  if (!button || button.disabled) return;
+
+  toggleSelfTrainingTag(button.dataset.selfTrainingTag);
 });
 
 elements.playerFilters.addEventListener("click", (event) => {
@@ -799,7 +819,8 @@ elements.attendanceNoveltyForm.addEventListener("submit", async (event) => {
 
   const date = elements.attendanceNoveltyDate.value;
   const playerId = elements.attendanceNoveltyPlayer.value;
-  const status = elements.attendanceNoveltyStatus.value;
+  const selectedStatus = elements.attendanceNoveltyStatus.value;
+  const { status, tags } = normalizeAdminAttendanceResponse(selectedStatus);
 
   if (!isTrainingDate(date)) {
     elements.attendanceNoveltyMessage.textContent =
@@ -813,6 +834,12 @@ elements.attendanceNoveltyForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (tags.length > 0 && !isDinnerTrainingDate(date)) {
+    elements.attendanceNoveltyMessage.textContent =
+      "Cena y emoticones solo se usan en entrenamientos de jueves.";
+    return;
+  }
+
   const existingAttendance = getAttendanceForPlayerDate(playerId, date);
   const attendance = {
     id: existingAttendance?.id ?? createId("attendance"),
@@ -820,7 +847,7 @@ elements.attendanceNoveltyForm.addEventListener("submit", async (event) => {
     eventType: "entrenamiento",
     playerId,
     status,
-    source: "admin",
+    source: serializeAttendanceSource("admin", tags),
     createdAt: existingAttendance?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -1969,8 +1996,12 @@ function renderSelfTrainingSignup(player) {
 
   const sessionAttendances = getAttendancesForDate(session.date);
   const currentAttendance = getAttendanceForPlayerDate(player.id, session.date);
+  const isDinnerDay = isDinnerTrainingDate(session.date);
   const visibleAttendances = sessionAttendances.filter((attendance) =>
     ["voy", "avisa_mas_tarde", "llega_sobre_la_hora"].includes(attendance.status),
+  );
+  const dinnerAttendances = sessionAttendances.filter((attendance) =>
+    isDinnerDay && hasDinnerAttendanceTags(attendance),
   );
   const activePlayers = state.players.filter((item) => item.status === "activo");
   const respondedPlayerIds = new Set(sessionAttendances.map((attendance) => attendance.playerId));
@@ -1988,14 +2019,23 @@ function renderSelfTrainingSignup(player) {
     `Abierto hasta ${state.attendanceConfig.closeAt}. Minimo sugerido: ${state.attendanceConfig.trainingMinimumPlayers}.`;
   elements.selfTrainingNoResponseTitle.textContent =
     state.attendanceConfig.publicNoResponseLabel ?? "No me interesa";
+  elements.selfTrainingDinnerPanel.hidden = !isDinnerDay;
   elements.selfTrainingMainList.innerHTML = renderTrainingListItems(
     visibleAttendances.map((attendance) => ({
       name: getPlayerNameById(attendance.playerId),
       suffix: getPublicAttendanceSuffix(attendance.status),
+      tags: getAttendanceTags(attendance),
+    })),
+  );
+  elements.selfTrainingDinnerList.innerHTML = renderTrainingListItems(
+    dinnerAttendances.map((attendance) => ({
+      name: getPlayerNameById(attendance.playerId),
+      suffix: attendance.status === "no_voy" ? "solo cena" : "",
+      tags: getAttendanceTags(attendance),
     })),
   );
   elements.selfTrainingNoResponseList.innerHTML = renderTrainingListItems(
-    noResponsePlayers.map((item) => ({ name: getPlayerName(item), suffix: "" })),
+    noResponsePlayers.map((item) => ({ name: getPlayerName(item), suffix: "", tags: [] })),
   );
 
   elements.selfTrainingMessage.textContent =
@@ -2007,6 +2047,8 @@ function renderSelfTrainingSignup(player) {
     .querySelectorAll("[data-self-training-status]")
     .forEach((button) => {
       const status = button.dataset.selfTrainingStatus;
+      const isDinnerOnly = button.dataset.selfTrainingDinnerOnly === "true";
+      const hasDinnerTags = hasDinnerAttendanceTags(currentAttendance);
       const isLastMinuteDrop = status === "baja_sobre_la_hora";
       const canDrop =
         isLastMinuteDrop &&
@@ -2015,19 +2057,28 @@ function renderSelfTrainingSignup(player) {
         currentAttendance.status !== "no_voy" &&
         currentAttendance.status !== "baja_sobre_la_hora";
 
-      button.hidden = isLastMinuteDrop && !canDrop;
-      button.classList.toggle("active", currentAttendance?.status === status);
+      button.hidden = (isLastMinuteDrop && !canDrop) || (isDinnerOnly && !isDinnerDay);
+      let isActive = currentAttendance?.status === status;
+      if (status === "no_voy") {
+        isActive = isActive && (isDinnerOnly ? hasDinnerTags : !hasDinnerTags);
+      }
+      button.classList.toggle("active", isActive);
     });
+
+  renderTrainingTagButtons(currentAttendance, isDinnerDay);
 }
 
 function renderSelfTrainingUnavailable(title, message) {
   elements.selfTrainingCard.hidden = false;
   elements.selfTrainingActions.hidden = true;
+  elements.selfTrainingTags.hidden = true;
   elements.selfTrainingLists.hidden = true;
   elements.selfTrainingTitle.textContent = title;
   elements.selfTrainingWindow.textContent = "";
   elements.selfTrainingMessage.textContent = message;
   elements.selfTrainingMainList.innerHTML = "";
+  elements.selfTrainingDinnerPanel.hidden = true;
+  elements.selfTrainingDinnerList.innerHTML = "";
   elements.selfTrainingNoResponseList.innerHTML = "";
 }
 
@@ -2038,7 +2089,7 @@ function renderTrainingListItems(items) {
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(
       (item) =>
-        `<li>${escapeHtml(item.name)}${item.suffix ? ` <span class="muted-detail">(${escapeHtml(item.suffix)})</span>` : ""}</li>`,
+        `<li>${escapeHtml(item.name)}${formatAttendanceTags(item.tags)}${item.suffix ? ` <span class="muted-detail">(${escapeHtml(item.suffix)})</span>` : ""}</li>`,
     )
     .join("");
 }
@@ -2052,7 +2103,24 @@ function getPublicAttendanceSuffix(status) {
   return labels[status] ?? "";
 }
 
-async function submitSelfTrainingStatus(status) {
+function isDinnerTrainingDate(dateValue) {
+  return parseDateInputValue(dateValue)?.getDay() === 4;
+}
+
+function renderTrainingTagButtons(currentAttendance, isDinnerDay) {
+  elements.selfTrainingTags.hidden = !isDinnerDay;
+  if (!isDinnerDay) return;
+
+  const currentTags = new Set(getAttendanceTags(currentAttendance));
+  const hasAnswered = Boolean(currentAttendance);
+
+  elements.selfTrainingTags.querySelectorAll("[data-self-training-tag]").forEach((button) => {
+    button.disabled = !hasAnswered;
+    button.classList.toggle("active", currentTags.has(button.dataset.selfTrainingTag));
+  });
+}
+
+async function submitSelfTrainingStatus(status, options = {}) {
   const player = state.players.find((item) => item.id === state.selectedSelfServicePlayerId);
   const session = getOpenTrainingSession();
   if (!player || !canViewSelfServicePlayer(player)) {
@@ -2065,6 +2133,11 @@ async function submitSelfTrainingStatus(status) {
     return;
   }
 
+  if (options.dinnerOnly && !isDinnerTrainingDate(session.date)) {
+    elements.selfTrainingMessage.textContent = "Solo cena se usa en entrenamientos de jueves.";
+    return;
+  }
+
   if (status === "baja_sobre_la_hora" && !isLastMinuteDropWindow(session)) {
     elements.selfTrainingMessage.textContent =
       `Baja sobre la hora se habilita desde ${state.attendanceConfig.lastMinuteDropStartsAt}.`;
@@ -2072,13 +2145,14 @@ async function submitSelfTrainingStatus(status) {
   }
 
   const existingAttendance = getAttendanceForPlayerDate(player.id, session.date);
+  const nextTags = getNextAttendanceTags(existingAttendance, status, options);
   const attendance = {
     id: existingAttendance?.id ?? createId("attendance"),
     date: session.date,
     eventType: "entrenamiento",
     playerId: player.id,
     status,
-    source: "jugador",
+    source: serializeAttendanceSource("jugador", nextTags),
     createdAt: existingAttendance?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -2090,7 +2164,51 @@ async function submitSelfTrainingStatus(status) {
   );
 
   elements.selfTrainingMessage.textContent = saved
-    ? `Respuesta guardada: ${formatAttendanceStatus(status)}.`
+    ? `Respuesta guardada: ${options.dinnerOnly ? "Solo cena" : formatAttendanceStatus(status)}.`
+    : state.syncStatus;
+}
+
+async function toggleSelfTrainingTag(tag) {
+  const player = state.players.find((item) => item.id === state.selectedSelfServicePlayerId);
+  const session = getOpenTrainingSession();
+  if (!player || !canViewSelfServicePlayer(player)) {
+    elements.selfTrainingMessage.textContent = "Ingresa tu codigo antes de usar emoticones.";
+    return;
+  }
+
+  if (!session) {
+    elements.selfTrainingMessage.textContent = "No hay listado abierto en este momento.";
+    return;
+  }
+
+  if (!isDinnerTrainingDate(session.date)) {
+    elements.selfTrainingMessage.textContent =
+      "Los emoticones de cena se usan en entrenamientos de jueves.";
+    return;
+  }
+
+  const existingAttendance = getAttendanceForPlayerDate(player.id, session.date);
+  if (!existingAttendance) {
+    elements.selfTrainingMessage.textContent =
+      "Primero marca tu respuesta y despues agrega emoticones.";
+    return;
+  }
+
+  const nextTags = toggleAttendanceTag(existingAttendance, tag);
+  const sourceBase = state.isAdminMode ? getAttendanceBaseSource(existingAttendance) : "jugador";
+  const saved = await persistAttendance(
+    {
+      ...existingAttendance,
+      source: serializeAttendanceSource(sourceBase, nextTags),
+      updatedAt: new Date().toISOString(),
+    },
+    "Emoticon guardado",
+    "Error al guardar emoticon",
+    { admin: state.isAdminMode },
+  );
+
+  elements.selfTrainingMessage.textContent = saved
+    ? `Emoticones: ${formatAttendanceTags(nextTags) || "sin emoticones"}.`
     : state.syncStatus;
 }
 
@@ -2867,6 +2985,89 @@ function formatAttendanceStatus(status) {
   };
 
   return labels[status] ?? status;
+}
+
+function normalizeAdminAttendanceResponse(selectedStatus) {
+  const responseMap = {
+    voy_cena: { status: "voy", tags: ["meat"] },
+    solo_cena: { status: "no_voy", tags: ["meat"] },
+  };
+
+  return responseMap[selectedStatus] ?? { status: selectedStatus, tags: [] };
+}
+
+function getAttendanceTagOption(tagId) {
+  return attendanceTagOptions.find((tag) => tag.id === tagId);
+}
+
+function normalizeAttendanceTags(tags = []) {
+  const selectedTags = new Set(tags);
+
+  return attendanceTagOptions
+    .map((tag) => tag.id)
+    .filter((tagId) => selectedTags.has(tagId));
+}
+
+function getAttendanceBaseSource(attendance) {
+  return String(attendance?.source ?? "jugador").split("|")[0] || "jugador";
+}
+
+function getAttendanceTags(attendance) {
+  if (!attendance) return [];
+
+  const tagsPart = String(attendance.source ?? "")
+    .split("|")
+    .find((part) => part.startsWith("tags="));
+
+  if (!tagsPart) return [];
+
+  return normalizeAttendanceTags(
+    tagsPart
+      .replace("tags=", "")
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean),
+  );
+}
+
+function serializeAttendanceSource(baseSource, tags = []) {
+  const normalizedTags = normalizeAttendanceTags(tags);
+  const source = baseSource || "jugador";
+
+  return normalizedTags.length ? `${source}|tags=${normalizedTags.join(",")}` : source;
+}
+
+function hasDinnerAttendanceTags(attendance) {
+  return getAttendanceTags(attendance).some((tag) => dinnerAttendanceTags.has(tag));
+}
+
+function toggleAttendanceTag(attendance, tag) {
+  const selectedTags = new Set(getAttendanceTags(attendance));
+
+  if (selectedTags.has(tag)) {
+    selectedTags.delete(tag);
+  } else {
+    selectedTags.add(tag);
+  }
+
+  return normalizeAttendanceTags([...selectedTags]);
+}
+
+function getNextAttendanceTags(existingAttendance, status, options = {}) {
+  if (status === "no_voy" && !options.dinnerOnly) return [];
+
+  const tags = new Set(getAttendanceTags(existingAttendance));
+  if (options.dinnerOnly) tags.add("meat");
+
+  return normalizeAttendanceTags([...tags]);
+}
+
+function formatAttendanceTags(tags = []) {
+  const emojis = normalizeAttendanceTags(tags)
+    .map((tag) => getAttendanceTagOption(tag)?.emoji)
+    .filter(Boolean);
+
+  return emojis.length ? ` ${emojis.join(" ")}` : "";
 }
 
 function getPaymentMutationMessage(baseMessage, mutationResult) {
