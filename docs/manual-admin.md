@@ -289,6 +289,8 @@ Sirve para saber cuantos van a entrenar y si hace falta invitar gente.
 
 El listado se abre antes del entrenamiento y se cierra al publico a las `20:30` del mismo dia. Aunque desaparezca para jugadores, queda guardado para historial y estadisticas.
 
+Desde el cierre, todos los martes y jueves configurados cuentan para estadisticas. Si una fecha no tiene ninguna respuesta cargada, la app interpreta que todos los jugadores activos estuvieron ausentes. No crea registros falsos, pero si lo usa para estadisticas y responsabilidad.
+
 **Como se usa**
 
 1. El jugador entra con su codigo.
@@ -310,6 +312,8 @@ No usar el listado como deuda ni habilitacion. No cerrar manualmente registros s
 **Dato historico inicial**
 
 La app ya tiene cargado un bloque historico inicial desde la planilla de abril/mayo 2026. Ese bloque sirve como arranque de estadisticas de asistencia y responsabilidad.
+
+Si falta una fecha historica y esa fecha fue martes o jueves posterior al inicio de asistencia, la app la va a contar como jornada cerrada sin respuestas. Eso aumenta las ausencias inferidas.
 
 ## Correccion de asistencia
 

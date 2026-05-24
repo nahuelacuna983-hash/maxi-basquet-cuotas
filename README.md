@@ -21,6 +21,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Secciones base disponibles para estadisticas, convocatorias y VIP.
 - Asistencia historica inicial cargada para iniciar estadisticas reales.
 - Responsabilidad descuenta bajas, faltas explicitas y ausencias inferidas de jugadores activos en entrenamientos cerrados.
+- Las estadisticas consideran todos los martes y jueves cerrados desde la fecha de inicio, aunque no haya ningun registro cargado.
 - Seleccion de mes para consultar abril, mayo u otras cuotas cargadas.
 - Pagos con estado `pendiente`, `aprobado` o `rechazado`.
 - Solo pagos aprobados descuentan deuda.
@@ -206,6 +207,7 @@ Reglas de la primera version:
 - `Todavia no respondieron` muestra jugadores activos sin respuesta.
 - `No voy` queda registrado, pero no aparece en el listado publico.
 - Admin conserva el historico para presentismo y estadisticas.
+- Si un martes o jueves ya cerro y nadie respondio, la fecha cuenta igual para estadisticas: todos los jugadores activos quedan como ausentes inferidos.
 
 Estados de jugador:
 

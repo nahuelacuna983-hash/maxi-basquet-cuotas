@@ -210,3 +210,9 @@ Al 2026-05-19:
 - Se corrigio la fecha de `Respuesta admin`: la sincronizacion con Supabase ya no pisa la fecha elegida ni vuelve automaticamente al 06/04/2026.
 - Se agrego soporte para jueves con `Solo cena`, lista secundaria de cena y emoticones opcionales por jugador sin repetir.
 - Para que los emoticones queden compartidos por Supabase, se agrego `supabase/attendance-tags-v1.sql`.
+
+Al 2026-05-24:
+
+- Las estadisticas de asistencia y responsabilidad pasan a considerar todos los martes y jueves cerrados desde `attendanceStartDate`, aunque no exista ningun registro de esa fecha.
+- Si una jornada cerrada no tiene respuestas, todos los jugadores activos cuentan como ausentes inferidos.
+- La pestaña `Estadisticas` muestra cantidad de jornadas cerradas y cuantas no tuvieron ninguna respuesta.

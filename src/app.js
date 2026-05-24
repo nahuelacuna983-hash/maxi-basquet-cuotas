@@ -1548,7 +1548,8 @@ function renderResponsibilityAdjustments() {
   elements.responsibilityBaseInfo.innerHTML = `
     <strong>Base anual: ${baseScore} pts</strong>
     <span>Inicio ${state.responsibilityConfig.attendanceStartDate} / ${trainingCount} entrenamientos de martes y jueves / ${state.responsibilityConfig.pointsPerTraining} pts posibles por entrenamiento</span>
-    <span>${completedTrainingDates.length} entrenamientos cerrados con control de ausentes activos.</span>
+    <span>${completedTrainingDates.length} entrenamientos cerrados del calendario con control de ausentes activos.</span>
+    <span>Si una fecha cerrada no tiene respuestas, todos los jugadores activos cuentan como ausentes inferidos.</span>
   `;
 
   elements.responsibilityAdjustmentsTable.innerHTML = getSortedPlayers()
@@ -1612,6 +1613,7 @@ function renderAdminStats(debts) {
     ["baja_sobre_la_hora", "baja_sobre_hora"].includes(attendance.status),
   );
   const implicitAbsenceCount = getImplicitAbsenceCount(completedTrainingDates);
+  const noRecordTrainingCount = getNoRecordTrainingCount(completedTrainingDates);
   const averageAttendance = completedTrainingDates.length
     ? Math.round(visibleAttendances.length / completedTrainingDates.length)
     : 0;
@@ -1645,7 +1647,12 @@ function renderAdminStats(debts) {
       <article class="metric-card compact-stat">
         <span>Promedio asistencia</span>
         <strong>${averageAttendance}</strong>
-        <p>Promedio por entrenamiento con registros.</p>
+        <p>Promedio por entrenamiento cerrado.</p>
+      </article>
+      <article class="metric-card compact-stat">
+        <span>Jornadas cerradas</span>
+        <strong>${completedTrainingDates.length}</strong>
+        <p>${noRecordTrainingCount} sin ninguna respuesta.</p>
       </article>
       <article class="metric-card compact-stat">
         <span>Ausencias inferidas</span>
@@ -1666,7 +1673,7 @@ function renderAdminStats(debts) {
             `<span>${escapeHtml(getPlayerName(player))}: ${getResponsibilityDetails(player.id, completedTrainingDates).score} pts</span>`,
         )
         .join("")}
-      <span>Las ausencias inferidas se calculan comparando jugadores activos contra listas cerradas.</span>
+      <span>Las ausencias inferidas se calculan comparando jugadores activos contra todos los martes y jueves cerrados del calendario.</span>
     </div>
   `;
 }
@@ -3211,19 +3218,23 @@ function getAttendancesForDate(date) {
 }
 
 function getCompletedTrainingDates(now = new Date()) {
-  return [
-    ...new Set(
-      state.attendances
-        .filter(
-          (attendance) =>
-            (attendance.eventType ?? "entrenamiento") === "entrenamiento" &&
-            isTrainingDate(attendance.date) &&
-            attendance.date >= state.responsibilityConfig.attendanceStartDate &&
-            isTrainingSessionClosed(attendance.date, now),
-        )
-        .map((attendance) => attendance.date),
-    ),
-  ].sort();
+  const start = parseDateInputValue(state.responsibilityConfig.attendanceStartDate);
+  const configuredEnd = parseDateInputValue(state.responsibilityConfig.attendanceEndDate);
+  if (!start || !configuredEnd) return [];
+
+  const end = new Date(Math.min(configuredEnd.getTime(), now.getTime()));
+  const completedDates = [];
+  const current = new Date(start);
+
+  while (current <= end) {
+    const dateValue = formatDateInputValue(current);
+    if (isTrainingDate(dateValue) && isTrainingSessionClosed(dateValue, now)) {
+      completedDates.push(dateValue);
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return completedDates;
 }
 
 function isTrainingSessionClosed(dateValue, now = new Date()) {
@@ -3249,6 +3260,10 @@ function getImplicitAbsenceCount(completedTrainingDates = getCompletedTrainingDa
       activePlayers.filter((player) => !registeredPlayerIds.has(player.id)).length
     );
   }, 0);
+}
+
+function getNoRecordTrainingCount(completedTrainingDates = getCompletedTrainingDates()) {
+  return completedTrainingDates.filter((date) => getAttendancesForDate(date).length === 0).length;
 }
 
 function getAttendanceForPlayerDate(playerId, date) {
