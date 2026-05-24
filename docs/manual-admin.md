@@ -393,6 +393,44 @@ El ranking puede sugerir, pero la decision final de convocatoria debe poder revi
 
 No mandar el reporte sin revisar si hubo cambios recientes de pago, deuda o habilitacion.
 
+## Informes
+
+**Que es**
+
+Es la seccion para leer datos existentes de pagos, asistencia y responsabilidad en formato mas claro.
+
+**Para que sirve**
+
+Sirve para revisar un jugador puntual, mirar todos los pagos, controlar asistencia, revisar responsabilidad o tener un resumen general del equipo sin tocar datos.
+
+**Por que se usa asi**
+
+Los informes no modifican nada. Solo leen lo que ya esta cargado en jugadores, cuotas, pagos y asistencias. Si algun dato falta, el informe muestra ceros o `sin datos` en vez de romper la app.
+
+**Como se usa**
+
+1. Entrar en modo admin.
+2. Ir a `Reportes`.
+3. Elegir tipo de informe:
+   - `Individual`
+   - `Pagos general`
+   - `Asistencia general`
+   - `Responsabilidad general`
+   - `General del equipo`
+   - `Graficos`
+4. Elegir jugador si el informe es individual.
+5. Elegir mes o `Todos los meses`.
+6. Tocar `Generar informe`.
+7. Revisar el resultado en pantalla o tocar `Copiar informe`.
+
+**Que mirar**
+
+En pagos, revisar deuda, interes y pagos pendientes. En asistencia, revisar no respuestas y bajas sobre la hora. En responsabilidad, revisar descuentos y motivo principal.
+
+**Que no hacer**
+
+No usar el informe como comprobante definitivo sin revisar pagos pendientes. No confundir `pagos pendientes` con dinero aprobado: solo los pagos aprobados descuentan deuda.
+
 ## Backups
 
 **Que es**

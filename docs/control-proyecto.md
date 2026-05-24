@@ -216,3 +216,5 @@ Al 2026-05-24:
 - Las estadisticas de asistencia y responsabilidad pasan a considerar todos los martes y jueves cerrados desde `attendanceStartDate`, aunque no exista ningun registro de esa fecha.
 - Si una jornada cerrada no tiene respuestas, todos los jugadores activos cuentan como ausentes inferidos.
 - La pestaña `Estadisticas` muestra cantidad de jornadas cerradas y cuantas no tuvieron ninguna respuesta.
+- Se agrego la primera version de `Informes`: individual, pagos general, asistencia general, responsabilidad general, general del equipo y graficos simples.
+- Los informes se generan en pantalla y se pueden copiar como texto; no modifican datos ni agregan PDF.

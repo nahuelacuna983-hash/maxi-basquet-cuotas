@@ -71,6 +71,10 @@ const state = {
     getSortedPlayers(persistedAppState.players)[0]?.id ??
     "",
   selectedSelfServiceMonth: "",
+  selectedReportType: "general_equipo",
+  selectedReportPlayerId: "",
+  selectedReportMonth: getCurrentMonth(),
+  currentReportText: "",
   activePlayerTab: "quota",
   activeAdminTab: "resumen",
   isAdminMode: false,
@@ -191,6 +195,15 @@ const elements = {
   attendanceList: document.querySelector("#attendanceList"),
   adminStatsPanel: document.querySelector("#adminStatsPanel"),
   adminCallupsPanel: document.querySelector("#adminCallupsPanel"),
+  reportType: document.querySelector("#reportType"),
+  reportPlayer: document.querySelector("#reportPlayer"),
+  reportPlayerField: document.querySelector("#reportPlayerField"),
+  reportMonth: document.querySelector("#reportMonth"),
+  generateReportButton: document.querySelector("#generateReportButton"),
+  copyReportButton: document.querySelector("#copyReportButton"),
+  reportMessage: document.querySelector("#reportMessage"),
+  reportVisualOutput: document.querySelector("#reportVisualOutput"),
+  detailedReportText: document.querySelector("#detailedReportText"),
   whatsappReport: document.querySelector("#whatsappReport"),
 };
 
@@ -290,6 +303,27 @@ elements.adminTabs.addEventListener("click", (event) => {
   if (!button) return;
   state.activeAdminTab = button.dataset.adminTab;
   renderAdminTabs();
+});
+
+elements.reportType.addEventListener("change", () => {
+  state.selectedReportType = elements.reportType.value;
+  renderReportOptions();
+});
+
+elements.reportPlayer.addEventListener("change", () => {
+  state.selectedReportPlayerId = elements.reportPlayer.value;
+});
+
+elements.reportMonth.addEventListener("change", () => {
+  state.selectedReportMonth = elements.reportMonth.value;
+});
+
+elements.generateReportButton.addEventListener("click", () => {
+  generateDetailedReport();
+});
+
+elements.copyReportButton.addEventListener("click", async () => {
+  await copyDetailedReport();
 });
 
 elements.selfPaymentDate.addEventListener("change", () => {
@@ -889,6 +923,7 @@ function render() {
   renderPaymentsHistory();
   renderAttendances();
   renderResponsibilityAdjustments();
+  renderReportOptions();
   renderWhatsappReport(debts);
   renderAdminStats(debts);
   renderAdminCallups(debts);
@@ -1710,6 +1745,570 @@ function renderAdminCallups(debts) {
         .join("") || '<li class="muted-detail">Sin jugadores sugeridos.</li>'}
     </ol>
   `;
+}
+
+function renderReportOptions() {
+  const sortedPlayers = getSortedPlayers();
+  const feeMonths = getReportFeeMonths();
+
+  if (!state.selectedReportPlayerId || !sortedPlayers.some((player) => player.id === state.selectedReportPlayerId)) {
+    state.selectedReportPlayerId = sortedPlayers[0]?.id ?? "";
+  }
+
+  if (!state.selectedReportMonth || (state.selectedReportMonth !== "all" && !feeMonths.includes(state.selectedReportMonth))) {
+    state.selectedReportMonth = feeMonths.includes(getCurrentMonth()) ? getCurrentMonth() : (feeMonths[0] ?? "all");
+  }
+
+  elements.reportType.value = state.selectedReportType;
+  elements.reportPlayerField.hidden = state.selectedReportType !== "individual";
+  elements.reportPlayer.innerHTML =
+    sortedPlayers
+      .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
+      .join("") || '<option value="">Sin jugadores</option>';
+  elements.reportPlayer.value = state.selectedReportPlayerId;
+  elements.reportMonth.innerHTML = [
+    '<option value="all">Todos los meses</option>',
+    ...feeMonths.map((month) => `<option value="${month}">${formatMonthLabel(month)}</option>`),
+  ].join("");
+  elements.reportMonth.value = state.selectedReportMonth;
+}
+
+function generateDetailedReport() {
+  state.selectedReportType = elements.reportType.value;
+  state.selectedReportPlayerId = elements.reportPlayer.value;
+  state.selectedReportMonth = elements.reportMonth.value;
+
+  const report = buildDetailedReport();
+  state.currentReportText = report.text;
+  elements.detailedReportText.value = report.text;
+  elements.reportVisualOutput.innerHTML = report.html;
+  elements.reportMessage.textContent = report.message || "Informe generado.";
+}
+
+async function copyDetailedReport() {
+  const text = state.currentReportText || elements.detailedReportText.value;
+  if (!text.trim()) {
+    elements.reportMessage.textContent = "Primero genera un informe.";
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    elements.reportMessage.textContent = "Informe copiado.";
+  } catch {
+    elements.reportMessage.textContent = "No se pudo copiar el informe.";
+  }
+}
+
+function buildDetailedReport() {
+  const type = state.selectedReportType;
+  const context = getReportContext();
+
+  if (type === "individual") return buildIndividualReport(context);
+  if (type === "pagos_general") return buildGeneralPaymentsReport(context);
+  if (type === "asistencia_general") return buildGeneralAttendanceReport(context);
+  if (type === "responsabilidad_general") return buildGeneralResponsibilityReport(context);
+  if (type === "graficos") return buildChartsReport(context);
+  return buildTeamGeneralReport(context);
+}
+
+function getReportContext() {
+  const fees = getReportFees();
+  const completedTrainingDates = getReportCompletedTrainingDates();
+  const scopeLabel = getReportScopeLabel();
+
+  return {
+    fees,
+    completedTrainingDates,
+    scopeLabel,
+    players: getSortedPlayers(),
+  };
+}
+
+function buildIndividualReport(context) {
+  const player = state.players.find((item) => item.id === state.selectedReportPlayerId);
+  if (!player) return createEmptyReport("No hay jugador seleccionado.");
+
+  const paymentSummary = getPlayerPaymentReport(player, context.fees);
+  const attendanceSummary = getPlayerAttendanceReport(player, context.completedTrainingDates);
+  const responsibility = getResponsibilityDetails(player.id, context.completedTrainingDates);
+  const discountTotal = responsibility.historicalDiscount + responsibility.attendanceDiscount;
+
+  const lines = [
+    `Informe individual - ${getPlayerName(player)}`,
+    `Periodo: ${context.scopeLabel}`,
+    "",
+    "Pagos",
+    `- Estado: ${paymentSummary.status}`,
+    `- Cuota esperada: ${formatMoney(paymentSummary.expected)}`,
+    `- Pagado aprobado: ${formatMoney(paymentSummary.approved)}`,
+    `- Pagos pendientes: ${formatMoney(paymentSummary.pending)} (${paymentSummary.pendingCount})`,
+    `- Interes: ${formatMoney(paymentSummary.interest)}`,
+    `- Deuda: ${formatMoney(paymentSummary.debt)}`,
+    "",
+    "Asistencia",
+    `- Jornadas cerradas: ${attendanceSummary.closed}`,
+    `- Respuestas cargadas: ${attendanceSummary.registered}`,
+    `- Voy / asistio: ${attendanceSummary.confirmed}`,
+    `- No voy: ${attendanceSummary.noVoy}`,
+    `- No respondio: ${attendanceSummary.noResponse}`,
+    `- Llega sobre la hora: ${attendanceSummary.lateArrival}`,
+    `- Baja sobre la hora: ${attendanceSummary.lastMinuteDrops}`,
+    `- Cena: ${attendanceSummary.dinner}`,
+    "",
+    "Responsabilidad",
+    `- Puntaje base: ${responsibility.baseScore}`,
+    `- Descuentos: ${discountTotal}`,
+    `- Ausencias inferidas: ${responsibility.implicitAbsenceDiscount}`,
+    `- Puntaje actual: ${responsibility.score}`,
+  ];
+
+  const html = `
+    <div class="report-card">
+      <h3>${escapeHtml(getPlayerName(player))}</h3>
+      <p>${escapeHtml(context.scopeLabel)}</p>
+      <div class="stats-grid">
+        ${renderReportMetric("Estado cuota", paymentSummary.status)}
+        ${renderReportMetric("Deuda", formatMoney(paymentSummary.debt))}
+        ${renderReportMetric("No respondio", attendanceSummary.noResponse)}
+        ${renderReportMetric("Responsabilidad", `${responsibility.score} pts`)}
+      </div>
+    </div>
+    ${renderReportTable(
+      ["Cuota esperada", "Aprobado", "Pendiente", "Interes", "Deuda", "Estado"],
+      [[
+        formatMoney(paymentSummary.expected),
+        formatMoney(paymentSummary.approved),
+        formatMoney(paymentSummary.pending),
+        formatMoney(paymentSummary.interest),
+        formatMoney(paymentSummary.debt),
+        paymentSummary.status,
+      ]],
+    )}
+    ${renderReportTable(
+      ["Cerradas", "Voy", "No voy", "No respondio", "Llega sobre hora", "Baja sobre hora", "Cena"],
+      [[
+        attendanceSummary.closed,
+        attendanceSummary.confirmed,
+        attendanceSummary.noVoy,
+        attendanceSummary.noResponse,
+        attendanceSummary.lateArrival,
+        attendanceSummary.lastMinuteDrops,
+        attendanceSummary.dinner,
+      ]],
+    )}
+  `;
+
+  return { text: lines.join("\n"), html };
+}
+
+function buildGeneralPaymentsReport(context) {
+  const rows = context.players.map((player) => {
+    const summary = getPlayerPaymentReport(player, context.fees);
+    return {
+      player,
+      summary,
+      text: [
+        getPlayerName(player),
+        formatMoney(summary.expected),
+        formatMoney(summary.approved),
+        formatMoney(summary.pending),
+        formatMoney(summary.interest),
+        formatMoney(summary.debt),
+        summary.status,
+      ],
+    };
+  });
+
+  const lines = [
+    "Informe de pagos general",
+    `Periodo: ${context.scopeLabel}`,
+    "",
+    "Jugador | Esperado | Aprobado | Pendiente | Interes | Deuda | Estado",
+    ...rows.map((row) => row.text.join(" | ")),
+  ];
+
+  return {
+    text: lines.join("\n"),
+    html: renderReportTable(
+      ["Jugador", "Esperado", "Aprobado", "Pendiente", "Interes", "Deuda", "Estado"],
+      rows.map((row) => row.text),
+    ),
+  };
+}
+
+function buildGeneralAttendanceReport(context) {
+  const rows = context.players.map((player) => {
+    const summary = getPlayerAttendanceReport(player, context.completedTrainingDates);
+    return [
+      getPlayerName(player),
+      `${summary.registered}/${summary.closed}`,
+      summary.confirmed,
+      summary.noVoy,
+      summary.noResponse,
+      summary.lateArrival,
+      summary.lastMinuteDrops,
+    ];
+  });
+
+  const lines = [
+    "Informe de asistencia general",
+    `Periodo: ${context.scopeLabel}`,
+    "",
+    "Jugador | Cargados/Cerrados | Voy | No voy | No respondio | Llega sobre hora | Baja sobre hora",
+    ...rows.map((row) => row.join(" | ")),
+  ];
+
+  return {
+    text: lines.join("\n"),
+    html: renderReportTable(
+      ["Jugador", "Cargados/Cerrados", "Voy", "No voy", "No respondio", "Llega sobre hora", "Baja sobre hora"],
+      rows,
+    ),
+  };
+}
+
+function buildGeneralResponsibilityReport(context) {
+  const rows = context.players
+    .map((player) => {
+      const details = getResponsibilityDetails(player.id, context.completedTrainingDates);
+      const discount = details.historicalDiscount + details.attendanceDiscount;
+      const reason = getMainResponsibilityDiscountReason(player, details, context.completedTrainingDates);
+      return { player, details, discount, reason };
+    })
+    .sort((a, b) => b.details.score - a.details.score);
+
+  const textRows = rows.map((row, index) => [
+    index + 1,
+    getPlayerName(row.player),
+    row.details.baseScore,
+    row.discount,
+    row.details.score,
+    row.reason,
+  ]);
+  const lines = [
+    "Informe de responsabilidad general",
+    `Periodo: ${context.scopeLabel}`,
+    "",
+    "Pos | Jugador | Base | Descuentos | Final | Motivo principal",
+    ...textRows.map((row) => row.join(" | ")),
+  ];
+
+  return {
+    text: lines.join("\n"),
+    html: renderReportTable(
+      ["#", "Jugador", "Base", "Descuentos", "Final", "Motivo principal"],
+      textRows,
+    ),
+  };
+}
+
+function buildTeamGeneralReport(context) {
+  const totals = getPaymentTotalsForReport(context.fees);
+  const pendingPayments = getScopedPayments(context.fees).filter((payment) => payment.status === "pendiente");
+  const playersWithDebt = context.players
+    .map((player) => ({ player, summary: getPlayerPaymentReport(player, context.fees) }))
+    .filter((item) => item.summary.status === "moroso");
+  const attendanceRows = context.players.map((player) => getPlayerAttendanceReport(player, context.completedTrainingDates));
+  const totalClosed = context.completedTrainingDates.length;
+  const totalConfirmed = attendanceRows.reduce((sum, row) => sum + row.confirmed, 0);
+  const averageAttendance = totalClosed ? Math.round(totalConfirmed / totalClosed) : 0;
+  const responsibilityRows = context.players
+    .filter((player) => player.status === "activo")
+    .map((player) => ({
+      player,
+      details: getResponsibilityDetails(player.id, context.completedTrainingDates),
+      attendance: getPlayerAttendanceReport(player, context.completedTrainingDates),
+    }))
+    .sort((a, b) => b.details.score - a.details.score);
+  const committed = responsibilityRows.slice(0, 5);
+  const reviewPlayers = responsibilityRows
+    .filter((row) => row.attendance.noResponse > 0 || row.attendance.lastMinuteDrops > 0)
+    .slice(-5);
+
+  const lines = [
+    "Informe general del equipo",
+    `Periodo: ${context.scopeLabel}`,
+    "",
+    `Total esperado: ${formatMoney(totals.expected)}`,
+    `Total cobrado aprobado: ${formatMoney(totals.approved)}`,
+    `Total pendiente/deuda: ${formatMoney(totals.debt)}`,
+    `Morosos: ${playersWithDebt.length}`,
+    `Pagos pendientes de validacion: ${pendingPayments.length}`,
+    `Porcentaje de cobro: ${totals.percent}%`,
+    `Asistencia promedio: ${averageAttendance}`,
+    "",
+    "Jugadores mas comprometidos:",
+    ...committed.map((row, index) => `${index + 1}. ${getPlayerName(row.player)} - ${row.details.score} pts`),
+    "",
+    "Jugadores a revisar:",
+    ...(reviewPlayers.length
+      ? reviewPlayers.map((row) => `- ${getPlayerName(row.player)}: ${row.attendance.noResponse} no respuestas, ${row.attendance.lastMinuteDrops} bajas sobre hora`)
+      : ["Sin alertas relevantes."]),
+  ];
+
+  const html = `
+    <div class="stats-grid">
+      ${renderReportMetric("Esperado", formatMoney(totals.expected))}
+      ${renderReportMetric("Cobrado", formatMoney(totals.approved))}
+      ${renderReportMetric("Pendiente", formatMoney(totals.debt))}
+      ${renderReportMetric("Cobro", `${totals.percent}%`)}
+      ${renderReportMetric("Morosos", playersWithDebt.length)}
+      ${renderReportMetric("Pagos pendientes", pendingPayments.length)}
+      ${renderReportMetric("Asistencia promedio", averageAttendance)}
+      ${renderReportMetric("Jornadas cerradas", totalClosed)}
+    </div>
+    ${renderReportTable(
+      ["Mas comprometidos", "Puntaje"],
+      committed.map((row) => [getPlayerName(row.player), row.details.score]),
+    )}
+  `;
+
+  return { text: lines.join("\n"), html };
+}
+
+function buildChartsReport(context) {
+  const totals = getPaymentTotalsForReport(context.fees);
+  const responsibilityRows = context.players
+    .filter((player) => player.status === "activo")
+    .map((player) => ({
+      label: getPlayerName(player),
+      value: getResponsibilityDetails(player.id, context.completedTrainingDates).score,
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10);
+  const attendanceRows = context.players
+    .filter((player) => player.status === "activo")
+    .map((player) => ({
+      label: getPlayerName(player),
+      value: getPlayerAttendanceReport(player, context.completedTrainingDates).confirmed,
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10);
+
+  const approvedPercent = totals.totalFlow > 0 ? Math.round((totals.approved / totals.totalFlow) * 100) : 0;
+  const pendingPercent = totals.totalFlow > 0 ? Math.round((totals.pending / totals.totalFlow) * 100) : 0;
+  const debtPercent = Math.max(100 - approvedPercent - pendingPercent, 0);
+
+  const lines = [
+    "Graficos basicos",
+    `Periodo: ${context.scopeLabel}`,
+    "",
+    `Cobro del periodo: ${totals.percent}%`,
+    `Aprobado: ${formatMoney(totals.approved)}`,
+    `Pendiente de validacion: ${formatMoney(totals.pending)}`,
+    `Deuda: ${formatMoney(totals.debt)}`,
+  ];
+
+  const html = `
+    <div class="report-chart-card">
+      <h3>Porcentaje de cobro del periodo</h3>
+      ${renderReportProgressBar(totals.percent, `${totals.percent}% cobrado`)}
+    </div>
+    <div class="report-chart-card">
+      <h3>Aprobados / pendientes / deuda</h3>
+      <div class="stacked-bar" aria-label="Aprobados pendientes deuda">
+        <span class="stack-approved" style="width:${approvedPercent}%"></span>
+        <span class="stack-pending" style="width:${pendingPercent}%"></span>
+        <span class="stack-debt" style="width:${debtPercent}%"></span>
+      </div>
+      <p class="muted-detail">Aprobado ${approvedPercent}% / Pendiente ${pendingPercent}% / Deuda ${debtPercent}%</p>
+    </div>
+    <div class="report-chart-card">
+      <h3>Ranking de responsabilidad</h3>
+      ${renderHorizontalBars(responsibilityRows)}
+    </div>
+    <div class="report-chart-card">
+      <h3>Asistencia por jugador</h3>
+      ${renderHorizontalBars(attendanceRows)}
+    </div>
+  `;
+
+  return { text: lines.join("\n"), html };
+}
+
+function getReportFeeMonths() {
+  return [...new Set(state.fees.map((fee) => fee.month))].sort().reverse();
+}
+
+function getReportFees() {
+  const fees = state.selectedReportMonth === "all"
+    ? state.fees
+    : state.fees.filter((fee) => fee.month === state.selectedReportMonth);
+  return fees.slice().sort((a, b) => a.month.localeCompare(b.month));
+}
+
+function getReportCompletedTrainingDates() {
+  const dates = getCompletedTrainingDates();
+  if (state.selectedReportMonth === "all") return dates;
+  return dates.filter((date) => date.startsWith(state.selectedReportMonth));
+}
+
+function getReportScopeLabel() {
+  return state.selectedReportMonth === "all"
+    ? "Todos los meses cargados"
+    : formatMonthLabel(state.selectedReportMonth);
+}
+
+function getPlayerPaymentReport(player, fees) {
+  const expected = fees.reduce(
+    (sum, fee) => sum + getExpectedFeeForPlayer(player, fee, state.players),
+    0,
+  );
+  const approved = fees.reduce(
+    (sum, fee) => sum + getPaidAmount(state.payments, player.id, fee.id),
+    0,
+  );
+  const pendingPayments = getScopedPayments(fees, player.id).filter((payment) => payment.status === "pendiente");
+  const pending = pendingPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  const interest = fees.reduce((sum, fee) => {
+    const feeExpected = getExpectedFeeForPlayer(player, fee, state.players);
+    const feePaid = getPaidAmount(state.payments, player.id, fee.id);
+    const balance = Math.max(feeExpected - feePaid, 0);
+    return sum + getCurrentInterestAmount(balance, fee);
+  }, 0);
+  const debt = Math.max(expected + interest - approved, 0);
+  const hasOverdue = fees.some((fee) => {
+    const feeExpected = getExpectedFeeForPlayer(player, fee, state.players);
+    const feePaid = getPaidAmount(state.payments, player.id, fee.id);
+    return isFeeOverdue(fee) && feeExpected - feePaid > 0;
+  });
+  const status = expected <= 0 ? "sin cuota" : debt <= 0 ? "al dia" : hasOverdue ? "moroso" : "pendiente";
+
+  return {
+    expected,
+    approved,
+    pending,
+    pendingCount: pendingPayments.length,
+    interest,
+    debt,
+    status,
+  };
+}
+
+function getScopedPayments(fees, playerId = null) {
+  const feeIds = new Set(fees.map((fee) => fee.id));
+  return state.payments.filter((payment) => {
+    if (!feeIds.has(payment.feeId)) return false;
+    if (playerId && payment.playerId !== playerId) return false;
+    return !payment.deletedAt;
+  });
+}
+
+function getPaymentTotalsForReport(fees) {
+  const playerReports = state.players.map((player) => getPlayerPaymentReport(player, fees));
+  const expected = playerReports.reduce((sum, report) => sum + report.expected, 0);
+  const approved = playerReports.reduce((sum, report) => sum + report.approved, 0);
+  const pending = playerReports.reduce((sum, report) => sum + report.pending, 0);
+  const debt = playerReports.reduce((sum, report) => sum + report.debt, 0);
+  const percent = getPaymentPercent(approved, expected);
+  const totalFlow = approved + pending + debt;
+
+  return { expected, approved, pending, debt, percent, totalFlow };
+}
+
+function getPlayerAttendanceReport(player, completedTrainingDates) {
+  const records = completedTrainingDates
+    .map((date) => getAttendanceForPlayerDate(player.id, date))
+    .filter(Boolean);
+  const countStatus = (statuses) =>
+    records.filter((attendance) => statuses.includes(attendance.status)).length;
+
+  return {
+    closed: completedTrainingDates.length,
+    registered: records.length,
+    confirmed: countStatus(["voy", "asistio"]),
+    noVoy: countStatus(["no_voy", "falto"]),
+    noResponse: Math.max(completedTrainingDates.length - records.length, 0),
+    lateArrival: countStatus(["llega_sobre_la_hora"]),
+    lastMinuteDrops: countStatus(["baja_sobre_la_hora", "baja_sobre_hora"]),
+    lateNotice: countStatus(["avisa_mas_tarde", "aviso_tarde"]),
+    dinner: records.filter((attendance) => hasDinnerAttendanceTags(attendance)).length,
+  };
+}
+
+function getMainResponsibilityDiscountReason(player, details, completedTrainingDates) {
+  const adjustment = getResponsibilityAdjustment(player.id);
+  const attendance = getPlayerAttendanceReport(player, completedTrainingDates);
+
+  if (details.implicitAbsenceDiscount > 0) return "ausencias inferidas";
+  if (attendance.lastMinuteDrops > 0 || adjustment.accumulatedLastMinuteDrops > 0) return "bajas sobre hora";
+  if (attendance.noVoy > 0 || adjustment.accumulatedAbsences > 0) return "faltas/no voy";
+  if (attendance.lateNotice > 0 || adjustment.accumulatedLateNotices > 0) return "avisos tarde";
+  if (details.historicalDiscount > 0) return "ajuste inicial";
+  return "sin descuentos";
+}
+
+function renderReportMetric(label, value) {
+  return `
+    <article class="metric-card compact-stat">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </article>
+  `;
+}
+
+function renderReportTable(headers, rows) {
+  if (!rows.length) return '<p class="empty-state">Sin datos para mostrar.</p>';
+
+  return `
+    <div class="table-wrap report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${rows
+            .map(
+              (row) => `
+                <tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderReportProgressBar(percent, label) {
+  const safePercent = Math.max(Math.min(Number(percent) || 0, 100), 0);
+  return `
+    <div class="report-progress">
+      <span style="width:${safePercent}%"></span>
+    </div>
+    <p class="muted-detail">${escapeHtml(label)}</p>
+  `;
+}
+
+function renderHorizontalBars(rows) {
+  if (!rows.length) return '<p class="empty-state">Sin datos para mostrar.</p>';
+  const maxValue = Math.max(...rows.map((row) => Number(row.value) || 0), 1);
+
+  return `
+    <div class="horizontal-bars">
+      ${rows
+        .map((row) => {
+          const percent = Math.round(((Number(row.value) || 0) / maxValue) * 100);
+          return `
+            <div class="horizontal-bar-row">
+              <span>${escapeHtml(row.label)}</span>
+              <div class="report-progress"><span style="width:${percent}%"></span></div>
+              <strong>${escapeHtml(row.value)}</strong>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function createEmptyReport(message) {
+  return {
+    text: message,
+    html: `<p class="empty-state">${escapeHtml(message)}</p>`,
+    message,
+  };
 }
 
 function renderWhatsappReport(debts) {

@@ -31,6 +31,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Metodo de pago real por alias Mercado Pago `maxisuda`.
 - Instalable en celular como PWA simple.
 - Listado temporal de entrenamientos martes/jueves.
+- Informes MVP por jugador, pagos general, asistencia general, responsabilidad general, resumen de equipo y graficos simples.
 - Escrituras principales protegidas con RPC en Supabase.
 
 ## Vista jugador

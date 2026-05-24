@@ -710,11 +710,44 @@
 
           <section class="panel" data-admin-panel="reportes">
             <div class="panel-heading">
-              <div class="panel-icon" aria-hidden="true">W</div>
+              <div class="panel-icon" aria-hidden="true">I</div>
               <div>
-                <h2>Reporte WhatsApp</h2>
-                <p>Citados por responsabilidad y habilitacion interna</p>
+                <h2>Informes</h2>
+                <p>Pagos, asistencia, responsabilidad y resumen del equipo</p>
               </div>
+            </div>
+            <div class="report-controls">
+              <div class="field">
+                <label for="reportType">Tipo de informe</label>
+                <select id="reportType">
+                  <option value="individual">Individual</option>
+                  <option value="pagos_general">Pagos general</option>
+                  <option value="asistencia_general">Asistencia general</option>
+                  <option value="responsabilidad_general">Responsabilidad general</option>
+                  <option value="general_equipo">General del equipo</option>
+                  <option value="graficos">Graficos</option>
+                </select>
+              </div>
+              <div class="field" id="reportPlayerField">
+                <label for="reportPlayer">Jugador</label>
+                <select id="reportPlayer"></select>
+              </div>
+              <div class="field">
+                <label for="reportMonth">Mes / rango</label>
+                <select id="reportMonth"></select>
+              </div>
+              <div class="field report-actions">
+                <button class="primary" id="generateReportButton" type="button">Generar informe</button>
+                <button class="secondary-button" id="copyReportButton" type="button">Copiar informe</button>
+              </div>
+              <p class="form-message wide-field" id="reportMessage"></p>
+            </div>
+            <div id="reportVisualOutput" class="report-output"></div>
+            <textarea id="detailedReportText" class="report-box" readonly placeholder="Genera un informe para ver el detalle."></textarea>
+
+            <div class="report-subsection">
+              <h3>Reporte WhatsApp</h3>
+              <p>Citados por responsabilidad y habilitacion interna.</p>
             </div>
             <textarea id="whatsappReport" class="report-box" readonly></textarea>
           </section>
@@ -722,7 +755,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=stats-calendar-1"></script>
-    <script type="module" src="./src/pwa.js?v=pwa-3"></script>
+    <script type="module" src="./src/app.js?v=reports-v1"></script>
+    <script type="module" src="./src/pwa.js?v=pwa-4"></script>
   </body>
 </html>
