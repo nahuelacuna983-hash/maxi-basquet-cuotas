@@ -305,6 +305,12 @@ Desde el cierre, todos los martes y jueves configurados cuentan para estadistica
 4. Despues de responder puede sumar emoticones opcionales como cena, cocinero, vino, pan o bebida. Cada emoticon se puede usar una sola vez por jugador.
 5. La lista publica muestra quienes confirmaron, la lista secundaria de cena y quienes todavia no respondieron.
 
+**Invitados**
+
+En modo admin, dentro del listado temporal abierto, se puede escribir el nombre de un invitado y tocar `Agregar invitado`. La app lo muestra como `Nombre (invitado)` en la lista de ese entrenamiento.
+
+El invitado no se crea como jugador, no tiene codigo, no genera cuota, no entra en deuda, no entra en morosos y no modifica responsabilidad. Sirve solo para completar la lista temporal del dia.
+
 **Que no hacer**
 
 No usar el listado como deuda ni habilitacion. No cerrar manualmente registros si todavia se esta probando el flujo.

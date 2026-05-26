@@ -178,6 +178,14 @@
                   <button class="secondary-button emoji-button" type="button" data-self-training-tag="bread" aria-label="Pan">🍞</button>
                   <button class="secondary-button emoji-button" type="button" data-self-training-tag="beer" aria-label="Bebida">🍺</button>
                 </div>
+                <form class="guest-training-form" id="selfTrainingGuestForm" hidden>
+                  <label for="selfTrainingGuestName">Invitado</label>
+                  <div>
+                    <input id="selfTrainingGuestName" type="text" placeholder="Nombre del invitado" />
+                    <button class="secondary-button" type="submit">Agregar invitado</button>
+                  </div>
+                  <p class="muted-detail">Accion admin: aparece solo en esta lista como invitado.</p>
+                </form>
                 <p class="form-message" id="selfTrainingMessage"></p>
                 <div class="training-list-grid" id="selfTrainingLists">
                   <div>
@@ -755,7 +763,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=reports-v1"></script>
-    <script type="module" src="./src/pwa.js?v=pwa-4"></script>
+    <script type="module" src="./src/app.js?v=training-guests-1"></script>
+    <script type="module" src="./src/pwa.js?v=pwa-5"></script>
   </body>
 </html>

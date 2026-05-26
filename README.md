@@ -209,6 +209,7 @@ Reglas de la primera version:
 - `No voy` queda registrado, pero no aparece en el listado publico.
 - Admin conserva el historico para presentismo y estadisticas.
 - Si un martes o jueves ya cerro y nadie respondio, la fecha cuenta igual para estadisticas: todos los jugadores activos quedan como ausentes inferidos.
+- En modo admin se puede agregar un invitado al listado temporal. El invitado aparece como `Nombre (invitado)`, no se crea como jugador y no afecta cuotas, deuda ni responsabilidad.
 
 Estados de jugador:
 

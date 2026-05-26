@@ -218,3 +218,4 @@ Al 2026-05-24:
 - La pestaña `Estadisticas` muestra cantidad de jornadas cerradas y cuantas no tuvieron ninguna respuesta.
 - Se agrego la primera version de `Informes`: individual, pagos general, asistencia general, responsabilidad general, general del equipo y graficos simples.
 - Los informes se generan en pantalla y se pueden copiar como texto; no modifican datos ni agregan PDF.
+- Se agrego carga admin de invitados en el listado temporal. Los invitados aparecen como `Nombre (invitado)` y no crean jugadores ni afectan cuota/deuda/responsabilidad.

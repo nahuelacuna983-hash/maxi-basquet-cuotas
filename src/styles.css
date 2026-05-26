@@ -478,6 +478,22 @@ h1 {
   opacity: 0.45;
 }
 
+.guest-training-form {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px dashed #cfc7bb;
+  border-radius: 8px;
+  background: #fffefa;
+}
+
+.guest-training-form div {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto;
+  gap: 8px;
+}
+
 .training-list-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1081,6 +1097,10 @@ tbody tr:last-child td {
   }
 
   .horizontal-bar-row {
+    grid-template-columns: 1fr;
+  }
+
+  .guest-training-form div {
     grid-template-columns: 1fr;
   }
 

@@ -157,6 +157,8 @@ const elements = {
   selfTrainingWindow: document.querySelector("#selfTrainingWindow"),
   selfTrainingActions: document.querySelector("#selfTrainingActions"),
   selfTrainingTags: document.querySelector("#selfTrainingTags"),
+  selfTrainingGuestForm: document.querySelector("#selfTrainingGuestForm"),
+  selfTrainingGuestName: document.querySelector("#selfTrainingGuestName"),
   selfTrainingMessage: document.querySelector("#selfTrainingMessage"),
   selfTrainingLists: document.querySelector("#selfTrainingLists"),
   selfTrainingMainList: document.querySelector("#selfTrainingMainList"),
@@ -449,6 +451,11 @@ elements.selfTrainingTags.addEventListener("click", (event) => {
   if (!button || button.disabled) return;
 
   toggleSelfTrainingTag(button.dataset.selfTrainingTag);
+});
+
+elements.selfTrainingGuestForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await addTrainingGuest();
 });
 
 elements.playerFilters.addEventListener("click", (event) => {
@@ -1515,7 +1522,7 @@ function renderAttendances() {
 
   const sortedAttendances = state.attendances
     .slice()
-    .sort((a, b) => b.date.localeCompare(a.date) || getPlayerNameById(a.playerId).localeCompare(getPlayerNameById(b.playerId)));
+    .sort((a, b) => b.date.localeCompare(a.date) || getAttendanceDisplayName(a).localeCompare(getAttendanceDisplayName(b)));
 
   elements.attendanceList.innerHTML = `
     <div class="table-wrap">
@@ -1535,7 +1542,7 @@ function renderAttendances() {
                 <tr>
                   <td>${attendance.date}</td>
                   <td>Entrenamiento</td>
-                  <td><strong>${escapeHtml(getPlayerNameById(attendance.playerId))}</strong></td>
+                  <td><strong>${escapeHtml(getAttendanceDisplayName(attendance))}</strong>${isGuestAttendance(attendance) ? ' <span class="muted-detail">(invitado)</span>' : ""}</td>
                   <td>
                     <select class="table-select" data-attendance-status="${attendance.id}">
                       ${[
@@ -2620,6 +2627,7 @@ function renderSelfTrainingSignup(player) {
   elements.selfTrainingCard.hidden = false;
   elements.selfTrainingActions.hidden = false;
   elements.selfTrainingLists.hidden = false;
+  elements.selfTrainingGuestForm.hidden = !state.isAdminMode;
   elements.selfTrainingTitle.textContent = `${formatTrainingDateLabel(session.date)} - listado temporal`;
   elements.selfTrainingWindow.textContent =
     `Abierto hasta ${state.attendanceConfig.closeAt}. Minimo sugerido: ${state.attendanceConfig.trainingMinimumPlayers}.`;
@@ -2628,15 +2636,15 @@ function renderSelfTrainingSignup(player) {
   elements.selfTrainingDinnerPanel.hidden = !isDinnerDay;
   elements.selfTrainingMainList.innerHTML = renderTrainingListItems(
     visibleAttendances.map((attendance) => ({
-      name: getPlayerNameById(attendance.playerId),
-      suffix: getPublicAttendanceSuffix(attendance.status),
+      name: getAttendanceDisplayName(attendance),
+      suffix: getAttendancePublicSuffix(attendance),
       tags: getAttendanceTags(attendance),
     })),
   );
   elements.selfTrainingDinnerList.innerHTML = renderTrainingListItems(
     dinnerAttendances.map((attendance) => ({
-      name: getPlayerNameById(attendance.playerId),
-      suffix: attendance.status === "no_voy" ? "solo cena" : "",
+      name: getAttendanceDisplayName(attendance),
+      suffix: getDinnerAttendanceSuffix(attendance),
       tags: getAttendanceTags(attendance),
     })),
   );
@@ -2678,6 +2686,7 @@ function renderSelfTrainingUnavailable(title, message) {
   elements.selfTrainingCard.hidden = false;
   elements.selfTrainingActions.hidden = true;
   elements.selfTrainingTags.hidden = true;
+  elements.selfTrainingGuestForm.hidden = true;
   elements.selfTrainingLists.hidden = true;
   elements.selfTrainingTitle.textContent = title;
   elements.selfTrainingWindow.textContent = "";
@@ -2707,6 +2716,18 @@ function getPublicAttendanceSuffix(status) {
   };
 
   return labels[status] ?? "";
+}
+
+function getAttendancePublicSuffix(attendance) {
+  const suffix = getPublicAttendanceSuffix(attendance.status);
+  if (!isGuestAttendance(attendance)) return suffix;
+  return suffix ? `invitado, ${suffix}` : "invitado";
+}
+
+function getDinnerAttendanceSuffix(attendance) {
+  const suffix = attendance.status === "no_voy" ? "solo cena" : "";
+  if (!isGuestAttendance(attendance)) return suffix;
+  return suffix ? `invitado, ${suffix}` : "invitado";
 }
 
 function isDinnerTrainingDate(dateValue) {
@@ -2772,6 +2793,50 @@ async function submitSelfTrainingStatus(status, options = {}) {
   elements.selfTrainingMessage.textContent = saved
     ? `Respuesta guardada: ${options.dinnerOnly ? "Solo cena" : formatAttendanceStatus(status)}.`
     : state.syncStatus;
+}
+
+async function addTrainingGuest() {
+  if (!requireAdmin()) return;
+
+  const session = getOpenTrainingSession();
+  const guestName = normalizeGuestName(elements.selfTrainingGuestName.value);
+
+  if (!session) {
+    elements.selfTrainingMessage.textContent = "No hay listado abierto para agregar invitados.";
+    return;
+  }
+
+  if (!guestName) {
+    elements.selfTrainingMessage.textContent = "Escribi el nombre del invitado.";
+    return;
+  }
+
+  const guestPlayerId = createGuestPlayerId(session.date, guestName);
+  const existingAttendance = getAttendanceForPlayerDate(guestPlayerId, session.date);
+  const attendance = {
+    id: existingAttendance?.id ?? createId("attendance"),
+    date: session.date,
+    eventType: "entrenamiento",
+    playerId: guestPlayerId,
+    status: "voy",
+    source: serializeGuestAttendanceSource(guestName),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const saved = await persistAttendance(
+    attendance,
+    "Invitado agregado",
+    "Error al agregar invitado",
+    { admin: true },
+  );
+
+  if (saved) {
+    elements.selfTrainingGuestName.value = "";
+    elements.selfTrainingMessage.textContent = `${guestName} agregado como invitado.`;
+  } else {
+    elements.selfTrainingMessage.textContent = state.syncStatus;
+  }
 }
 
 async function toggleSelfTrainingTag(tag) {
@@ -3430,7 +3495,7 @@ async function updateAttendanceStatus(attendanceId, status) {
   if (!attendance) return;
 
   await persistAttendance(
-    { ...attendance, status, source: "admin", updatedAt: new Date().toISOString() },
+    { ...attendance, status, source: attendance.source ?? "admin", updatedAt: new Date().toISOString() },
     "Asistencia actualizada",
     "Error al actualizar asistencia",
     { admin: true },
@@ -3618,6 +3683,34 @@ function getAttendanceBaseSource(attendance) {
   return String(attendance?.source ?? "jugador").split("|")[0] || "jugador";
 }
 
+function getAttendanceSourceValue(attendance, key) {
+  const prefix = `${key}=`;
+  const part = String(attendance?.source ?? "")
+    .split("|")
+    .find((sourcePart) => sourcePart.startsWith(prefix));
+
+  if (!part) return "";
+
+  try {
+    return decodeURIComponent(part.replace(prefix, ""));
+  } catch {
+    return part.replace(prefix, "");
+  }
+}
+
+function getGuestName(attendance) {
+  return getAttendanceSourceValue(attendance, "guest").trim();
+}
+
+function isGuestAttendance(attendance) {
+  return Boolean(getGuestName(attendance)) || String(attendance?.playerId ?? "").startsWith("guest-");
+}
+
+function getAttendanceDisplayName(attendance) {
+  const guestName = getGuestName(attendance);
+  return guestName || getPlayerNameById(attendance.playerId);
+}
+
 function getAttendanceTags(attendance) {
   if (!attendance) return [];
 
@@ -3641,6 +3734,26 @@ function serializeAttendanceSource(baseSource, tags = []) {
   const source = baseSource || "jugador";
 
   return normalizedTags.length ? `${source}|tags=${normalizedTags.join(",")}` : source;
+}
+
+function serializeGuestAttendanceSource(guestName) {
+  return `admin|guest=${encodeURIComponent(guestName)}`;
+}
+
+function normalizeGuestName(value) {
+  return String(value ?? "").trim().replace(/\s+/g, " ");
+}
+
+function createGuestPlayerId(date, guestName) {
+  const normalizedName = normalizeGuestName(guestName)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+
+  return `guest-${date}-${normalizedName || "invitado"}`;
 }
 
 function hasDinnerAttendanceTags(attendance) {
