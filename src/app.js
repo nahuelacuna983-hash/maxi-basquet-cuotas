@@ -1207,7 +1207,11 @@ function renderPlayersTable(debts) {
           <td><strong>${escapeHtml(getPlayerName(debt.player))}</strong></td>
           <td>${escapeHtml(debt.player.phone || "-")}</td>
           <td>${formatPlayerType(debt.player.type)}</td>
-          <td><span class="status status-${debt.player.status}">${formatPlayerStatus(debt.player.status)}</span></td>
+          <td>
+            <select class="table-select" data-player-status="${debt.player.id}">
+              ${renderPlayerStatusOptions(debt.player.status)}
+            </select>
+          </td>
           <td><strong>${getResponsibilityDetails(debt.player.id).score}</strong></td>
           <td>
             <input
@@ -1236,6 +1240,12 @@ function renderPlayersTable(debts) {
   document.querySelectorAll("[data-toggle-player]").forEach((button) => {
     button.addEventListener("click", () => {
       toggleInternalEnabled(button.dataset.togglePlayer);
+    });
+  });
+
+  document.querySelectorAll("[data-player-status]").forEach((select) => {
+    select.addEventListener("change", () => {
+      updatePlayerStatus(select.dataset.playerStatus, select.value);
     });
   });
 
@@ -3524,6 +3534,26 @@ async function toggleInternalEnabled(playerId) {
   );
 }
 
+async function updatePlayerStatus(playerId, status) {
+  if (!requireAdmin()) return;
+
+  const previousPlayers = state.players;
+  let updatedPlayer = null;
+  state.players = state.players.map((player) =>
+    player.id === playerId
+      ? (updatedPlayer = { ...player, status })
+      : player,
+  );
+
+  if (!updatedPlayer) return;
+  await persistAdminPlayers(
+    [updatedPlayer],
+    previousPlayers,
+    "Estado de jugador actualizado",
+    "Error al actualizar estado",
+  );
+}
+
 async function updatePlayerAccessCode(playerId, value) {
   if (!requireAdmin()) return;
 
@@ -3628,6 +3658,15 @@ function formatPlayerStatus(status) {
   };
 
   return labels[status] ?? status;
+}
+
+function renderPlayerStatusOptions(selectedStatus) {
+  return ["activo", "lesionado", "lista_espera", "esporadico", "baja"]
+    .map(
+      (status) =>
+        `<option value="${status}" ${selectedStatus === status ? "selected" : ""}>${formatPlayerStatus(status)}</option>`,
+    )
+    .join("");
 }
 
 function formatPaymentMethod(method) {

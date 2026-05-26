@@ -65,6 +65,7 @@ La cuota se calcula sobre los jugadores cargados y su tipo. Si faltan jugadores 
    - `Lesionado`, `Lista de espera`, `Esporadico` o `Baja`: no deberian contar como cuota mensual normal.
 5. Asignar codigo de acceso.
 6. Revisar `Habilitado interno`.
+7. Para cambiar un jugador ya cargado, usar la tabla de jugadores: la columna `Estado` tiene un selector editable.
 
 **Que no hacer**
 

@@ -220,3 +220,4 @@ Al 2026-05-24:
 - Los informes se generan en pantalla y se pueden copiar como texto; no modifican datos ni agregan PDF.
 - Se agrego carga admin de invitados en el listado temporal. Los invitados aparecen como `Nombre (invitado)` y no crean jugadores ni afectan cuota/deuda/responsabilidad.
 - Se agrego `supabase/attendance-guests-v1.sql` para que Supabase permita invitados sin romper la clave foranea de jugadores reales.
+- Se agrego edicion directa del estado de jugador desde la tabla de jugadores, para pasar por ejemplo de `Lesionado` a `Activo` sin recargarlo.

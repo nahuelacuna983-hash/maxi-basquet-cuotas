@@ -18,6 +18,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Link directo por jugador con `?player=ID_DEL_JUGADOR`.
 - Modo admin con PIN simple.
 - Panel admin organizado por pestanas: resumen, jugadores, cuotas, pagos, entrenamientos, reportes, configuracion y backups.
+- Estado de jugador editable desde la tabla admin.
 - Secciones base disponibles para estadisticas, convocatorias y VIP.
 - Asistencia historica inicial cargada para iniciar estadisticas reales.
 - Responsabilidad descuenta bajas, faltas explicitas y ausencias inferidas de jugadores activos en entrenamientos cerrados.
