@@ -122,6 +122,8 @@ Sirve para que el jugador no dependa de preguntar por WhatsApp cuanto debe.
 
 La experiencia del jugador tiene que ser corta: elegir nombre, ingresar codigo, mirar monto, pagar e informar.
 
+La app instalada recuerda el acceso del jugador en ese celular. Si minimiza o vuelve a abrir la app, no deberia pedirle el codigo otra vez. El modo admin no queda guardado.
+
 **Como se usa desde admin para probar**
 
 1. Seleccionar un jugador.

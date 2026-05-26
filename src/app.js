@@ -49,6 +49,8 @@ import {
 const initialAppState = createInitialAppState();
 const persistedAppState = loadPersistedState(initialAppState);
 const initialUrlPlayerId = getUrlPlayerId();
+const SELF_SERVICE_SESSION_KEY = "maxi-basquet-self-service-session-v1";
+const persistedSelfServiceSession = loadSelfServiceSession();
 let supabaseHydrated = !isSupabaseEnabled();
 let supabaseSyncInProgress = false;
 let suppressNextSupabaseSync = false;
@@ -68,6 +70,7 @@ const state = {
   playerFilter: "todos",
   selectedSelfServicePlayerId:
     persistedAppState.players.find((player) => player.id === initialUrlPlayerId)?.id ??
+    persistedAppState.players.find((player) => player.id === persistedSelfServiceSession?.playerId)?.id ??
     getSortedPlayers(persistedAppState.players)[0]?.id ??
     "",
   selectedSelfServiceMonth: "",
@@ -2488,6 +2491,7 @@ function applyPersistentState(nextState) {
   state.playerFilter = previousPlayerFilter || "todos";
   state.selectedSelfServicePlayerId =
     state.players.find((player) => player.id === selfServiceSnapshot.playerId)?.id ??
+    state.players.find((player) => player.id === persistedSelfServiceSession?.playerId)?.id ??
     state.players.find((player) => player.id === initialUrlPlayerId)?.id ??
     state.selectedSelfServicePlayerId ??
     state.players[0]?.id ??
@@ -2496,6 +2500,7 @@ function applyPersistentState(nextState) {
     selfServiceSnapshot.month || state.selectedSelfServiceMonth,
   );
   syncFormValuesFromState();
+  restoreSelfServiceSession();
   restoreSelfServiceUiSnapshot(selfServiceSnapshot);
 }
 
@@ -2952,7 +2957,10 @@ function upsertAttendanceInList(attendances, attendance) {
 }
 
 function restoreSelfServiceUiSnapshot(snapshot) {
-  state.selectedSelfServicePlayerId = snapshot.playerId || state.selectedSelfServicePlayerId;
+  state.selectedSelfServicePlayerId =
+    state.players.find((player) => player.id === snapshot.playerId)?.id ??
+    state.players.find((player) => player.id === persistedSelfServiceSession?.playerId)?.id ??
+    state.selectedSelfServicePlayerId;
   state.selectedSelfServiceMonth = getValidSelfServiceMonth(snapshot.month);
   elements.selfPaymentMethod.value = snapshot.paymentMethod || elements.selfPaymentMethod.value;
   elements.selfPaymentAmount.value = snapshot.paymentAmount;
@@ -3269,6 +3277,44 @@ function getUrlPlayerId() {
   return params.get("player") || params.get("id") || "";
 }
 
+function loadSelfServiceSession() {
+  try {
+    const rawSession = localStorage.getItem(SELF_SERVICE_SESSION_KEY);
+    if (!rawSession) return null;
+
+    const session = JSON.parse(rawSession);
+    if (!session || typeof session !== "object") return null;
+
+    return {
+      playerId: String(session.playerId ?? ""),
+      accessCode: String(session.accessCode ?? ""),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveSelfServiceSession(playerId, accessCode) {
+  localStorage.setItem(
+    SELF_SERVICE_SESSION_KEY,
+    JSON.stringify({
+      playerId,
+      accessCode,
+      savedAt: new Date().toISOString(),
+    }),
+  );
+}
+
+function restoreSelfServiceSession() {
+  if (!persistedSelfServiceSession?.playerId || !persistedSelfServiceSession?.accessCode) return;
+
+  const player = state.players.find((item) => item.id === persistedSelfServiceSession.playerId);
+  if (!player) return;
+
+  authorizedSelfServicePlayerIds.add(player.id);
+  selfServiceAccessCodesByPlayerId.set(player.id, persistedSelfServiceSession.accessCode);
+}
+
 function canViewSelfServicePlayer(player) {
   return state.isAdminMode || authorizedSelfServicePlayerIds.has(player.id);
 }
@@ -3313,6 +3359,7 @@ async function authorizeSelfServicePlayer() {
 
   authorizedSelfServicePlayerIds.add(player.id);
   selfServiceAccessCodesByPlayerId.set(player.id, accessCode);
+  saveSelfServiceSession(player.id, accessCode);
   elements.selfAccessCode.value = "";
   elements.selfAccessMessage.textContent = "Acceso habilitado.";
   renderSelfService();
@@ -4328,6 +4375,7 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+restoreSelfServiceSession();
 render();
 hydrateFromSupabase();
 

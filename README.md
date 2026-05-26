@@ -15,6 +15,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Vista jugador separada en pestanas: `Mi cuota` y `Entrenamientos`.
 - Jugadores mostrados por apellido y nombre, ordenados alfabeticamente.
 - Acceso simple por codigo de jugador.
+- La app instalada recuerda el acceso del jugador en ese dispositivo para no pedir codigo al minimizar o reabrir.
 - Link directo por jugador con `?player=ID_DEL_JUGADOR`.
 - Modo admin con PIN simple.
 - Panel admin organizado por pestanas: resumen, jugadores, cuotas, pagos, entrenamientos, reportes, configuracion y backups.
