@@ -450,13 +450,18 @@ function fromSupabasePayment(row) {
 }
 
 function fromSupabaseAttendance(row) {
+  const participantType = row.participant_type ?? (row.guest_name ? "guest" : "player");
+  const guestName = row.guest_name ?? "";
+
   return {
     id: row.id,
     date: row.date,
     eventType: row.event_type ?? "entrenamiento",
-    playerId: row.player_id,
+    playerId: row.player_id ?? createGuestPlayerId(row.date, guestName),
     status: row.status,
     source: row.source ?? "jugador",
+    participantType,
+    guestName,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -481,16 +486,33 @@ function toSupabasePayment(payment) {
 }
 
 function toSupabaseAttendance(attendance) {
+  const participantType = attendance.participantType ?? (attendance.guestName ? "guest" : "player");
+
   return {
     id: attendance.id,
     date: attendance.date,
     event_type: attendance.eventType ?? "entrenamiento",
-    player_id: attendance.playerId,
+    player_id: participantType === "guest" ? null : attendance.playerId,
     status: attendance.status,
     source: attendance.source ?? "jugador",
+    participant_type: participantType,
+    guest_name: participantType === "guest" ? attendance.guestName ?? "" : null,
     created_at: attendance.createdAt ?? new Date().toISOString(),
     updated_at: attendance.updatedAt ?? new Date().toISOString(),
   };
+}
+
+function createGuestPlayerId(date, guestName) {
+  const normalizedName = String(guestName ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+
+  return `guest-${date}-${normalizedName || "invitado"}`;
 }
 
 function fromSupabaseTreasuryConfig(row) {

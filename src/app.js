@@ -2820,6 +2820,8 @@ async function addTrainingGuest() {
     playerId: guestPlayerId,
     status: "voy",
     source: serializeGuestAttendanceSource(guestName),
+    participantType: "guest",
+    guestName,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -3699,11 +3701,13 @@ function getAttendanceSourceValue(attendance, key) {
 }
 
 function getGuestName(attendance) {
-  return getAttendanceSourceValue(attendance, "guest").trim();
+  return String(attendance?.guestName ?? "").trim() || getAttendanceSourceValue(attendance, "guest").trim();
 }
 
 function isGuestAttendance(attendance) {
-  return Boolean(getGuestName(attendance)) || String(attendance?.playerId ?? "").startsWith("guest-");
+  return attendance?.participantType === "guest" ||
+    Boolean(getGuestName(attendance)) ||
+    String(attendance?.playerId ?? "").startsWith("guest-");
 }
 
 function getAttendanceDisplayName(attendance) {

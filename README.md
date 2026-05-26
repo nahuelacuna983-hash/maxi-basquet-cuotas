@@ -126,6 +126,12 @@ SQL adicional para emoticones de entrenamiento:
 supabase/attendance-tags-v1.sql
 ```
 
+SQL adicional para invitados en listado temporal:
+
+```txt
+supabase/attendance-guests-v1.sql
+```
+
 ## Seguridad MVP
 
 Estado actual:

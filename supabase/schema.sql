@@ -60,7 +60,7 @@ create table if not exists public.attendances (
   id text primary key,
   date date not null,
   event_type text not null default 'entrenamiento',
-  player_id text not null references public.players(id) on delete cascade,
+  player_id text references public.players(id) on delete cascade,
   status text not null check (
     status in (
       'voy',
@@ -75,10 +75,29 @@ create table if not exists public.attendances (
     )
   ),
   source text not null default 'jugador',
+  participant_type text not null default 'player',
+  guest_name text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (date, player_id, event_type)
+  unique (date, player_id, event_type),
+  constraint attendances_participant_valid check (
+    (
+      participant_type = 'player'
+      and player_id is not null
+      and coalesce(guest_name, '') = ''
+    )
+    or
+    (
+      participant_type = 'guest'
+      and player_id is null
+      and coalesce(guest_name, '') <> ''
+    )
+  )
 );
+
+create unique index if not exists attendances_guest_unique
+on public.attendances (date, event_type, guest_name)
+where participant_type = 'guest';
 
 create table if not exists public.treasury_config (
   id text primary key default 'main',
@@ -217,9 +236,59 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_participant_type text := coalesce(p_attendance->>'participant_type', 'player');
+  v_guest_name text := nullif(trim(coalesce(p_attendance->>'guest_name', '')), '');
+  v_player_id text := nullif(p_attendance->>'player_id', '');
 begin
   if p_admin_pin <> '1234' then
     raise exception 'PIN admin invalido';
+  end if;
+
+  if v_participant_type not in ('player', 'guest') then
+    raise exception 'Tipo de participante invalido';
+  end if;
+
+  if v_participant_type = 'guest' then
+    if v_guest_name is null then
+      raise exception 'Nombre de invitado requerido';
+    end if;
+
+    insert into public.attendances (
+      id,
+      date,
+      event_type,
+      player_id,
+      status,
+      source,
+      participant_type,
+      guest_name,
+      created_at,
+      updated_at
+    )
+    values (
+      p_attendance->>'id',
+      (p_attendance->>'date')::date,
+      coalesce(p_attendance->>'event_type', 'entrenamiento'),
+      null,
+      p_attendance->>'status',
+      coalesce(p_attendance->>'source', 'admin'),
+      'guest',
+      v_guest_name,
+      coalesce(nullif(p_attendance->>'created_at', '')::timestamptz, now()),
+      now()
+    )
+    on conflict (date, event_type, guest_name) where participant_type = 'guest' do update
+    set
+      status = excluded.status,
+      source = excluded.source,
+      updated_at = now();
+
+    return;
+  end if;
+
+  if v_player_id is null then
+    raise exception 'Jugador requerido';
   end if;
 
   insert into public.attendances (
@@ -229,6 +298,8 @@ begin
     player_id,
     status,
     source,
+    participant_type,
+    guest_name,
     created_at,
     updated_at
   )
@@ -236,9 +307,11 @@ begin
     p_attendance->>'id',
     (p_attendance->>'date')::date,
     coalesce(p_attendance->>'event_type', 'entrenamiento'),
-    p_attendance->>'player_id',
+    v_player_id,
     p_attendance->>'status',
     coalesce(p_attendance->>'source', 'admin'),
+    'player',
+    null,
     coalesce(nullif(p_attendance->>'created_at', '')::timestamptz, now()),
     now()
   )
@@ -246,6 +319,8 @@ begin
   set
     status = excluded.status,
     source = excluded.source,
+    participant_type = 'player',
+    guest_name = null,
     updated_at = now();
 end;
 $$;
