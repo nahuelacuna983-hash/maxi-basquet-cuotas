@@ -100,6 +100,8 @@ El costo mensual se reparte segun la cantidad de jugadores que pagan y segun el 
 7. Definir interes desde dia 11.
 8. Guardar.
 
+Para pagos anticipados del mes siguiente, usar `Crear cuota del mes siguiente`. La app copia los valores actuales de la ultima cuota, crea el nuevo mes y permite registrar pagos contra esa cuota. No copia montos fijos historicos.
+
 **Que no hacer**
 
 No cargar dos cuotas para el mismo mes. Si el mes ya existe, editar la base en la lista de cuotas. No tocar abril 2026 sin recordar que tiene monto historico fijo.
@@ -305,7 +307,7 @@ Desde el cierre, todos los martes y jueves configurados cuentan para estadistica
    - `Avisa mas tarde`
    - `Llega sobre la hora`
    - `Baja sobre la hora`, cuando corresponde.
-4. Despues de responder puede sumar emoticones opcionales como cena, cocinero, vino, pan o bebida. Cada emoticon se puede usar una sola vez por jugador.
+4. Despues de responder puede sumar emoticones opcionales como cena, cocinero, vino, pan, bebida o esponja/lavado. Cada emoticon se puede usar una sola vez por jugador.
 5. La lista publica muestra quienes confirmaron, la lista secundaria de cena y quienes todavia no respondieron.
 
 **Invitados**

@@ -63,6 +63,7 @@ const attendanceTagOptions = [
   { id: "wine", emoji: "🍷" },
   { id: "bread", emoji: "🍞" },
   { id: "beer", emoji: "🍺" },
+  { id: "sponge", emoji: "🧽" },
 ];
 const dinnerAttendanceTags = new Set(attendanceTagOptions.map((tag) => tag.id));
 const state = {
@@ -116,6 +117,8 @@ const elements = {
   bulkPlayersInput: document.querySelector("#bulkPlayersInput"),
   bulkPlayersMessage: document.querySelector("#bulkPlayersMessage"),
   feeForm: document.querySelector("#feeForm"),
+  createNextFeeButton: document.querySelector("#createNextFeeButton"),
+  feeMessage: document.querySelector("#feeMessage"),
   paymentForm: document.querySelector("#paymentForm"),
   treasuryForm: document.querySelector("#treasuryForm"),
   treasuryAlias: document.querySelector("#treasuryAlias"),
@@ -562,29 +565,8 @@ elements.feeForm.addEventListener("submit", async (event) => {
     interestPercent,
     dueDay: 10,
   };
-  state.fees = [...state.fees, fee].sort((a, b) => a.month.localeCompare(b.month));
-
-  if (isSupabaseEnabled() && supabaseHydrated) {
-    supabaseSyncInProgress = true;
-    state.syncStatus = "Guardando cuota...";
-    renderRoleVisibility();
-
-    try {
-      const mutationResult = await adminUpsertFee(adminConfig.pin, fee);
-      state.syncStatus = getPaymentMutationMessage("Cuota guardada", mutationResult);
-    } catch (error) {
-      state.fees = previousFees;
-      state.syncStatus = `Error al guardar cuota: ${error.message}`;
-      supabaseSyncInProgress = false;
-      suppressNextSupabaseSync = true;
-      render();
-      return;
-    } finally {
-      supabaseSyncInProgress = false;
-    }
-  } else {
-    state.syncStatus = "Cuota guardada localmente";
-  }
+  const saved = await persistFee(fee, previousFees, "Cuota guardada", "Error al guardar cuota");
+  if (!saved) return;
 
   elements.feeForm.reset();
   document.querySelector("#feeTrainingCost").value = "55000";
@@ -592,8 +574,11 @@ elements.feeForm.addEventListener("submit", async (event) => {
   document.querySelector("#feeTrainingBillingBase").value = "";
   document.querySelector("#feeSundayBillingBase").value = "";
   document.querySelector("#feeInterestPercent").value = "5";
-  suppressNextSupabaseSync = true;
-  render();
+  elements.feeMessage.textContent = `Cuota ${month} creada. Ya se pueden registrar pagos de ese mes.`;
+});
+
+elements.createNextFeeButton.addEventListener("click", async () => {
+  await createNextFeeFromLatest();
 });
 
 elements.paymentForm.addEventListener("submit", async (event) => {
@@ -1281,6 +1266,46 @@ function matchesPlayerFilter(debt, filter) {
   };
 
   return checks[filter] ?? true;
+}
+
+async function createNextFeeFromLatest() {
+  if (!requireAdmin()) return;
+
+  const sortedFees = state.fees.slice().sort((a, b) => a.month.localeCompare(b.month));
+  const latestFee = sortedFees[sortedFees.length - 1];
+
+  if (!latestFee) {
+    elements.feeMessage.textContent = "Primero carga una cuota base.";
+    return;
+  }
+
+  const nextMonth = getNextMonth(latestFee.month);
+  if (state.fees.some((fee) => fee.month === nextMonth)) {
+    elements.feeMessage.textContent = `Ya existe una cuota cargada para ${formatMonthLabel(nextMonth)}.`;
+    return;
+  }
+
+  const previousFees = state.fees;
+  const nextFee = {
+    ...latestFee,
+    id: createId("fee"),
+    month: nextMonth,
+    fixedTrainingOnlyAmount: null,
+    fixedCompetitorAmount: null,
+  };
+
+  const saved = await persistFee(
+    nextFee,
+    previousFees,
+    "Cuota siguiente creada",
+    "Error al crear cuota siguiente",
+  );
+  if (!saved) return;
+
+  state.selectedSelfServiceMonth = nextMonth;
+  elements.feeMessage.textContent =
+    `Cuota ${formatMonthLabel(nextMonth)} creada con valores actuales. Ya se pueden registrar pagos.`;
+  render();
 }
 
 function formatLastPayment(payment) {
@@ -3625,6 +3650,38 @@ async function updatePlayerAccessCode(playerId, value) {
     "Codigo actualizado",
     "Error al actualizar codigo",
   );
+}
+
+async function persistFee(fee, previousFees, successMessage, errorMessage) {
+  state.fees = [...previousFees.filter((item) => item.id !== fee.id), fee].sort((a, b) =>
+    a.month.localeCompare(b.month),
+  );
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = `${successMessage}...`;
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminUpsertFee(adminConfig.pin, fee);
+      state.syncStatus = getPaymentMutationMessage(successMessage, mutationResult);
+    } catch (error) {
+      state.fees = previousFees;
+      state.syncStatus = `${errorMessage}: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return false;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = `${successMessage} localmente`;
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+  return true;
 }
 
 function updateResponsibilityAdjustment(playerId, field, value) {

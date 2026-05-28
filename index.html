@@ -177,6 +177,7 @@
                   <button class="secondary-button emoji-button" type="button" data-self-training-tag="wine" aria-label="Vino">🍷</button>
                   <button class="secondary-button emoji-button" type="button" data-self-training-tag="bread" aria-label="Pan">🍞</button>
                   <button class="secondary-button emoji-button" type="button" data-self-training-tag="beer" aria-label="Bebida">🍺</button>
+                  <button class="secondary-button emoji-button" type="button" data-self-training-tag="sponge" aria-label="Lava platos">🧽</button>
                 </div>
                 <form class="guest-training-form" id="selfTrainingGuestForm" hidden>
                   <label for="selfTrainingGuestName">Invitado</label>
@@ -375,6 +376,8 @@
                 <input id="feeInterestPercent" type="number" min="0" value="5" required />
               </label>
               <button class="primary-button" type="submit">+ Agregar cuota</button>
+              <button class="secondary-button wide-field" id="createNextFeeButton" type="button">Crear cuota del mes siguiente</button>
+              <p class="form-message wide-field" id="feeMessage"></p>
             </form>
           </section>
 
@@ -763,7 +766,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=self-session-1"></script>
-    <script type="module" src="./src/pwa.js?v=pwa-8"></script>
+    <script type="module" src="./src/app.js?v=next-fee-sponge-1"></script>
+    <script type="module" src="./src/pwa.js?v=pwa-9"></script>
   </body>
 </html>

@@ -195,6 +195,8 @@ La app redondea hacia arriba al multiplo de `$5.000`.
 
 Si una cuota tiene montos fijos historicos, esos montos reemplazan la formula normal solo para ese mes.
 
+Desde admin se puede crear la cuota del mes siguiente a partir de la ultima cuota cargada. Esa cuota queda como mes real para registrar pagos anticipados. No copia montos fijos historicos.
+
 ## Asistencia / listado temporal
 
 Para activar esta parte en Supabase hay que ejecutar:
@@ -218,6 +220,7 @@ Reglas de la primera version:
 - Admin conserva el historico para presentismo y estadisticas.
 - Si un martes o jueves ya cerro y nadie respondio, la fecha cuenta igual para estadisticas: todos los jugadores activos quedan como ausentes inferidos.
 - En modo admin se puede agregar un invitado al listado temporal. El invitado aparece como `Nombre (invitado)`, no se crea como jugador y no afecta cuotas, deuda ni responsabilidad.
+- En jueves se pueden agregar emoticones opcionales, incluida esponja `🧽` para lavado/platos.
 
 Estados de jugador:
 

@@ -222,3 +222,5 @@ Al 2026-05-24:
 - Se agrego `supabase/attendance-guests-v1.sql` para que Supabase permita invitados sin romper la clave foranea de jugadores reales.
 - Se agrego edicion directa del estado de jugador desde la tabla de jugadores, para pasar por ejemplo de `Lesionado` a `Activo` sin recargarlo.
 - Se agrego persistencia local del acceso de jugador en la app instalada para que al minimizar o reabrir no vuelva a pedir codigo. El modo admin sigue sin persistirse.
+- Se agrego creacion admin de la cuota del mes siguiente para registrar pagos anticipados.
+- Se agrego emoticon `🧽` para lavado/platos en el listado de jueves.
