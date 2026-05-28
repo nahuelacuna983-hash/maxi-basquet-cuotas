@@ -327,7 +327,9 @@ $$;
 
 create or replace function public.admin_delete_guest_attendance(
   p_admin_pin text,
-  p_attendance_id text
+  p_attendance_id text,
+  p_attendance_date date,
+  p_guest_name text
 )
 returns void
 language plpgsql
@@ -340,11 +342,18 @@ begin
   end if;
 
   delete from public.attendances
-  where id = p_attendance_id
-    and participant_type = 'guest';
+  where participant_type = 'guest'
+    and (
+      id = p_attendance_id
+      or (
+        date = p_attendance_date
+        and event_type = 'entrenamiento'
+        and lower(trim(guest_name)) = lower(trim(p_guest_name))
+      )
+    );
 end;
 $$;
 
 grant execute on function public.submit_training_attendance(text, text, jsonb) to anon, authenticated;
 grant execute on function public.admin_upsert_attendance(text, jsonb) to anon, authenticated;
-grant execute on function public.admin_delete_guest_attendance(text, text) to anon, authenticated;
+grant execute on function public.admin_delete_guest_attendance(text, text, date, text) to anon, authenticated;

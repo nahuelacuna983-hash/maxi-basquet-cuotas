@@ -2923,7 +2923,7 @@ async function deleteGuestAttendance(attendanceId) {
     renderRoleVisibility();
 
     try {
-      const mutationResult = await adminDeleteGuestAttendance(adminConfig.pin, attendanceId);
+      const mutationResult = await adminDeleteGuestAttendance(adminConfig.pin, attendance);
       state.syncStatus = getPaymentMutationMessage("Invitado quitado", mutationResult);
     } catch (error) {
       state.attendances = previousAttendances;

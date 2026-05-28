@@ -29,7 +29,9 @@ export async function loadSupabaseState(fallbackState, options = {}) {
   const players = playersResult.data.map(fromSupabasePlayer);
   const fees = feesResult.data.map(fromSupabaseFee);
   const payments = paymentsResult.data.map(fromSupabasePayment);
-  const attendances = attendancesResult.data.map(fromSupabaseAttendance);
+  const attendances = attendancesResult.data
+    .map(fromSupabaseAttendance)
+    .filter((attendance) => !isRemovedGuestAttendance(attendance));
   const treasuryConfig = treasuryResult.data
     ? fromSupabaseTreasuryConfig(treasuryResult.data)
     : fallbackState.treasuryConfig;
@@ -206,11 +208,13 @@ export async function adminUpsertAttendance(adminPin, attendance) {
   return logMutationMode("fallback");
 }
 
-export async function adminDeleteGuestAttendance(adminPin, attendanceId) {
+export async function adminDeleteGuestAttendance(adminPin, attendance) {
   const client = await getSupabaseClient();
   const rpcResult = await client.rpc("admin_delete_guest_attendance", {
     p_admin_pin: adminPin,
-    p_attendance_id: attendanceId,
+    p_attendance_id: attendance.id,
+    p_attendance_date: attendance.date,
+    p_guest_name: getGuestNameForAttendance(attendance),
   });
 
   if (!rpcResult.error) {
@@ -221,11 +225,16 @@ export async function adminDeleteGuestAttendance(adminPin, attendanceId) {
     throwSupabaseError(rpcResult, "admin_delete_guest_attendance");
   }
 
-  const fallbackResult = await client
-    .from("attendances")
-    .delete()
-    .eq("id", attendanceId)
-    .eq("participant_type", "guest");
+  const fallbackPayload = toSupabaseAttendance({
+    ...attendance,
+    status: "no_voy",
+    source: "admin|removed=1",
+    updatedAt: new Date().toISOString(),
+  });
+  const fallbackResult = await client.rpc("admin_upsert_attendance", {
+    p_admin_pin: adminPin,
+    p_attendance: fallbackPayload,
+  });
 
   assertSupabaseResult(fallbackResult, "attendances");
   return logMutationMode("fallback");
@@ -548,6 +557,17 @@ function fromSupabaseTreasuryConfig(row) {
     paymentTestMode: Boolean(row.payment_test_mode),
     paymentInstructions: row.payment_instructions ?? "",
   };
+}
+
+function getGuestNameForAttendance(attendance) {
+  return String(attendance?.guestName ?? "").trim();
+}
+
+function isRemovedGuestAttendance(attendance) {
+  return (
+    attendance?.participantType === "guest" &&
+    String(attendance?.source ?? "").split("|").includes("removed=1")
+  );
 }
 
 function toSupabaseTreasuryConfig(config) {
