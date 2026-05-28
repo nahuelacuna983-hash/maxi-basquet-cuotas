@@ -118,6 +118,7 @@ Funciones RPC usadas por la app:
 - `submit_payment`
 - `submit_training_attendance`
 - `admin_upsert_attendance`
+- `admin_delete_guest_attendance`
 - `admin_review_payment`
 - `admin_soft_delete_payment`
 - `admin_update_treasury_config`
@@ -132,6 +133,7 @@ SQL adicional para invitados en listado temporal:
 
 ```txt
 supabase/attendance-guests-v1.sql
+supabase/attendance-delete-guest-v1.sql
 ```
 
 ## Seguridad MVP
@@ -219,7 +221,7 @@ Reglas de la primera version:
 - `No voy` queda registrado, pero no aparece en el listado publico.
 - Admin conserva el historico para presentismo y estadisticas.
 - Si un martes o jueves ya cerro y nadie respondio, la fecha cuenta igual para estadisticas: todos los jugadores activos quedan como ausentes inferidos.
-- En modo admin se puede agregar un invitado al listado temporal. El invitado aparece como `Nombre (invitado)`, no se crea como jugador y no afecta cuotas, deuda ni responsabilidad.
+- En modo admin se puede agregar o quitar un invitado del listado temporal. El invitado aparece como `Nombre (invitado)`, no se crea como jugador y no afecta cuotas, deuda ni responsabilidad.
 - En jueves se pueden agregar emoticones opcionales, incluida esponja `🧽` para lavado/platos.
 
 Estados de jugador:

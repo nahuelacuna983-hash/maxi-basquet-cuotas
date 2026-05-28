@@ -33,6 +33,7 @@ import {
 } from "./domain/storage.js";
 import {
   adminReviewPayment,
+  adminDeleteGuestAttendance,
   adminSoftDeletePayment,
   adminUpdateTreasuryConfig,
   adminUpsertAttendance,
@@ -1571,6 +1572,7 @@ function renderAttendances() {
             <th>Evento</th>
             <th>Jugador</th>
             <th>Estado</th>
+            <th>Admin</th>
           </tr>
         </thead>
         <tbody>
@@ -1600,6 +1602,9 @@ function renderAttendances() {
                         .join("")}
                     </select>
                   </td>
+                  <td>
+                    ${isGuestAttendance(attendance) ? `<button class="secondary-button danger-button" type="button" data-delete-guest-attendance="${attendance.id}">Quitar invitado</button>` : "-"}
+                  </td>
                 </tr>
               `,
             )
@@ -1612,6 +1617,12 @@ function renderAttendances() {
   document.querySelectorAll("[data-attendance-status]").forEach((select) => {
     select.addEventListener("change", () => {
       updateAttendanceStatus(select.dataset.attendanceStatus, select.value);
+    });
+  });
+
+  elements.attendanceList.querySelectorAll("[data-delete-guest-attendance]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteGuestAttendance(button.dataset.deleteGuestAttendance);
     });
   });
 }
@@ -2676,16 +2687,20 @@ function renderSelfTrainingSignup(player) {
   elements.selfTrainingDinnerPanel.hidden = !isDinnerDay;
   elements.selfTrainingMainList.innerHTML = renderTrainingListItems(
     visibleAttendances.map((attendance) => ({
+      id: attendance.id,
       name: getAttendanceDisplayName(attendance),
       suffix: getAttendancePublicSuffix(attendance),
       tags: getAttendanceTags(attendance),
+      removable: state.isAdminMode && isGuestAttendance(attendance),
     })),
   );
   elements.selfTrainingDinnerList.innerHTML = renderTrainingListItems(
     dinnerAttendances.map((attendance) => ({
+      id: attendance.id,
       name: getAttendanceDisplayName(attendance),
       suffix: getDinnerAttendanceSuffix(attendance),
       tags: getAttendanceTags(attendance),
+      removable: state.isAdminMode && isGuestAttendance(attendance),
     })),
   );
   elements.selfTrainingNoResponseList.innerHTML = renderTrainingListItems(
@@ -2719,6 +2734,12 @@ function renderSelfTrainingSignup(player) {
       button.classList.toggle("active", isActive);
     });
 
+  elements.selfTrainingLists.querySelectorAll("[data-delete-guest-attendance]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteGuestAttendance(button.dataset.deleteGuestAttendance);
+    });
+  });
+
   renderTrainingTagButtons(currentAttendance, isDinnerDay);
 }
 
@@ -2744,7 +2765,7 @@ function renderTrainingListItems(items) {
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(
       (item) =>
-        `<li>${escapeHtml(item.name)}${formatAttendanceTags(item.tags)}${item.suffix ? ` <span class="muted-detail">(${escapeHtml(item.suffix)})</span>` : ""}</li>`,
+        `<li>${escapeHtml(item.name)}${formatAttendanceTags(item.tags)}${item.suffix ? ` <span class="muted-detail">(${escapeHtml(item.suffix)})</span>` : ""}${item.removable ? ` <button class="secondary-button danger-button guest-remove-button" type="button" data-delete-guest-attendance="${item.id}">Quitar</button>` : ""}</li>`,
     )
     .join("");
 }
@@ -2879,6 +2900,48 @@ async function addTrainingGuest() {
   } else {
     elements.selfTrainingMessage.textContent = state.syncStatus;
   }
+}
+
+async function deleteGuestAttendance(attendanceId) {
+  if (!requireAdmin()) return;
+
+  const attendance = state.attendances.find((item) => item.id === attendanceId);
+  if (!attendance || !isGuestAttendance(attendance)) {
+    elements.selfTrainingMessage.textContent = "Solo se pueden quitar invitados desde esta accion.";
+    return;
+  }
+
+  const guestName = getAttendanceDisplayName(attendance);
+  if (!confirm(`Quitar a ${guestName} del listado temporal?`)) return;
+
+  const previousAttendances = state.attendances;
+  state.attendances = state.attendances.filter((item) => item.id !== attendanceId);
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Quitando invitado...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminDeleteGuestAttendance(adminConfig.pin, attendanceId);
+      state.syncStatus = getPaymentMutationMessage("Invitado quitado", mutationResult);
+    } catch (error) {
+      state.attendances = previousAttendances;
+      state.syncStatus = `Error al quitar invitado: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = "Invitado quitado localmente";
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+  elements.selfTrainingMessage.textContent = `${guestName} quitado del listado.`;
 }
 
 async function toggleSelfTrainingTag(tag) {

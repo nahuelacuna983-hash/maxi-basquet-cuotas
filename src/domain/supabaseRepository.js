@@ -206,6 +206,31 @@ export async function adminUpsertAttendance(adminPin, attendance) {
   return logMutationMode("fallback");
 }
 
+export async function adminDeleteGuestAttendance(adminPin, attendanceId) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("admin_delete_guest_attendance", {
+    p_admin_pin: adminPin,
+    p_attendance_id: attendanceId,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_delete_guest_attendance");
+  }
+
+  const fallbackResult = await client
+    .from("attendances")
+    .delete()
+    .eq("id", attendanceId)
+    .eq("participant_type", "guest");
+
+  assertSupabaseResult(fallbackResult, "attendances");
+  return logMutationMode("fallback");
+}
+
 export async function adminReviewPayment(adminPin, paymentId, status) {
   const client = await getSupabaseClient();
   const rpcResult = await client.rpc("admin_review_payment", {

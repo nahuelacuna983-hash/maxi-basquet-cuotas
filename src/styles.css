@@ -511,6 +511,13 @@ h1 {
   font-weight: 800;
 }
 
+.guest-remove-button {
+  min-height: 28px;
+  margin-left: 6px;
+  padding: 3px 8px;
+  vertical-align: middle;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));

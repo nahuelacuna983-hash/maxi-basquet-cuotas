@@ -325,5 +325,26 @@ begin
 end;
 $$;
 
+create or replace function public.admin_delete_guest_attendance(
+  p_admin_pin text,
+  p_attendance_id text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_admin_pin <> '1234' then
+    raise exception 'PIN admin invalido';
+  end if;
+
+  delete from public.attendances
+  where id = p_attendance_id
+    and participant_type = 'guest';
+end;
+$$;
+
 grant execute on function public.submit_training_attendance(text, text, jsonb) to anon, authenticated;
 grant execute on function public.admin_upsert_attendance(text, jsonb) to anon, authenticated;
+grant execute on function public.admin_delete_guest_attendance(text, text) to anon, authenticated;

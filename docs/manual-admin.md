@@ -316,6 +316,8 @@ En modo admin, dentro del listado temporal abierto, se puede escribir el nombre 
 
 El invitado no se crea como jugador, no tiene codigo, no genera cuota, no entra en deuda, no entra en morosos y no modifica responsabilidad. Sirve solo para completar la lista temporal del dia.
 
+Si el invitado se baja, el admin puede tocar `Quitar` en el listado temporal o `Quitar invitado` en la tabla de entrenamientos. Eso borra solo la asistencia del invitado, sin tocar jugadores reales.
+
 **Que no hacer**
 
 No usar el listado como deuda ni habilitacion. No cerrar manualmente registros si todavia se esta probando el flujo.

@@ -8,6 +8,7 @@ SQL incremental de asistencia:
 supabase/attendance-v1.sql
 supabase/attendance-tags-v1.sql
 supabase/attendance-guests-v1.sql
+supabase/attendance-delete-guest-v1.sql
 ```
 
 ## Tablas principales
@@ -27,7 +28,7 @@ Estado:
 - `players`: listado publico por RPC sin `access_code`; validacion de codigo por RPC; escritura admin por RPC.
 - `fees`: lectura permitida; escritura directa bloqueada; escritura admin por RPC.
 - `payments`: lectura de pagos activos; insercion de pagos pendientes; aprobacion/rechazo/eliminacion por RPC.
-- `attendances`: lectura de listados; respuestas de jugador por RPC con codigo; correcciones admin por RPC.
+- `attendances`: lectura de listados; respuestas de jugador por RPC con codigo; correcciones admin por RPC; eliminacion de invitados por RPC.
 - `treasury_config`: lectura permitida; escritura admin por RPC.
 
 ## RPC usadas
@@ -43,6 +44,7 @@ Estado:
 - `admin_update_treasury_config`
 - `submit_training_attendance`
 - `admin_upsert_attendance`
+- `admin_delete_guest_attendance`
 
 ## Campos relevantes
 
