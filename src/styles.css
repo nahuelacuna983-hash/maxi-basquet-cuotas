@@ -716,6 +716,24 @@ select:focus {
   font-size: 0.9rem;
 }
 
+.vote-beta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.vote-beta-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.vote-beta-columns h3 {
+  margin-bottom: 8px;
+  font-size: 0.98rem;
+}
+
 .form-message {
   min-height: 20px;
   color: var(--red);
@@ -1087,7 +1105,8 @@ tbody tr:last-child td {
   .progress-grid,
   .stats-grid,
   .report-controls,
-  .training-list-grid {
+  .training-list-grid,
+  .vote-beta-columns {
     grid-template-columns: 1fr;
   }
 }

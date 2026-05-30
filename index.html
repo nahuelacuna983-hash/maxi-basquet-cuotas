@@ -11,7 +11,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <link rel="stylesheet" href="./src/styles.css?v=guest-remove-2" />
+    <link rel="stylesheet" href="./src/styles.css?v=votes-beta-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -226,6 +226,7 @@
         <button class="admin-tab-button" type="button" data-admin-tab="cuotas">Cuotas</button>
         <button class="admin-tab-button" type="button" data-admin-tab="pagos">Pagos</button>
         <button class="admin-tab-button" type="button" data-admin-tab="entrenamientos">Entrenamientos</button>
+        <button class="admin-tab-button" type="button" data-admin-tab="votaciones">Votaciones beta</button>
         <button class="admin-tab-button" type="button" data-admin-tab="estadisticas">Estadisticas</button>
         <button class="admin-tab-button" type="button" data-admin-tab="convocatorias">Convocatorias</button>
         <button class="admin-tab-button" type="button" data-admin-tab="reportes">Reportes</button>
@@ -569,6 +570,31 @@
               <span>Admin mantiene acceso total aunque no exista usuario VIP.</span>
             </div>
           </section>
+
+          <section class="panel" data-admin-panel="votaciones">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">V</div>
+              <div>
+                <h2>Votaciones beta</h2>
+                <p>Simulacion admin: no la ven los jugadores y no guarda votos</p>
+              </div>
+            </div>
+            <form class="form-grid" id="trainingVoteBetaForm">
+              <label class="wide-field">
+                Entrenamiento
+                <select id="trainingVoteDate"></select>
+              </label>
+              <label>
+                Destacado 1
+                <select id="trainingVoteFirst"></select>
+              </label>
+              <label>
+                Destacado 2
+                <select id="trainingVoteSecond"></select>
+              </label>
+              <p class="form-message wide-field" id="trainingVoteMessage"></p>
+            </form>
+          </section>
         </div>
 
         <div class="tables-column">
@@ -708,6 +734,17 @@
             <div id="adminStatsPanel"></div>
           </section>
 
+          <section class="panel" data-admin-panel="votaciones">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">B</div>
+              <div>
+                <h2>Vista previa de votacion</h2>
+                <p>Candidatos y resultado simulado del entrenamiento seleccionado</p>
+              </div>
+            </div>
+            <div id="trainingVoteBetaPanel"></div>
+          </section>
+
           <section class="panel" data-admin-panel="convocatorias">
             <div class="panel-heading">
               <div class="panel-icon" aria-hidden="true">C</div>
@@ -766,7 +803,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=guest-remove-2"></script>
-    <script type="module" src="./src/pwa.js?v=pwa-11"></script>
+    <script type="module" src="./src/app.js?v=votes-beta-1"></script>
+    <script type="module" src="./src/pwa.js?v=pwa-12"></script>
   </body>
 </html>

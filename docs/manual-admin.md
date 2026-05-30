@@ -17,7 +17,7 @@ La regla de seguridad de esta MVP es simple: si algo impacta deuda, habilitacion
 
 El modo admin muestra las herramientas internas de gestion.
 
-En la pantalla admin, las herramientas estan ordenadas por pestanas: `Resumen`, `Jugadores`, `Cuotas`, `Pagos`, `Entrenamientos`, `Estadisticas`, `Convocatorias`, `Reportes`, `VIP`, `Configuracion` y `Backups`.
+En la pantalla admin, las herramientas estan ordenadas por pestanas: `Resumen`, `Jugadores`, `Cuotas`, `Pagos`, `Entrenamientos`, `Votaciones beta`, `Estadisticas`, `Convocatorias`, `Reportes`, `VIP`, `Configuracion` y `Backups`.
 
 **Para que sirve**
 
@@ -379,6 +379,32 @@ La carga principal debe hacerla cada jugador, pero el admin necesita una salida 
 **Que no hacer**
 
 No mezclar esta carga con cocina/lavado. No usarla para reemplazar siempre la respuesta del jugador si la app ya esta funcionando.
+
+## Votaciones beta
+
+**Que es**
+
+Es una prueba interna para simular una futura votacion de 2 destacados despues de cada entrenamiento.
+
+**Para que sirve**
+
+Sirve para validar si la app detecta bien a los participantes reales antes de obligar a los jugadores a votar.
+
+**Por que se usa asi**
+
+La votacion puede cambiar habitos del equipo. Primero conviene verla solo como admin, con datos reales, sin bloquear pantallas ni guardar votos.
+
+**Como se usa**
+
+1. Entrar en modo admin.
+2. Ir a `Votaciones beta`.
+3. Elegir fecha de entrenamiento.
+4. Revisar candidatos.
+5. Elegir `Destacado 1` y `Destacado 2`.
+
+**Que no hace todavia**
+
+No guarda votos, no aparece para jugadores, no modifica responsabilidad, no cambia estadisticas y no define premios.
 
 ## Reporte WhatsApp
 

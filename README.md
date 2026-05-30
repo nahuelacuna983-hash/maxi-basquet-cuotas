@@ -21,6 +21,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Panel admin organizado por pestanas: resumen, jugadores, cuotas, pagos, entrenamientos, reportes, configuracion y backups.
 - Estado de jugador editable desde la tabla admin.
 - Secciones base disponibles para estadisticas, convocatorias y VIP.
+- Pestaña admin `Votaciones beta` para simular destacados de entrenamientos sin mostrarlo a jugadores.
 - Asistencia historica inicial cargada para iniciar estadisticas reales.
 - Responsabilidad descuenta bajas, faltas explicitas y ausencias inferidas de jugadores activos en entrenamientos cerrados.
 - Las estadisticas consideran todos los martes y jueves cerrados desde la fecha de inicio, aunque no haya ningun registro cargado.
@@ -223,6 +224,18 @@ Reglas de la primera version:
 - Si un martes o jueves ya cerro y nadie respondio, la fecha cuenta igual para estadisticas: todos los jugadores activos quedan como ausentes inferidos.
 - En modo admin se puede agregar o quitar un invitado del listado temporal. El invitado aparece como `Nombre (invitado)`, no se crea como jugador y no afecta cuotas, deuda ni responsabilidad.
 - En jueves se pueden agregar emoticones opcionales, incluida esponja `🧽` para lavado/platos.
+
+## Votaciones beta
+
+La pestaña admin `Votaciones beta` permite probar una futura votación obligatoria de destacados sin activarla para jugadores.
+
+Reglas actuales:
+
+- Solo la ve el admin.
+- Lee asistencias ya cargadas.
+- Propone como candidatos a jugadores reales con `Voy`, `Avisa mas tarde`, `Llega sobre la hora` o `Asistio`.
+- Permite simular 2 destacados distintos.
+- No guarda votos, no bloquea jugadores y no modifica estadisticas.
 
 Estados de jugador:
 

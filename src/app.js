@@ -67,6 +67,12 @@ const attendanceTagOptions = [
   { id: "sponge", emoji: "🧽" },
 ];
 const dinnerAttendanceTags = new Set(attendanceTagOptions.map((tag) => tag.id));
+const trainingVoteCandidateStatuses = new Set([
+  "voy",
+  "avisa_mas_tarde",
+  "llega_sobre_la_hora",
+  "asistio",
+]);
 const state = {
   ...persistedAppState,
   playerFilter: "todos",
@@ -80,6 +86,9 @@ const state = {
   selectedReportPlayerId: "",
   selectedReportMonth: getCurrentMonth(),
   currentReportText: "",
+  selectedTrainingVoteDate: "",
+  selectedTrainingVoteFirst: "",
+  selectedTrainingVoteSecond: "",
   activePlayerTab: "quota",
   activeAdminTab: "resumen",
   isAdminMode: false,
@@ -193,6 +202,11 @@ const elements = {
   attendanceNoveltyPlayer: document.querySelector("#attendanceNoveltyPlayer"),
   attendanceNoveltyStatus: document.querySelector("#attendanceNoveltyStatus"),
   attendanceNoveltyMessage: document.querySelector("#attendanceNoveltyMessage"),
+  trainingVoteDate: document.querySelector("#trainingVoteDate"),
+  trainingVoteFirst: document.querySelector("#trainingVoteFirst"),
+  trainingVoteSecond: document.querySelector("#trainingVoteSecond"),
+  trainingVoteMessage: document.querySelector("#trainingVoteMessage"),
+  trainingVoteBetaPanel: document.querySelector("#trainingVoteBetaPanel"),
   responsibilityBaseInfo: document.querySelector("#responsibilityBaseInfo"),
   responsibilityAdjustmentsTable: document.querySelector("#responsibilityAdjustmentsTable"),
   playersTable: document.querySelector("#playersTable"),
@@ -221,6 +235,7 @@ elements.selfPaymentDate.value = new Date().toISOString().slice(0, 10);
 elements.playerPaymentDate.value = new Date().toISOString().slice(0, 10);
 elements.attendanceDate.value = new Date().toISOString().slice(0, 10);
 elements.attendanceNoveltyDate.value = getDefaultTrainingResponseDate();
+elements.trainingVoteDate.value = state.selectedTrainingVoteDate;
 elements.treasuryAlias.value = state.treasuryConfig.paymentAlias;
 elements.treasuryHolder.value = state.treasuryConfig.accountHolder;
 elements.treasuryPaymentLink.value = state.treasuryConfig.paymentLink;
@@ -333,6 +348,23 @@ elements.generateReportButton.addEventListener("click", () => {
 
 elements.copyReportButton.addEventListener("click", async () => {
   await copyDetailedReport();
+});
+
+elements.trainingVoteDate.addEventListener("change", () => {
+  state.selectedTrainingVoteDate = elements.trainingVoteDate.value;
+  state.selectedTrainingVoteFirst = "";
+  state.selectedTrainingVoteSecond = "";
+  renderTrainingVoteBeta();
+});
+
+elements.trainingVoteFirst.addEventListener("change", () => {
+  state.selectedTrainingVoteFirst = elements.trainingVoteFirst.value;
+  renderTrainingVoteBeta();
+});
+
+elements.trainingVoteSecond.addEventListener("change", () => {
+  state.selectedTrainingVoteSecond = elements.trainingVoteSecond.value;
+  renderTrainingVoteBeta();
 });
 
 elements.selfPaymentDate.addEventListener("change", () => {
@@ -918,6 +950,7 @@ function render() {
   renderPendingPayments();
   renderPaymentsHistory();
   renderAttendances();
+  renderTrainingVoteBeta();
   renderResponsibilityAdjustments();
   renderReportOptions();
   renderWhatsappReport(debts);
@@ -1071,6 +1104,7 @@ function renderAdminTabs() {
     "cuotas",
     "pagos",
     "entrenamientos",
+    "votaciones",
     "estadisticas",
     "convocatorias",
     "reportes",
@@ -1625,6 +1659,122 @@ function renderAttendances() {
       deleteGuestAttendance(button.dataset.deleteGuestAttendance);
     });
   });
+}
+
+function renderTrainingVoteBeta() {
+  const dates = getTrainingVoteDates();
+
+  if (dates.length === 0) {
+    elements.trainingVoteDate.innerHTML = '<option value="">Sin entrenamientos</option>';
+    elements.trainingVoteFirst.innerHTML = '<option value="">Sin candidatos</option>';
+    elements.trainingVoteSecond.innerHTML = '<option value="">Sin candidatos</option>';
+    elements.trainingVoteFirst.disabled = true;
+    elements.trainingVoteSecond.disabled = true;
+    elements.trainingVoteMessage.textContent = "Todavia no hay entrenamientos con respuestas cargadas.";
+    elements.trainingVoteBetaPanel.innerHTML =
+      '<p class="empty-state">Cuando haya asistencias, aca vas a poder simular la votacion de destacados.</p>';
+    return;
+  }
+
+  if (!state.selectedTrainingVoteDate || !dates.includes(state.selectedTrainingVoteDate)) {
+    state.selectedTrainingVoteDate = dates[0];
+  }
+
+  const candidates = getTrainingVoteCandidates(state.selectedTrainingVoteDate);
+  const candidateIds = new Set(candidates.map((player) => player.id));
+
+  if (!candidateIds.has(state.selectedTrainingVoteFirst)) {
+    state.selectedTrainingVoteFirst = "";
+  }
+  if (!candidateIds.has(state.selectedTrainingVoteSecond)) {
+    state.selectedTrainingVoteSecond = "";
+  }
+
+  elements.trainingVoteDate.innerHTML = dates
+    .map(
+      (date) =>
+        `<option value="${date}">${formatTrainingDateLabel(date)} (${date})</option>`,
+    )
+    .join("");
+  elements.trainingVoteDate.value = state.selectedTrainingVoteDate;
+
+  const candidateOptions = [
+    '<option value="">Elegir jugador</option>',
+    ...candidates.map(
+      (player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`,
+    ),
+  ].join("");
+
+  elements.trainingVoteFirst.innerHTML = candidateOptions;
+  elements.trainingVoteSecond.innerHTML = candidateOptions;
+  elements.trainingVoteFirst.value = state.selectedTrainingVoteFirst;
+  elements.trainingVoteSecond.value = state.selectedTrainingVoteSecond;
+  elements.trainingVoteFirst.disabled = candidates.length < 2;
+  elements.trainingVoteSecond.disabled = candidates.length < 2;
+
+  const firstPlayer = candidates.find((player) => player.id === state.selectedTrainingVoteFirst);
+  const secondPlayer = candidates.find((player) => player.id === state.selectedTrainingVoteSecond);
+  const hasValidSelection =
+    firstPlayer &&
+    secondPlayer &&
+    firstPlayer.id !== secondPlayer.id;
+
+  if (candidates.length < 2) {
+    elements.trainingVoteMessage.textContent =
+      "Se necesitan al menos 2 participantes reales para simular la votacion.";
+  } else if (!firstPlayer || !secondPlayer) {
+    elements.trainingVoteMessage.textContent =
+      "Elegir 2 destacados. Esta beta no guarda votos ni bloquea jugadores.";
+  } else if (firstPlayer.id === secondPlayer.id) {
+    elements.trainingVoteMessage.textContent = "Los 2 destacados tienen que ser jugadores distintos.";
+  } else {
+    elements.trainingVoteMessage.textContent =
+      `Simulacion: ${getPlayerName(firstPlayer)} y ${getPlayerName(secondPlayer)} quedarian destacados.`;
+  }
+
+  elements.trainingVoteBetaPanel.innerHTML = `
+    <div class="vote-beta-grid">
+      <article class="payment-summary">
+        <span>Entrenamiento</span>
+        <strong>${formatTrainingDateLabel(state.selectedTrainingVoteDate)}</strong>
+        <span>No visible para jugadores. No guarda datos.</span>
+      </article>
+      <article class="payment-summary">
+        <span>Candidatos</span>
+        <strong>${candidates.length}</strong>
+        <span>Solo jugadores reales que figuran como participantes.</span>
+      </article>
+    </div>
+    <div class="vote-beta-columns">
+      <div>
+        <h3>Candidatos</h3>
+        ${renderTrainingVoteCandidateList(candidates)}
+      </div>
+      <div>
+        <h3>Resultado simulado</h3>
+        ${
+          hasValidSelection
+            ? `<ol class="training-list">
+                <li>${escapeHtml(getPlayerName(firstPlayer))} <span class="muted-detail">(1 voto beta)</span></li>
+                <li>${escapeHtml(getPlayerName(secondPlayer))} <span class="muted-detail">(1 voto beta)</span></li>
+              </ol>`
+            : '<p class="empty-state">Elegir 2 jugadores distintos para ver el resultado.</p>'
+        }
+      </div>
+    </div>
+  `;
+}
+
+function renderTrainingVoteCandidateList(candidates) {
+  if (candidates.length === 0) {
+    return '<p class="empty-state">No hay participantes reales para esta fecha.</p>';
+  }
+
+  return `
+    <ol class="training-list">
+      ${candidates.map((player) => `<li>${escapeHtml(getPlayerName(player))}</li>`).join("")}
+    </ol>
+  `;
 }
 
 function renderResponsibilityAdjustments() {
@@ -4137,6 +4287,34 @@ function getAttendancesForDate(date) {
     (attendance) =>
       attendance.date === date && (attendance.eventType ?? "entrenamiento") === "entrenamiento",
   );
+}
+
+function getTrainingVoteDates() {
+  return Array.from(
+    new Set(
+      state.attendances
+        .filter((attendance) => (attendance.eventType ?? "entrenamiento") === "entrenamiento")
+        .map((attendance) => attendance.date)
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => b.localeCompare(a));
+}
+
+function getTrainingVoteCandidates(date) {
+  const playersById = new Map(state.players.map((player) => [player.id, player]));
+  const candidateIds = new Set();
+
+  getAttendancesForDate(date).forEach((attendance) => {
+    if (isGuestAttendance(attendance)) return;
+    if (!trainingVoteCandidateStatuses.has(attendance.status)) return;
+    if (!playersById.has(attendance.playerId)) return;
+    candidateIds.add(attendance.playerId);
+  });
+
+  return Array.from(candidateIds)
+    .map((playerId) => playersById.get(playerId))
+    .filter(Boolean)
+    .sort(comparePlayersByName);
 }
 
 function getCompletedTrainingDates(now = new Date()) {
