@@ -225,4 +225,4 @@ Al 2026-05-24:
 - Se agrego persistencia local del acceso de jugador en la app instalada para que al minimizar o reabrir no vuelva a pedir codigo. El modo admin sigue sin persistirse.
 - Se agrego creacion admin de la cuota del mes siguiente para registrar pagos anticipados.
 - Se agrego emoticon `🧽` para lavado/platos en el listado de jueves.
-- Se agrego pestaña admin `Votaciones beta` para simular 2 destacados por entrenamiento sin mostrarlo a jugadores ni guardar votos.
+- Se agrego pestaña admin `Votaciones beta` para simular destacado con premio y voto esponja por entrenamiento sin mostrarlo a jugadores ni guardar votos.

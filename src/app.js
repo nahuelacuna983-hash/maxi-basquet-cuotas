@@ -88,6 +88,7 @@ const state = {
   currentReportText: "",
   selectedTrainingVoteDate: "",
   selectedTrainingVoteFirst: "",
+  selectedTrainingVoteAward: "pelota",
   selectedTrainingVoteSecond: "",
   activePlayerTab: "quota",
   activeAdminTab: "resumen",
@@ -204,6 +205,7 @@ const elements = {
   attendanceNoveltyMessage: document.querySelector("#attendanceNoveltyMessage"),
   trainingVoteDate: document.querySelector("#trainingVoteDate"),
   trainingVoteFirst: document.querySelector("#trainingVoteFirst"),
+  trainingVoteAward: document.querySelector("#trainingVoteAward"),
   trainingVoteSecond: document.querySelector("#trainingVoteSecond"),
   trainingVoteMessage: document.querySelector("#trainingVoteMessage"),
   trainingVoteBetaPanel: document.querySelector("#trainingVoteBetaPanel"),
@@ -359,6 +361,11 @@ elements.trainingVoteDate.addEventListener("change", () => {
 
 elements.trainingVoteFirst.addEventListener("change", () => {
   state.selectedTrainingVoteFirst = elements.trainingVoteFirst.value;
+  renderTrainingVoteBeta();
+});
+
+elements.trainingVoteAward.addEventListener("change", () => {
+  state.selectedTrainingVoteAward = elements.trainingVoteAward.value;
   renderTrainingVoteBeta();
 });
 
@@ -1669,6 +1676,7 @@ function renderTrainingVoteBeta() {
     elements.trainingVoteFirst.innerHTML = '<option value="">Sin candidatos</option>';
     elements.trainingVoteSecond.innerHTML = '<option value="">Sin candidatos</option>';
     elements.trainingVoteFirst.disabled = true;
+    elements.trainingVoteAward.disabled = true;
     elements.trainingVoteSecond.disabled = true;
     elements.trainingVoteMessage.textContent = "Todavia no hay entrenamientos con respuestas cargadas.";
     elements.trainingVoteBetaPanel.innerHTML =
@@ -1708,12 +1716,15 @@ function renderTrainingVoteBeta() {
   elements.trainingVoteFirst.innerHTML = candidateOptions;
   elements.trainingVoteSecond.innerHTML = candidateOptions;
   elements.trainingVoteFirst.value = state.selectedTrainingVoteFirst;
+  elements.trainingVoteAward.value = state.selectedTrainingVoteAward || "pelota";
   elements.trainingVoteSecond.value = state.selectedTrainingVoteSecond;
   elements.trainingVoteFirst.disabled = candidates.length < 2;
+  elements.trainingVoteAward.disabled = candidates.length < 2;
   elements.trainingVoteSecond.disabled = candidates.length < 2;
 
   const firstPlayer = candidates.find((player) => player.id === state.selectedTrainingVoteFirst);
   const secondPlayer = candidates.find((player) => player.id === state.selectedTrainingVoteSecond);
+  const award = getTrainingVoteAward(state.selectedTrainingVoteAward);
   const hasValidSelection =
     firstPlayer &&
     secondPlayer &&
@@ -1721,15 +1732,15 @@ function renderTrainingVoteBeta() {
 
   if (candidates.length < 2) {
     elements.trainingVoteMessage.textContent =
-      "Se necesitan al menos 2 participantes reales para simular la votacion.";
+      "Se necesitan al menos 2 participantes reales para simular destacado y esponja.";
   } else if (!firstPlayer || !secondPlayer) {
     elements.trainingVoteMessage.textContent =
-      "Elegir 2 destacados. Esta beta no guarda votos ni bloquea jugadores.";
+      "Elegir un destacado, su premio y un voto esponja. Esta beta no guarda votos ni bloquea jugadores.";
   } else if (firstPlayer.id === secondPlayer.id) {
-    elements.trainingVoteMessage.textContent = "Los 2 destacados tienen que ser jugadores distintos.";
+    elements.trainingVoteMessage.textContent = "Destacado y esponja tienen que ser jugadores distintos.";
   } else {
     elements.trainingVoteMessage.textContent =
-      `Simulacion: ${getPlayerName(firstPlayer)} y ${getPlayerName(secondPlayer)} quedarian destacados.`;
+      `Simulacion: ${getPlayerName(firstPlayer)} recibe ${award.label.toLowerCase()} y ${getPlayerName(secondPlayer)} queda con esponja.`;
   }
 
   elements.trainingVoteBetaPanel.innerHTML = `
@@ -1755,10 +1766,10 @@ function renderTrainingVoteBeta() {
         ${
           hasValidSelection
             ? `<ol class="training-list">
-                <li>${escapeHtml(getPlayerName(firstPlayer))} <span class="muted-detail">(1 voto beta)</span></li>
-                <li>${escapeHtml(getPlayerName(secondPlayer))} <span class="muted-detail">(1 voto beta)</span></li>
+                <li>${award.emoji} ${escapeHtml(getPlayerName(firstPlayer))} <span class="muted-detail">(${escapeHtml(award.label)})</span></li>
+                <li>🧽 ${escapeHtml(getPlayerName(secondPlayer))} <span class="muted-detail">(esponja)</span></li>
               </ol>`
-            : '<p class="empty-state">Elegir 2 jugadores distintos para ver el resultado.</p>'
+            : '<p class="empty-state">Elegir destacado, premio y esponja para ver el resultado.</p>'
         }
       </div>
     </div>
@@ -1775,6 +1786,16 @@ function renderTrainingVoteCandidateList(candidates) {
       ${candidates.map((player) => `<li>${escapeHtml(getPlayerName(player))}</li>`).join("")}
     </ol>
   `;
+}
+
+function getTrainingVoteAward(value) {
+  const awards = {
+    pelota: { label: "Pelota", emoji: "🏀" },
+    copa: { label: "Copa", emoji: "🏆" },
+    pelota_copa: { label: "Pelota y copa", emoji: "🏀 🏆" },
+  };
+
+  return awards[value] ?? awards.pelota;
 }
 
 function renderResponsibilityAdjustments() {

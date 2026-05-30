@@ -234,7 +234,7 @@ Reglas actuales:
 - Solo la ve el admin.
 - Lee asistencias ya cargadas.
 - Propone como candidatos a jugadores reales con `Voy`, `Avisa mas tarde`, `Llega sobre la hora` o `Asistio`.
-- Permite simular 2 destacados distintos.
+- Permite simular un destacado con premio `Pelota`, `Copa` o `Pelota y copa`, y un voto separado de `Esponja`.
 - No guarda votos, no bloquea jugadores y no modifica estadisticas.
 
 Estados de jugador:

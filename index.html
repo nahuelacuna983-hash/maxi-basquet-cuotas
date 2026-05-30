@@ -11,7 +11,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <link rel="stylesheet" href="./src/styles.css?v=votes-beta-1" />
+    <link rel="stylesheet" href="./src/styles.css?v=votes-beta-2" />
   </head>
   <body>
     <main class="app-shell">
@@ -585,11 +585,19 @@
                 <select id="trainingVoteDate"></select>
               </label>
               <label>
-                Destacado 1
+                Destacado
                 <select id="trainingVoteFirst"></select>
               </label>
               <label>
-                Destacado 2
+                Premio
+                <select id="trainingVoteAward">
+                  <option value="pelota">Pelota</option>
+                  <option value="copa">Copa</option>
+                  <option value="pelota_copa">Pelota y copa</option>
+                </select>
+              </label>
+              <label class="wide-field">
+                Esponja
                 <select id="trainingVoteSecond"></select>
               </label>
               <p class="form-message wide-field" id="trainingVoteMessage"></p>
@@ -803,7 +811,7 @@
       </section>
       </section>
     </main>
-    <script type="module" src="./src/app.js?v=votes-beta-1"></script>
-    <script type="module" src="./src/pwa.js?v=pwa-12"></script>
+    <script type="module" src="./src/app.js?v=votes-beta-2"></script>
+    <script type="module" src="./src/pwa.js?v=pwa-13"></script>
   </body>
 </html>

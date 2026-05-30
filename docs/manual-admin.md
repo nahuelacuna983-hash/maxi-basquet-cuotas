@@ -384,7 +384,7 @@ No mezclar esta carga con cocina/lavado. No usarla para reemplazar siempre la re
 
 **Que es**
 
-Es una prueba interna para simular una futura votacion de 2 destacados despues de cada entrenamiento.
+Es una prueba interna para simular una futura votacion despues de cada entrenamiento: un destacado con premio y un voto de esponja.
 
 **Para que sirve**
 
@@ -400,7 +400,9 @@ La votacion puede cambiar habitos del equipo. Primero conviene verla solo como a
 2. Ir a `Votaciones beta`.
 3. Elegir fecha de entrenamiento.
 4. Revisar candidatos.
-5. Elegir `Destacado 1` y `Destacado 2`.
+5. Elegir el destacado.
+6. Elegir si el premio es `Pelota`, `Copa` o `Pelota y copa`.
+7. Elegir el jugador para `Esponja`.
 
 **Que no hace todavia**
 
