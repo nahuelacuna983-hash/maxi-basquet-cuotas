@@ -232,6 +232,7 @@ Al 2026-05-31:
 - Se declaro la MVP cerrada para uso controlado con jugadores reales.
 - Los puntos abiertos quedan pausados hasta tener feedback de uso real.
 - `Votaciones beta` queda como herramienta admin experimental, sin guardado real.
+- `Votaciones beta` usa `Destacado` con premio `Pelota` o `Copa`, y `Esponja` como voto separado.
 - Estadisticas e informes quedan como primera version util.
 - El admin ordenado por pestanas y subtabs queda como base actual.
 - Las proximas mejoras se priorizaran por fricciones reales: textos confusos, errores de celular, datos mal calculados o acciones admin dificiles.

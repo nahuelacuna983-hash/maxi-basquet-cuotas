@@ -1800,6 +1800,9 @@ function renderTrainingVoteBeta() {
   elements.trainingVoteFirst.innerHTML = candidateOptions;
   elements.trainingVoteSecond.innerHTML = candidateOptions;
   elements.trainingVoteFirst.value = state.selectedTrainingVoteFirst;
+  if (!["pelota", "copa"].includes(state.selectedTrainingVoteAward)) {
+    state.selectedTrainingVoteAward = "pelota";
+  }
   elements.trainingVoteAward.value = state.selectedTrainingVoteAward || "pelota";
   elements.trainingVoteSecond.value = state.selectedTrainingVoteSecond;
   elements.trainingVoteFirst.disabled = candidates.length < 2;
@@ -1824,7 +1827,7 @@ function renderTrainingVoteBeta() {
     elements.trainingVoteMessage.textContent = "Destacado y esponja tienen que ser jugadores distintos.";
   } else {
     elements.trainingVoteMessage.textContent =
-      `Simulacion: ${getPlayerName(firstPlayer)} recibe ${award.label.toLowerCase()} y ${getPlayerName(secondPlayer)} queda con esponja.`;
+      `Simulacion lista: ${award.label} para destacado y esponja asignada.`;
   }
 
   elements.trainingVoteBetaPanel.innerHTML = `
@@ -1850,8 +1853,8 @@ function renderTrainingVoteBeta() {
         ${
           hasValidSelection
             ? `<ol class="training-list">
-                <li>${award.emoji} ${escapeHtml(getPlayerName(firstPlayer))} <span class="muted-detail">(${escapeHtml(award.label)})</span></li>
-                <li>🧽 ${escapeHtml(getPlayerName(secondPlayer))} <span class="muted-detail">(esponja)</span></li>
+                <li>${award.emoji} <strong>Destacado:</strong> ${escapeHtml(getPlayerName(firstPlayer))}</li>
+                <li>🧽 <strong>Esponja:</strong> ${escapeHtml(getPlayerName(secondPlayer))}</li>
               </ol>`
             : '<p class="empty-state">Elegir destacado, premio y esponja para ver el resultado.</p>'
         }
@@ -1876,7 +1879,6 @@ function getTrainingVoteAward(value) {
   const awards = {
     pelota: { label: "Pelota", emoji: "🏀" },
     copa: { label: "Copa", emoji: "🏆" },
-    pelota_copa: { label: "Pelota y copa", emoji: "🏀 🏆" },
   };
 
   return awards[value] ?? awards.pelota;

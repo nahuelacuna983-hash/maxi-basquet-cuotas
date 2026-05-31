@@ -409,7 +409,7 @@ La votacion puede cambiar habitos del equipo. Primero conviene verla solo como a
 3. Elegir fecha de entrenamiento.
 4. Revisar candidatos.
 5. Elegir el destacado.
-6. Elegir si el premio es `Pelota`, `Copa` o `Pelota y copa`.
+6. Elegir si el premio del destacado es `Pelota` o `Copa`.
 7. Elegir el jugador para `Esponja`.
 
 **Que no hace todavia**
