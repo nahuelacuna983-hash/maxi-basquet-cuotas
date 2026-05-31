@@ -10,6 +10,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 
 ## Estado actual
 
+- MVP cerrada para uso controlado con jugadores reales.
 - App publicada en GitHub Pages.
 - Datos compartidos con Supabase.
 - Vista jugador separada en pestanas: `Mi cuota` y `Entrenamientos`.
@@ -36,6 +37,10 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Listado temporal de entrenamientos martes/jueves.
 - Informes MVP por jugador, pagos general, asistencia general, responsabilidad general, resumen de equipo y graficos simples.
 - Escrituras principales protegidas con RPC en Supabase.
+
+## Criterio de cambios
+
+La version actual queda congelada como base operativa. Las proximas modificaciones deben salir de uso real: textos confusos, problemas de celular, datos mal calculados o acciones admin que resulten dificiles. No se agregan modulos grandes hasta tener esa devolucion.
 
 ## Vista jugador
 

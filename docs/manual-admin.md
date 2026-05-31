@@ -11,6 +11,8 @@ La app tiene dos ideas centrales:
 
 La regla de seguridad de esta MVP es simple: si algo impacta deuda, habilitacion, cuota o datos compartidos, lo hace el admin.
 
+Al 2026-05-31 la app queda cerrada para uso controlado. El objetivo del admin no es sumar mas funciones, sino operar con jugadores reales y anotar fricciones concretas: textos que confunden, botones dificiles, datos que no cierran o tareas que se repiten demasiado.
+
 ## Entrar en modo admin
 
 **Que es**

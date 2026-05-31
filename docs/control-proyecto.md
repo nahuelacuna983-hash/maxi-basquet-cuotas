@@ -1,6 +1,6 @@
 # Control del proyecto
 
-Ultima actualizacion: 2026-05-08
+Ultima actualizacion: 2026-05-31
 
 Este documento acompana al `README.md` y sirve para registrar avances, pendientes y estimacion de cierre.
 
@@ -18,7 +18,7 @@ Reglas:
 
 ## Estado resumido
 
-La app esta en etapa MVP avanzada.
+La app esta en etapa MVP cerrada para uso controlado con jugadores reales.
 
 Ya permite:
 
@@ -35,6 +35,20 @@ Ya permite:
 - registrar pagos manuales aprobados
 - proteger escrituras principales con RPC
 - registrar respuestas de listado temporal de entrenamientos
+
+## Cierre de etapa
+
+Al 2026-05-31 la MVP queda cerrada como version operativa controlada.
+
+Criterio acordado:
+
+- No sumar modulos grandes antes de usarla con jugadores.
+- Mantener la experiencia actual de jugador: `Mi cuota` y `Entrenamientos`.
+- Mantener admin con pestanas y subtabs internos.
+- Mantener `Votaciones beta` solo como herramienta admin experimental, sin guardar votos reales todavia.
+- Mantener estadisticas e informes como primera version util.
+- Dejar que el uso real indique que texto, boton, orden o flujo hay que corregir.
+- Priorizar correcciones de confusion, errores de datos o problemas de celular antes que nuevas funciones.
 
 ## Avances cerrados
 
@@ -67,29 +81,25 @@ Ya permite:
 - Validacion de codigo por RPC.
 - Listado publico de jugadores sin exponer `access_code`.
 
-## Pendiente inmediato
+## Pendientes cerrados para esta etapa
 
-Antes de usar con todo el equipo:
+Los puntos abiertos quedan cerrados como decision de producto para esta version:
 
-- Limpiar jugadores de ejemplo, duplicados o invalidos.
-- Revisar jugadores reales cargados.
-- Revisar cuotas de abril y mayo.
-- Dejar abril 2026 con monto fijo historico: competidor `$51.000`, solo entrenamientos `$30.000`.
-- Confirmar bases de cobro reales por mes.
-- Confirmar codigos de acceso de jugadores.
-- Definir metodo de pago real antes de mandar el mensaje general.
-- Probar circuito completo con 3 a 5 jugadores.
-- Documentar SQL final completo de Supabase en `supabase/schema.sql`.
+- Admin ordenado: se mantiene el esquema de pestanas y subtabs internos.
+- `Votaciones beta`: queda disponible solo para admin, sin guardar votos reales todavia.
+- Estadisticas e informes: se mantienen como primera version; se ajustaran cuando haya uso real.
+- VIP: queda como modulo preparado, no activo como producto pago.
+- Fixture/prode: queda postergado como modulo separado, fuera de esta etapa.
+- Nuevas funciones: quedan pausadas salvo correcciones necesarias para que jugadores puedan usar la app.
 
-## Orden de trabajo acordado
+## Orden de trabajo actual
 
-Prioridad actual despues de la primera prueba:
+Prioridad despues del cierre MVP:
 
-1. Revisar flujo de pagos y cuotas del mes siguiente.
-2. Pulir asistencia y listado temporal en celular.
-3. Ordenar admin para que no sea una vista tipo sabana.
-4. Volver a `Votaciones beta` y decidir si guarda votos reales.
-5. Evaluar fixture/prode como modulo separado, al final del ciclo.
+1. Usar la app con jugadores reales.
+2. Registrar dudas, errores y fricciones concretas.
+3. Corregir primero problemas de celular, textos confusos, datos mal calculados o acciones admin dificiles.
+4. Recien despues decidir nuevas funciones.
 
 ## Protocolo de backups
 
@@ -122,24 +132,23 @@ Objetivo:
 
 La prueba controlada no debe empezar hasta tener el backup limpio exportado.
 
-## Pendiente siguiente
+## Mejoras futuras no bloqueantes
 
-Para version operativa mas firme:
+Para una version posterior mas firme:
 
 - Supabase Auth para admin real.
 - Roles reales: jugador y administrador.
 - Auditoria de acciones admin.
-- Mejor manejo de edicion/eliminacion de pagos.
-- Mejorar pantalla admin sin redisenar todo.
+- Mejor manejo de auditoria visible para edicion/eliminacion de pagos.
+- Mejoras de admin segun uso real.
 - Definir si se mantiene GitHub Pages o si se migra a Next.js/Vercel.
 - Evaluar dominio propio.
 
-## Pendiente funcional
+## Fuera de esta version cerrada
 
-Queda fuera de la MVP de cobro actual:
+Queda fuera de la version operativa controlada:
 
-- asistencia real martes/jueves por jugador
-- cierre de jornada con destacados
+- guardar votaciones reales de destacados
 - ranking de responsabilidad calculado desde eventos
 - reporte WhatsApp mas completo
 - habilitados por liga
@@ -148,34 +157,31 @@ Queda fuera de la MVP de cobro actual:
 - debito automatico
 - PDF
 - graficos
-- modulo VIP o usuario extendido
-- cocina/lavado
+- modulo VIP o usuario extendido activo
+- cocina/lavado como modulo formal
+- fixture/prode
 
 ## Estimacion de cierre
 
-Las fechas dependen de mantener el alcance controlado.
+Estado al 2026-05-31:
 
-Estimacion actual:
-
-- MVP de cobro segura: 90-95% completa.
-- Prueba controlada con jugadores reales: 1 semana.
-- MVP usable con todo el equipo: semana del 11 al 17 de mayo de 2026, si la prueba controlada no muestra errores graves.
-- Version 1.0 con asistencia basica y admin mas ordenado: fines de mayo o primera semana de junio de 2026.
-- Version mas completa con Auth real, asistencia, ranking, reportes y pagos mas automatizados: junio de 2026 o despues, segun alcance.
+- MVP de cobro y asistencia basica: cerrada para uso controlado.
+- Proxima etapa: observacion con jugadores reales.
+- Version mas completa con Auth real, votaciones reales, ranking mas fino, reportes avanzados y pagos automatizados: despues del ciclo de uso real, segun feedback.
 
 ## Criterio de MVP cerrada
 
-La MVP de cobro se considera cerrada cuando:
+La MVP queda cerrada para uso controlado cuando:
 
-- todos los jugadores reales estan cargados
-- cada jugador tiene codigo
-- cuotas reales estan cargadas
-- 3 a 5 jugadores probaron acceso e informe de pago
-- admin pudo aprobar/rechazar
-- deuda se recalculo bien
-- no reaparecen pagos eliminados
-- existen backup previo a limpieza y backup limpio de prueba controlada
-- README y control del proyecto estan actualizados
+- jugadores reales estan cargados y revisables
+- jugadores tienen codigo de acceso
+- cuotas reales se pueden consultar por mes
+- jugadores pueden informar pagos y responder entrenamientos
+- admin puede aprobar/rechazar pagos, corregir asistencia y editar estados
+- pagos aprobados recalculan deuda
+- pagos eliminados no reaparecen
+- admin esta ordenado en pestanas y subtabs
+- README, manual admin y control del proyecto estan actualizados
 
 ## Ultimo estado conocido
 
@@ -220,6 +226,15 @@ Al 2026-05-19:
 - Se corrigio la fecha de `Respuesta admin`: la sincronizacion con Supabase ya no pisa la fecha elegida ni vuelve automaticamente al 06/04/2026.
 - Se agrego soporte para jueves con `Solo cena`, lista secundaria de cena y emoticones opcionales por jugador sin repetir.
 - Para que los emoticones queden compartidos por Supabase, se agrego `supabase/attendance-tags-v1.sql`.
+
+Al 2026-05-31:
+
+- Se declaro la MVP cerrada para uso controlado con jugadores reales.
+- Los puntos abiertos quedan pausados hasta tener feedback de uso real.
+- `Votaciones beta` queda como herramienta admin experimental, sin guardado real.
+- Estadisticas e informes quedan como primera version util.
+- El admin ordenado por pestanas y subtabs queda como base actual.
+- Las proximas mejoras se priorizaran por fricciones reales: textos confusos, errores de celular, datos mal calculados o acciones admin dificiles.
 
 Al 2026-05-24:
 
