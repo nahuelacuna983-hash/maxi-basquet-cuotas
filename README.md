@@ -200,6 +200,8 @@ Si una cuota tiene montos fijos historicos, esos montos reemplazan la formula no
 
 Desde admin se puede crear la cuota del mes siguiente a partir de la ultima cuota cargada. Esa cuota queda como mes real para registrar pagos anticipados. No copia montos fijos historicos.
 
+Los selectores de mes muestran si una cuota es `mes anterior`, `mes actual` o `cuota futura`. Al crear una cuota futura, los formularios de carga de pago quedan preseleccionados en ese nuevo mes para reducir errores al registrar pagos anticipados.
+
 ## Asistencia / listado temporal
 
 Para activar esta parte en Supabase hay que ejecutar:

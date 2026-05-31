@@ -102,6 +102,8 @@ El costo mensual se reparte segun la cantidad de jugadores que pagan y segun el 
 
 Para pagos anticipados del mes siguiente, usar `Crear cuota del mes siguiente`. La app copia los valores actuales de la ultima cuota, crea el nuevo mes y permite registrar pagos contra esa cuota. No copia montos fijos historicos.
 
+Cuando se crea la cuota siguiente, los formularios de pago quedan apuntando a ese nuevo mes. Los selectores muestran `mes anterior`, `mes actual` o `cuota futura` para que sea mas dificil registrar un pago en el periodo equivocado.
+
 **Que no hacer**
 
 No cargar dos cuotas para el mismo mes. Si el mes ya existe, editar la base en la lista de cuotas. No tocar abril 2026 sin recordar que tiene monto historico fijo.

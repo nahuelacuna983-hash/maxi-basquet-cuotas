@@ -76,6 +76,8 @@ const trainingVoteCandidateStatuses = new Set([
 const state = {
   ...persistedAppState,
   playerFilter: "todos",
+  selectedAdminPaymentFeeId: "",
+  selectedPlayerPaymentFeeId: "",
   selectedSelfServicePlayerId:
     persistedAppState.players.find((player) => player.id === initialUrlPlayerId)?.id ??
     persistedAppState.players.find((player) => player.id === persistedSelfServiceSession?.playerId)?.id ??
@@ -754,8 +756,15 @@ elements.treasuryForm.addEventListener("submit", async (event) => {
   render();
 });
 
+elements.paymentFee.addEventListener("change", () => {
+  state.selectedAdminPaymentFeeId = elements.paymentFee.value;
+});
+
 elements.playerPaymentPlayer.addEventListener("change", renderPlayerPaymentSummary);
-elements.playerPaymentFee.addEventListener("change", renderPlayerPaymentSummary);
+elements.playerPaymentFee.addEventListener("change", () => {
+  state.selectedPlayerPaymentFeeId = elements.playerPaymentFee.value;
+  renderPlayerPaymentSummary();
+});
 
 elements.copyAliasButton.addEventListener("click", async () => {
   const alias = state.treasuryConfig.paymentAlias;
@@ -1134,36 +1143,40 @@ function renderAdminTabs() {
 
 function renderPaymentOptions() {
   const selectedPlayer = elements.paymentPlayer.value;
-  const selectedFee = elements.paymentFee.value;
+  const selectedFee = state.selectedAdminPaymentFeeId || elements.paymentFee.value;
   const sortedPlayers = getSortedPlayers();
+  const sortedFees = getSortedFees();
 
   elements.paymentPlayer.innerHTML = sortedPlayers
     .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
     .join("");
 
-  elements.paymentFee.innerHTML = state.fees
-    .map((fee) => `<option value="${fee.id}">${fee.month}</option>`)
+  elements.paymentFee.innerHTML = sortedFees
+    .map((fee) => `<option value="${fee.id}">${escapeHtml(formatFeeOptionLabel(fee))}</option>`)
     .join("");
 
   elements.paymentPlayer.value = selectedPlayer || sortedPlayers[0]?.id || "";
-  elements.paymentFee.value = selectedFee || state.fees[0]?.id || "";
+  state.selectedAdminPaymentFeeId = getValidPaymentFeeId(selectedFee);
+  elements.paymentFee.value = state.selectedAdminPaymentFeeId;
 }
 
 function renderPlayerPaymentOptions() {
   const selectedPlayer = elements.playerPaymentPlayer.value;
-  const selectedFee = elements.playerPaymentFee.value;
+  const selectedFee = state.selectedPlayerPaymentFeeId || elements.playerPaymentFee.value;
   const sortedPlayers = getSortedPlayers();
+  const sortedFees = getSortedFees();
 
   elements.playerPaymentPlayer.innerHTML = sortedPlayers
     .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
     .join("");
 
-  elements.playerPaymentFee.innerHTML = state.fees
-    .map((fee) => `<option value="${fee.id}">${fee.month}</option>`)
+  elements.playerPaymentFee.innerHTML = sortedFees
+    .map((fee) => `<option value="${fee.id}">${escapeHtml(formatFeeOptionLabel(fee))}</option>`)
     .join("");
 
   elements.playerPaymentPlayer.value = selectedPlayer || sortedPlayers[0]?.id || "";
-  elements.playerPaymentFee.value = selectedFee || state.fees[state.fees.length - 1]?.id || "";
+  state.selectedPlayerPaymentFeeId = getValidPaymentFeeId(selectedFee);
+  elements.playerPaymentFee.value = state.selectedPlayerPaymentFeeId;
 }
 
 function renderSelfServiceMonthOptions(selectedMonth) {
@@ -1173,7 +1186,7 @@ function renderSelfServiceMonthOptions(selectedMonth) {
     .sort();
 
   elements.selfServiceMonth.innerHTML = months
-    .map((month) => `<option value="${month}">${formatMonthLabel(month)}</option>`)
+    .map((month) => `<option value="${month}">${escapeHtml(formatMonthOptionLabel(month))}</option>`)
     .join("");
   elements.selfServiceMonth.value = selectedMonth;
 }
@@ -1345,6 +1358,8 @@ async function createNextFeeFromLatest() {
   if (!saved) return;
 
   state.selectedSelfServiceMonth = nextMonth;
+  state.selectedAdminPaymentFeeId = nextFee.id;
+  state.selectedPlayerPaymentFeeId = nextFee.id;
   elements.feeMessage.textContent =
     `Cuota ${formatMonthLabel(nextMonth)} creada con valores actuales. Ya se pueden registrar pagos.`;
   render();
@@ -4444,6 +4459,35 @@ function getSelectedSelfServiceFee() {
 function formatMonthLabel(month) {
   const [year, monthNumber] = month.split("-");
   return `${monthNumber}/${year}`;
+}
+
+function formatMonthOptionLabel(month) {
+  const label = formatMonthLabel(month);
+  const currentMonth = getCurrentMonth();
+
+  if (month === currentMonth) return `${label} - mes actual`;
+  if (month < currentMonth) return `${label} - mes anterior`;
+  return `${label} - cuota futura`;
+}
+
+function formatFeeOptionLabel(fee) {
+  return formatMonthOptionLabel(fee.month);
+}
+
+function getSortedFees() {
+  return state.fees.slice().sort((a, b) => a.month.localeCompare(b.month));
+}
+
+function getDefaultPaymentFeeId() {
+  const sortedFees = getSortedFees();
+  const currentFee = sortedFees.find((fee) => fee.month === getCurrentMonth());
+  return currentFee?.id ?? sortedFees[sortedFees.length - 1]?.id ?? "";
+}
+
+function getValidPaymentFeeId(preferredFeeId) {
+  return state.fees.some((fee) => fee.id === preferredFeeId)
+    ? preferredFeeId
+    : getDefaultPaymentFeeId();
 }
 
 function getCurrentPaymentStatus(balance, fee) {

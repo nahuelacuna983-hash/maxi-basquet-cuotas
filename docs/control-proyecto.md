@@ -234,5 +234,6 @@ Al 2026-05-24:
 - Se agrego edicion directa del estado de jugador desde la tabla de jugadores, para pasar por ejemplo de `Lesionado` a `Activo` sin recargarlo.
 - Se agrego persistencia local del acceso de jugador en la app instalada para que al minimizar o reabrir no vuelva a pedir codigo. El modo admin sigue sin persistirse.
 - Se agrego creacion admin de la cuota del mes siguiente para registrar pagos anticipados.
+- Se ajusto el flujo de pagos anticipados: los selectores indican si el mes es anterior, actual o futuro, y al crear la cuota siguiente los formularios de pago quedan preseleccionados en ese nuevo mes.
 - Se agrego emoticon `🧽` para lavado/platos en el listado de jueves.
 - Se agrego pestaña admin `Votaciones beta` para simular destacado con premio y voto esponja por entrenamiento sin mostrarlo a jugadores ni guardar votos.
