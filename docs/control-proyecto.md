@@ -81,6 +81,16 @@ Antes de usar con todo el equipo:
 - Probar circuito completo con 3 a 5 jugadores.
 - Documentar SQL final completo de Supabase en `supabase/schema.sql`.
 
+## Orden de trabajo acordado
+
+Prioridad actual despues de la primera prueba:
+
+1. Revisar flujo de pagos y cuotas del mes siguiente.
+2. Pulir asistencia y listado temporal en celular.
+3. Ordenar admin para que no sea una vista tipo sabana.
+4. Volver a `Votaciones beta` y decidir si guarda votos reales.
+5. Evaluar fixture/prode como modulo separado, al final del ciclo.
+
 ## Protocolo de backups
 
 Antes de ampliar el uso real, se deben guardar dos puntos de restauracion.
