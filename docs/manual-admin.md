@@ -19,6 +19,8 @@ El modo admin muestra las herramientas internas de gestion.
 
 En la pantalla admin, las herramientas estan ordenadas por pestanas: `Resumen`, `Jugadores`, `Cuotas`, `Pagos`, `Entrenamientos`, `Votaciones beta`, `Estadisticas`, `Convocatorias`, `Reportes`, `VIP`, `Configuracion` y `Backups`.
 
+Cuando una pestana tiene varias herramientas, aparece una segunda fila de botones internos. Eso permite ver una sola tarjeta por vez y evita que el admin quede como una sabana larga.
+
 **Para que sirve**
 
 Sirve para separar la vista comun del jugador de la administracion del equipo.

@@ -129,7 +129,19 @@ h1 {
   margin: 0 0 14px;
 }
 
-.admin-tab-button {
+.admin-card-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -4px 0 14px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #faf7ef;
+}
+
+.admin-tab-button,
+.admin-card-button {
   min-height: 40px;
   padding: 8px 12px;
   border: 1px solid var(--line);
@@ -140,10 +152,25 @@ h1 {
   font-weight: 900;
 }
 
-.admin-tab-button.active {
+.admin-card-button {
+  background: #fffefa;
+  font-size: 0.82rem;
+}
+
+.admin-tab-button.active,
+.admin-card-button.active {
   color: #fff;
   border-color: #1f6d4a;
   background: #1f6d4a;
+}
+
+.workspace.admin-card-mode {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace.admin-card-mode .forms-column,
+.workspace.admin-card-mode .tables-column {
+  display: contents;
 }
 
 .data-panel {
@@ -1150,6 +1177,17 @@ tbody tr:last-child td {
     display: grid;
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .admin-tabs,
+  .admin-card-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-tab-button,
+  .admin-card-button {
+    width: 100%;
   }
 
   .admin-access > button,

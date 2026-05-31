@@ -94,6 +94,7 @@ const state = {
   selectedTrainingVoteSecond: "",
   activePlayerTab: "quota",
   activeAdminTab: "resumen",
+  activeAdminCards: {},
   isAdminMode: false,
   isAdminLoginVisible: false,
   attendanceSyncReady: !isSupabaseEnabled(),
@@ -112,6 +113,7 @@ const elements = {
   adminModeStatus: document.querySelector("#adminModeStatus"),
   adminSummary: document.querySelector("#adminSummary"),
   adminTabs: document.querySelector("#adminTabs"),
+  adminCardTabs: document.querySelector("#adminCardTabs"),
   adminTabButtons: document.querySelectorAll("[data-admin-tab]"),
   adminTabPanels: document.querySelectorAll("[data-admin-panel]"),
   adminWorkspace: document.querySelector("#adminWorkspace"),
@@ -332,6 +334,13 @@ elements.adminTabs.addEventListener("click", (event) => {
   const button = event.target.closest("[data-admin-tab]");
   if (!button) return;
   state.activeAdminTab = button.dataset.adminTab;
+  renderAdminTabs();
+});
+
+elements.adminCardTabs.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-admin-card-select]");
+  if (!button) return;
+  state.activeAdminCards[state.activeAdminTab] = button.dataset.adminCardSelect;
   renderAdminTabs();
 });
 
@@ -1117,6 +1126,8 @@ function renderPlayerTabs() {
 
 function renderAdminTabs() {
   const activeTab = state.activeAdminTab || "resumen";
+  const activePanels = getAdminPanelsForTab(activeTab);
+  const activeCard = getActiveAdminCard(activeTab, activePanels);
   const workspaceTabs = new Set([
     "jugadores",
     "cuotas",
@@ -1137,10 +1148,66 @@ function renderAdminTabs() {
   });
 
   elements.adminTabPanels.forEach((panel) => {
-    panel.hidden = panel.dataset.adminPanel !== activeTab;
+    const isActivePanel = panel.dataset.adminPanel === activeTab;
+    const cardId = ensureAdminCardId(panel);
+    panel.hidden = !isActivePanel || cardId !== activeCard;
   });
 
+  renderAdminCardTabs(activeTab, activePanels, activeCard);
   elements.adminWorkspace.hidden = !workspaceTabs.has(activeTab);
+  elements.adminWorkspace.classList.toggle("admin-card-mode", activePanels.length > 1);
+}
+
+function getAdminPanelsForTab(tab) {
+  return Array.from(elements.adminTabPanels).filter((panel) => panel.dataset.adminPanel === tab);
+}
+
+function ensureAdminCardId(panel) {
+  if (!panel.dataset.adminCard) {
+    const tab = panel.dataset.adminPanel ?? "admin";
+    const sameTabPanels = getAdminPanelsForTab(tab);
+    const index = sameTabPanels.indexOf(panel);
+    panel.dataset.adminCard = `${tab}-${index}`;
+  }
+
+  return panel.dataset.adminCard;
+}
+
+function getAdminCardLabel(panel) {
+  return panel.dataset.adminCardLabel || panel.querySelector("h2")?.textContent?.trim() || "Seccion";
+}
+
+function getActiveAdminCard(tab, panels) {
+  if (!panels.length) return "";
+
+  const selectedCard = state.activeAdminCards[tab];
+  const matchingPanel = panels.find((panel) => ensureAdminCardId(panel) === selectedCard);
+  if (matchingPanel) return ensureAdminCardId(matchingPanel);
+
+  const firstCard = ensureAdminCardId(panels[0]);
+  state.activeAdminCards[tab] = firstCard;
+  return firstCard;
+}
+
+function renderAdminCardTabs(tab, panels, activeCard) {
+  if (panels.length <= 1) {
+    elements.adminCardTabs.hidden = true;
+    elements.adminCardTabs.innerHTML = "";
+    return;
+  }
+
+  elements.adminCardTabs.hidden = false;
+  elements.adminCardTabs.innerHTML = panels
+    .map((panel) => {
+      const cardId = ensureAdminCardId(panel);
+      const isActive = cardId === activeCard;
+      return `
+        <button class="admin-card-button ${isActive ? "active" : ""}" type="button" data-admin-card-select="${cardId}" aria-selected="${isActive}">
+          ${escapeHtml(getAdminCardLabel(panel))}
+        </button>
+      `;
+    })
+    .join("");
 }
 
 function renderPaymentOptions() {

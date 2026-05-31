@@ -18,7 +18,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - La app instalada recuerda el acceso del jugador en ese dispositivo para no pedir codigo al minimizar o reabrir.
 - Link directo por jugador con `?player=ID_DEL_JUGADOR`.
 - Modo admin con PIN simple.
-- Panel admin organizado por pestanas: resumen, jugadores, cuotas, pagos, entrenamientos, reportes, configuracion y backups.
+- Panel admin organizado por pestanas y subtabs internos para ver una sola herramienta por vez.
 - Estado de jugador editable desde la tabla admin.
 - Secciones base disponibles para estadisticas, convocatorias y VIP.
 - Pestaña admin `Votaciones beta` para simular destacados de entrenamientos sin mostrarlo a jugadores.
