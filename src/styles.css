@@ -524,7 +524,8 @@ h1 {
 .training-list {
   min-height: 42px;
   margin: 8px 0 0;
-  padding-left: 22px;
+  padding-left: 0;
+  list-style-position: inside;
 }
 
 .training-list li {
@@ -1145,6 +1146,25 @@ tbody tr:last-child td {
     padding: 16px;
   }
 
+  .admin-access {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .admin-access > button,
+  .admin-login input,
+  .admin-login button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .admin-login {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+  }
+
   .self-tabs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1182,7 +1202,7 @@ tbody tr:last-child td {
   }
 
   .training-list {
-    padding-left: 18px;
+    padding-left: 0;
   }
 
   .guest-remove-button {
