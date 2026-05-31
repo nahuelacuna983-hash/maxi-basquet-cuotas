@@ -451,10 +451,23 @@ h1 {
 
 .training-action-grid,
 .training-tag-grid {
-  display: flex;
-  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 10px;
+}
+
+.training-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+}
+
+.training-tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.training-action-grid button,
+.training-tag-grid button {
+  min-height: 44px;
 }
 
 .training-action-grid .active,
@@ -500,6 +513,14 @@ h1 {
   gap: 16px;
 }
 
+.training-list-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #eee7dc;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
 .training-list {
   min-height: 42px;
   margin: 8px 0 0;
@@ -509,6 +530,8 @@ h1 {
 .training-list li {
   margin-bottom: 6px;
   font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .guest-remove-button {
@@ -545,6 +568,12 @@ h1 {
 .muted-list li {
   color: var(--ink-soft);
   font-weight: 700;
+}
+
+.muted-list {
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 6px;
 }
 
 .forms-column,
@@ -1116,6 +1145,28 @@ tbody tr:last-child td {
     padding: 16px;
   }
 
+  .self-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .self-tab-button {
+    width: 100%;
+  }
+
+  .training-signup-card {
+    padding: 12px;
+  }
+
+  .training-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .training-tag-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .summary-grid,
   .form-grid,
   .fee-row {
@@ -1128,6 +1179,16 @@ tbody tr:last-child td {
 
   .guest-training-form div {
     grid-template-columns: 1fr;
+  }
+
+  .training-list {
+    padding-left: 18px;
+  }
+
+  .guest-remove-button {
+    display: block;
+    width: max-content;
+    margin: 6px 0 0;
   }
 
   .fee-row div:last-child {

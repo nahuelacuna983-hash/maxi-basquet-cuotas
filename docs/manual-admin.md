@@ -312,6 +312,8 @@ Desde el cierre, todos los martes y jueves configurados cuentan para estadistica
 4. Despues de responder puede sumar emoticones opcionales como cena, cocinero, vino, pan, bebida o esponja/lavado. Cada emoticon se puede usar una sola vez por jugador.
 5. La lista publica muestra quienes confirmaron, la lista secundaria de cena y quienes todavia no respondieron.
 
+En celular, cada bloque muestra contador: `Listado`, `Cena` y `No me interesa`. La lista de `No me interesa` puede desplazarse dentro del bloque para que no tape toda la pantalla.
+
 **Invitados**
 
 En modo admin, dentro del listado temporal abierto, se puede escribir el nombre de un invitado y tocar `Agregar invitado`. La app lo muestra como `Nombre (invitado)` en la lista de ese entrenamiento.

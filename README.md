@@ -227,6 +227,8 @@ Reglas de la primera version:
 - En modo admin se puede agregar o quitar un invitado del listado temporal. El invitado aparece como `Nombre (invitado)`, no se crea como jugador y no afecta cuotas, deuda ni responsabilidad.
 - En jueves se pueden agregar emoticones opcionales, incluida esponja `🧽` para lavado/platos.
 
+- En celular, el listado muestra contadores por bloque y la lista larga de `No me interesa` queda con scroll interno para no tapar toda la pantalla.
+
 ## Votaciones beta
 
 La pestaña admin `Votaciones beta` permite probar una futura votación obligatoria de destacados sin activarla para jugadores.

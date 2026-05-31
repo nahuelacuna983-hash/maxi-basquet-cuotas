@@ -180,8 +180,10 @@ const elements = {
   selfTrainingGuestName: document.querySelector("#selfTrainingGuestName"),
   selfTrainingMessage: document.querySelector("#selfTrainingMessage"),
   selfTrainingLists: document.querySelector("#selfTrainingLists"),
+  selfTrainingMainTitle: document.querySelector("#selfTrainingMainTitle"),
   selfTrainingMainList: document.querySelector("#selfTrainingMainList"),
   selfTrainingDinnerPanel: document.querySelector("#selfTrainingDinnerPanel"),
+  selfTrainingDinnerTitle: document.querySelector("#selfTrainingDinnerTitle"),
   selfTrainingDinnerList: document.querySelector("#selfTrainingDinnerList"),
   selfTrainingNoResponseTitle: document.querySelector("#selfTrainingNoResponseTitle"),
   selfTrainingNoResponseList: document.querySelector("#selfTrainingNoResponseList"),
@@ -2869,7 +2871,9 @@ function renderSelfTrainingSignup(player) {
   elements.selfTrainingWindow.textContent =
     `Abierto hasta ${state.attendanceConfig.closeAt}. Minimo sugerido: ${state.attendanceConfig.trainingMinimumPlayers}.`;
   elements.selfTrainingNoResponseTitle.textContent =
-    state.attendanceConfig.publicNoResponseLabel ?? "No me interesa";
+    `${state.attendanceConfig.publicNoResponseLabel ?? "No me interesa"} (${noResponsePlayers.length})`;
+  elements.selfTrainingMainTitle.textContent = `Listado (${visibleAttendances.length})`;
+  elements.selfTrainingDinnerTitle.textContent = `Cena (${dinnerAttendances.length})`;
   elements.selfTrainingDinnerPanel.hidden = !isDinnerDay;
   elements.selfTrainingMainList.innerHTML = renderTrainingListItems(
     visibleAttendances.map((attendance) => ({
@@ -2938,6 +2942,8 @@ function renderSelfTrainingUnavailable(title, message) {
   elements.selfTrainingTitle.textContent = title;
   elements.selfTrainingWindow.textContent = "";
   elements.selfTrainingMessage.textContent = message;
+  elements.selfTrainingMainTitle.textContent = "Listado";
+  elements.selfTrainingDinnerTitle.textContent = "Cena";
   elements.selfTrainingMainList.innerHTML = "";
   elements.selfTrainingDinnerPanel.hidden = true;
   elements.selfTrainingDinnerList.innerHTML = "";
