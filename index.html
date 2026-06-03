@@ -58,6 +58,9 @@
               <button class="self-tab-button" type="button" data-player-tab="training" aria-controls="selfTrainingTab">
                 Entrenamientos
               </button>
+              <button class="self-tab-button" type="button" data-player-tab="vote" aria-controls="selfVoteTab">
+                Votacion beta
+              </button>
             </nav>
 
             <section class="self-tab-panel" id="selfQuotaTab" data-player-panel="quota">
@@ -202,6 +205,41 @@
                     <ol class="training-list muted-list" id="selfTrainingNoResponseList"></ol>
                   </div>
                 </div>
+              </section>
+            </section>
+
+            <section class="self-tab-panel" id="selfVoteTab" data-player-panel="vote" hidden>
+              <section class="training-signup-card" id="selfTrainingVoteCard">
+                <div class="training-card-header">
+                  <div>
+                    <span class="section-kicker">Votacion beta</span>
+                    <h3>Destacado y esponja</h3>
+                    <p>Prueba visual: todavia no guarda votos reales.</p>
+                  </div>
+                </div>
+                <div class="form-grid">
+                  <label>
+                    Entrenamiento
+                    <select id="selfTrainingVoteDate"></select>
+                  </label>
+                  <label>
+                    Destacado
+                    <select id="selfTrainingVoteFirst"></select>
+                  </label>
+                  <label>
+                    Premio
+                    <select id="selfTrainingVoteAward">
+                      <option value="pelota">Pelota</option>
+                      <option value="copa">Copa</option>
+                    </select>
+                  </label>
+                  <label>
+                    Esponja
+                    <select id="selfTrainingVoteSecond"></select>
+                  </label>
+                </div>
+                <p class="form-message" id="selfTrainingVoteMessage"></p>
+                <div id="selfTrainingVotePreview"></div>
               </section>
             </section>
           </div>
@@ -812,7 +850,7 @@
       </section>
     </main>
     <script src="./src/vendor/supabase.umd.js?v=local-supabase-1"></script>
-    <script type="module" src="./src/app.js?v=supabase-local-1"></script>
+    <script type="module" src="./src/app.js?v=player-vote-beta-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-13"></script>
   </body>
 </html>

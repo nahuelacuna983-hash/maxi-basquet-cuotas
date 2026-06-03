@@ -13,7 +13,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - MVP cerrada para uso controlado con jugadores reales.
 - App publicada en GitHub Pages.
 - Datos compartidos con Supabase.
-- Vista jugador separada en pestanas: `Mi cuota` y `Entrenamientos`.
+- Vista jugador separada en pestanas: `Mi cuota`, `Entrenamientos` y `Votacion beta`.
 - Jugadores mostrados por apellido y nombre, ordenados alfabeticamente.
 - Acceso simple por codigo de jugador.
 - La app instalada recuerda el acceso del jugador en ese dispositivo para no pedir codigo al minimizar o reabrir.
@@ -22,7 +22,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Panel admin organizado por pestanas y subtabs internos para ver una sola herramienta por vez.
 - Estado de jugador editable desde la tabla admin.
 - Secciones base disponibles para estadisticas, convocatorias y VIP.
-- Pestaña admin `Votaciones beta` para simular destacados de entrenamientos sin mostrarlo a jugadores.
+- `Votacion beta` visible para jugadores y admin, sin guardar votos reales todavia.
 - Asistencia historica inicial cargada para iniciar estadisticas reales.
 - Responsabilidad descuenta bajas, faltas explicitas y ausencias inferidas de jugadores activos en entrenamientos cerrados.
 - Las estadisticas consideran todos los martes y jueves cerrados desde la fecha de inicio, aunque no haya ningun registro cargado.
@@ -236,11 +236,11 @@ Reglas de la primera version:
 
 ## Votaciones beta
 
-La pestaña admin `Votaciones beta` permite probar una futura votación obligatoria de destacados sin activarla para jugadores.
+La pestana `Votacion beta` permite probar con jugadores una futura votacion de destacados sin guardar votos reales todavia.
 
 Reglas actuales:
 
-- Solo la ve el admin.
+- La ven jugadores con codigo de acceso y tambien el admin.
 - Lee asistencias ya cargadas.
 - Propone como candidatos a jugadores reales con `Voy`, `Avisa mas tarde`, `Llega sobre la hora` o `Asistio`.
 - Permite simular un `Destacado` con premio `Pelota` o `Copa`, y un voto separado de `Esponja`.

@@ -392,29 +392,28 @@ No mezclar esta carga con cocina/lavado. No usarla para reemplazar siempre la re
 
 **Que es**
 
-Es una prueba interna para simular una futura votacion despues de cada entrenamiento: un destacado con premio y un voto de esponja.
+Es una prueba para simular una futura votacion despues de cada entrenamiento: un destacado con premio y un voto de esponja.
 
 **Para que sirve**
 
-Sirve para validar si la app detecta bien a los participantes reales antes de obligar a los jugadores a votar.
+Sirve para validar con jugadores si la app detecta bien a los participantes reales y si la pantalla se entiende antes de guardar votos reales.
 
 **Por que se usa asi**
 
-La votacion puede cambiar habitos del equipo. Primero conviene verla solo como admin, con datos reales, sin bloquear pantallas ni guardar votos.
+La votacion puede cambiar habitos del equipo. Por ahora se muestra como beta para jugadores y admin, con datos reales, sin bloquear pantallas ni guardar votos.
 
 **Como se usa**
 
-1. Entrar en modo admin.
-2. Ir a `Votaciones beta`.
-3. Elegir fecha de entrenamiento.
-4. Revisar candidatos.
-5. Elegir el destacado.
-6. Elegir si el premio del destacado es `Pelota` o `Copa`.
-7. Elegir el jugador para `Esponja`.
+1. Como jugador, entrar con codigo y abrir `Votacion beta`.
+2. Elegir fecha de entrenamiento.
+3. Elegir el destacado.
+4. Elegir si el premio del destacado es `Pelota` o `Copa`.
+5. Elegir el jugador para `Esponja`.
+6. Como admin, tambien se puede revisar la simulacion desde `Votaciones beta`.
 
 **Que no hace todavia**
 
-No guarda votos, no aparece para jugadores, no modifica responsabilidad, no cambia estadisticas y no define premios.
+No guarda votos reales, no modifica responsabilidad, no cambia estadisticas y no define premios oficiales.
 
 ## Reporte WhatsApp
 

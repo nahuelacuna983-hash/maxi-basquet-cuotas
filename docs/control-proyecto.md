@@ -241,6 +241,7 @@ Al 2026-06-03:
 
 - Se corrigio la carga de Supabase en celulares: la app dejo de depender del CDN `esm.sh` y usa una copia local en `src/vendor/supabase.umd.js`.
 - Se actualizo la version de PWA para que la app instalada pueda tomar el cambio publicado.
+- Se habilito `Votacion beta` tambien para jugadores con codigo de acceso, sin guardar votos reales todavia.
 
 Al 2026-05-24:
 

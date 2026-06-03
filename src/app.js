@@ -92,6 +92,10 @@ const state = {
   selectedTrainingVoteFirst: "",
   selectedTrainingVoteAward: "pelota",
   selectedTrainingVoteSecond: "",
+  selectedSelfTrainingVoteDate: "",
+  selectedSelfTrainingVoteFirst: "",
+  selectedSelfTrainingVoteAward: "pelota",
+  selectedSelfTrainingVoteSecond: "",
   activePlayerTab: "quota",
   activeAdminTab: "resumen",
   activeAdminCards: {},
@@ -189,6 +193,13 @@ const elements = {
   selfTrainingDinnerList: document.querySelector("#selfTrainingDinnerList"),
   selfTrainingNoResponseTitle: document.querySelector("#selfTrainingNoResponseTitle"),
   selfTrainingNoResponseList: document.querySelector("#selfTrainingNoResponseList"),
+  selfTrainingVoteCard: document.querySelector("#selfTrainingVoteCard"),
+  selfTrainingVoteDate: document.querySelector("#selfTrainingVoteDate"),
+  selfTrainingVoteFirst: document.querySelector("#selfTrainingVoteFirst"),
+  selfTrainingVoteAward: document.querySelector("#selfTrainingVoteAward"),
+  selfTrainingVoteSecond: document.querySelector("#selfTrainingVoteSecond"),
+  selfTrainingVoteMessage: document.querySelector("#selfTrainingVoteMessage"),
+  selfTrainingVotePreview: document.querySelector("#selfTrainingVotePreview"),
   paymentPlayer: document.querySelector("#paymentPlayer"),
   paymentFee: document.querySelector("#paymentFee"),
   paymentDate: document.querySelector("#paymentDate"),
@@ -385,6 +396,28 @@ elements.trainingVoteAward.addEventListener("change", () => {
 elements.trainingVoteSecond.addEventListener("change", () => {
   state.selectedTrainingVoteSecond = elements.trainingVoteSecond.value;
   renderTrainingVoteBeta();
+});
+
+elements.selfTrainingVoteDate.addEventListener("change", () => {
+  state.selectedSelfTrainingVoteDate = elements.selfTrainingVoteDate.value;
+  state.selectedSelfTrainingVoteFirst = "";
+  state.selectedSelfTrainingVoteSecond = "";
+  renderSelfTrainingVoteBeta();
+});
+
+elements.selfTrainingVoteFirst.addEventListener("change", () => {
+  state.selectedSelfTrainingVoteFirst = elements.selfTrainingVoteFirst.value;
+  renderSelfTrainingVoteBeta();
+});
+
+elements.selfTrainingVoteAward.addEventListener("change", () => {
+  state.selectedSelfTrainingVoteAward = elements.selfTrainingVoteAward.value;
+  renderSelfTrainingVoteBeta();
+});
+
+elements.selfTrainingVoteSecond.addEventListener("change", () => {
+  state.selectedSelfTrainingVoteSecond = elements.selfTrainingVoteSecond.value;
+  renderSelfTrainingVoteBeta();
 });
 
 elements.selfPaymentDate.addEventListener("change", () => {
@@ -1006,6 +1039,7 @@ function renderSelfService() {
     elements.selfAccessBox.hidden = true;
     elements.selfServiceProtectedContent.hidden = true;
     elements.selfTrainingCard.hidden = true;
+    elements.selfTrainingVoteCard.hidden = true;
     elements.selfCurrentExpected.textContent = formatMoney(0);
     elements.selfCurrentInterest.textContent = formatMoney(0);
     elements.selfCurrentPaid.textContent = formatMoney(0);
@@ -1040,6 +1074,7 @@ function renderSelfService() {
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
     elements.selfTrainingCard.hidden = true;
+    elements.selfTrainingVoteCard.hidden = true;
     elements.selfPaymentStatus.textContent = "";
     elements.selfAccessMessage.textContent =
       playerHasAccessCode(fallbackPlayer)
@@ -1107,6 +1142,7 @@ function renderSelfService() {
   updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, monthPercent);
   updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, yearPercent);
   renderSelfTrainingSignup(fallbackPlayer);
+  renderSelfTrainingVoteBeta();
   renderPlayerTabs();
 }
 
@@ -1872,6 +1908,117 @@ function renderTrainingVoteCandidateList(candidates) {
     <ol class="training-list">
       ${candidates.map((player) => `<li>${escapeHtml(getPlayerName(player))}</li>`).join("")}
     </ol>
+  `;
+}
+
+function renderSelfTrainingVoteBeta() {
+  if (!elements.selfTrainingVoteCard) return;
+
+  const dates = getTrainingVoteDates().filter((date) => getTrainingVoteCandidates(date).length >= 2);
+  elements.selfTrainingVoteCard.hidden = false;
+
+  if (dates.length === 0) {
+    elements.selfTrainingVoteDate.innerHTML = '<option value="">Sin entrenamientos</option>';
+    elements.selfTrainingVoteFirst.innerHTML = '<option value="">Sin candidatos</option>';
+    elements.selfTrainingVoteSecond.innerHTML = '<option value="">Sin candidatos</option>';
+    elements.selfTrainingVoteDate.disabled = true;
+    elements.selfTrainingVoteFirst.disabled = true;
+    elements.selfTrainingVoteAward.disabled = true;
+    elements.selfTrainingVoteSecond.disabled = true;
+    elements.selfTrainingVoteMessage.textContent =
+      "Se habilita cuando haya al menos 2 jugadores anotados en un entrenamiento.";
+    elements.selfTrainingVotePreview.innerHTML =
+      '<p class="empty-state">Todavia no hay candidatos suficientes para probar la votacion.</p>';
+    return;
+  }
+
+  if (!state.selectedSelfTrainingVoteDate || !dates.includes(state.selectedSelfTrainingVoteDate)) {
+    const openSession = getOpenTrainingSession();
+    state.selectedSelfTrainingVoteDate =
+      openSession && dates.includes(openSession.date) ? openSession.date : dates[0];
+  }
+
+  const candidates = getTrainingVoteCandidates(state.selectedSelfTrainingVoteDate);
+  const candidateIds = new Set(candidates.map((player) => player.id));
+
+  if (!candidateIds.has(state.selectedSelfTrainingVoteFirst)) {
+    state.selectedSelfTrainingVoteFirst = "";
+  }
+  if (!candidateIds.has(state.selectedSelfTrainingVoteSecond)) {
+    state.selectedSelfTrainingVoteSecond = "";
+  }
+  if (!["pelota", "copa"].includes(state.selectedSelfTrainingVoteAward)) {
+    state.selectedSelfTrainingVoteAward = "pelota";
+  }
+
+  elements.selfTrainingVoteDate.disabled = false;
+  elements.selfTrainingVoteFirst.disabled = false;
+  elements.selfTrainingVoteAward.disabled = false;
+  elements.selfTrainingVoteSecond.disabled = false;
+
+  elements.selfTrainingVoteDate.innerHTML = dates
+    .map((date) => `<option value="${date}">${formatTrainingDateLabel(date)} (${date})</option>`)
+    .join("");
+  elements.selfTrainingVoteDate.value = state.selectedSelfTrainingVoteDate;
+
+  const candidateOptions = [
+    '<option value="">Elegir jugador</option>',
+    ...candidates.map(
+      (player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`,
+    ),
+  ].join("");
+
+  elements.selfTrainingVoteFirst.innerHTML = candidateOptions;
+  elements.selfTrainingVoteSecond.innerHTML = candidateOptions;
+  elements.selfTrainingVoteFirst.value = state.selectedSelfTrainingVoteFirst;
+  elements.selfTrainingVoteAward.value = state.selectedSelfTrainingVoteAward;
+  elements.selfTrainingVoteSecond.value = state.selectedSelfTrainingVoteSecond;
+
+  const firstPlayer = candidates.find((player) => player.id === state.selectedSelfTrainingVoteFirst);
+  const secondPlayer = candidates.find((player) => player.id === state.selectedSelfTrainingVoteSecond);
+  const award = getTrainingVoteAward(state.selectedSelfTrainingVoteAward);
+  const hasValidSelection = firstPlayer && secondPlayer && firstPlayer.id !== secondPlayer.id;
+
+  if (!firstPlayer || !secondPlayer) {
+    elements.selfTrainingVoteMessage.textContent =
+      "Elegir un destacado y un esponja para ver como quedaria. Es una prueba, no guarda votos.";
+  } else if (firstPlayer.id === secondPlayer.id) {
+    elements.selfTrainingVoteMessage.textContent = "Destacado y esponja tienen que ser jugadores distintos.";
+  } else {
+    elements.selfTrainingVoteMessage.textContent =
+      "Resultado de prueba listo. Todavia no queda guardado.";
+  }
+
+  elements.selfTrainingVotePreview.innerHTML = `
+    <div class="vote-beta-grid">
+      <article class="payment-summary">
+        <span>Entrenamiento</span>
+        <strong>${formatTrainingDateLabel(state.selectedSelfTrainingVoteDate)}</strong>
+        <span>${candidates.length} candidatos anotados.</span>
+      </article>
+      <article class="payment-summary">
+        <span>Estado</span>
+        <strong>Beta</strong>
+        <span>No guarda datos reales todavia.</span>
+      </article>
+    </div>
+    <div class="vote-beta-columns">
+      <div>
+        <h3>Candidatos</h3>
+        ${renderTrainingVoteCandidateList(candidates)}
+      </div>
+      <div>
+        <h3>Resultado de prueba</h3>
+        ${
+          hasValidSelection
+            ? `<ol class="training-list">
+                <li>${award.emoji} <strong>Destacado:</strong> ${escapeHtml(getPlayerName(firstPlayer))}</li>
+                <li>ðŸ§½ <strong>Esponja:</strong> ${escapeHtml(getPlayerName(secondPlayer))}</li>
+              </ol>`
+            : '<p class="empty-state">Elegir destacado y esponja para ver la vista previa.</p>'
+        }
+      </div>
+    </div>
   `;
 }
 
