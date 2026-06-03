@@ -397,3 +397,7 @@ docs/asistencia-historica-2026-04.md
 ## Advertencia MVP
 
 Esta version es usable para prueba controlada con jugadores reales, pero todavia no debe considerarse una app publica definitiva. El proximo salto de seguridad serio es agregar autenticacion real con Supabase Auth y roles.
+
+## Dependencias publicadas
+
+La app usa una copia local de Supabase JS en `src/vendor/supabase.umd.js`. Esto evita que celulares o redes que bloquean CDNs externos fallen al guardar pagos o asistencias.

@@ -237,6 +237,11 @@ Al 2026-05-31:
 - El admin ordenado por pestanas y subtabs queda como base actual.
 - Las proximas mejoras se priorizaran por fricciones reales: textos confusos, errores de celular, datos mal calculados o acciones admin dificiles.
 
+Al 2026-06-03:
+
+- Se corrigio la carga de Supabase en celulares: la app dejo de depender del CDN `esm.sh` y usa una copia local en `src/vendor/supabase.umd.js`.
+- Se actualizo la version de PWA para que la app instalada pueda tomar el cambio publicado.
+
 Al 2026-05-24:
 
 - Las estadisticas de asistencia y responsabilidad pasan a considerar todos los martes y jueves cerrados desde `attendanceStartDate`, aunque no exista ningun registro de esa fecha.

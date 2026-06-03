@@ -300,9 +300,13 @@ async function getSupabaseClient() {
   }
 
   if (!clientPromise) {
-    clientPromise = import("https://esm.sh/@supabase/supabase-js@2").then(({ createClient }) =>
-      createClient(supabaseConfig.url, supabaseConfig.anonKey),
-    );
+    const createClient = globalThis.supabase?.createClient;
+
+    if (!createClient) {
+      throw new Error("No se pudo cargar Supabase. Actualiza la app y volve a intentar.");
+    }
+
+    clientPromise = Promise.resolve(createClient(supabaseConfig.url, supabaseConfig.anonKey));
   }
 
   return clientPromise;
