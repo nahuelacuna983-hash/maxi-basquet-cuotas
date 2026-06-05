@@ -388,32 +388,33 @@ La carga principal debe hacerla cada jugador, pero el admin necesita una salida 
 
 No mezclar esta carga con cocina/lavado. No usarla para reemplazar siempre la respuesta del jugador si la app ya esta funcionando.
 
-## Votaciones beta
+## Votaciones de entrenamiento
 
 **Que es**
 
-Es una prueba para simular una futura votacion despues de cada entrenamiento: un destacado con premio y un voto de esponja.
+Es la votacion posterior al entrenamiento: un destacado con premio y un voto de esponja.
 
 **Para que sirve**
 
-Sirve para validar con jugadores si la app detecta bien a los participantes reales y si la pantalla se entiende antes de guardar votos reales.
+Sirve para registrar una devolucion simple despues de entrenar y ver luego resultados por fecha.
 
 **Por que se usa asi**
 
-La votacion puede cambiar habitos del equipo. Por ahora se muestra como beta para jugadores y admin, con datos reales, sin bloquear pantallas ni guardar votos.
+La votacion aparece despues del entrenamiento y bloquea la vista del jugador hasta que vote. No toca pagos, cuotas, responsabilidad ni estadisticas todavia.
 
 **Como se usa**
 
-1. Como jugador, entrar con codigo y abrir `Votacion beta`.
-2. Elegir fecha de entrenamiento.
+1. El jugador entra con su codigo.
+2. Si participo de un entrenamiento con votacion abierta, aparece la votacion pendiente.
 3. Elegir el destacado.
 4. Elegir si el premio del destacado es `Pelota` o `Copa`.
 5. Elegir el jugador para `Esponja`.
-6. Como admin, tambien se puede revisar la simulacion desde `Votaciones beta`.
+6. Guardar votacion.
+7. Como admin, revisar resultados desde `Votaciones beta`.
 
 **Que no hace todavia**
 
-No guarda votos reales, no modifica responsabilidad, no cambia estadisticas y no define premios oficiales.
+No modifica responsabilidad, no cambia estadisticas y no define premios oficiales automaticamente.
 
 ## Reporte WhatsApp
 

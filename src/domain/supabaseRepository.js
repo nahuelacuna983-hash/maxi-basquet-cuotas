@@ -8,7 +8,7 @@ export function isSupabaseEnabled() {
 
 export async function loadSupabaseState(fallbackState, options = {}) {
   const client = await getSupabaseClient();
-  const [playersResult, feesResult, paymentsResult, treasuryResult, attendancesResult] = await Promise.all([
+  const [playersResult, feesResult, paymentsResult, treasuryResult, attendancesResult, votesResult] = await Promise.all([
     loadPlayers(client, options),
     client.from("fees").select("*").order("month", { ascending: true }),
     client
@@ -18,6 +18,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
       .order("created_at", { ascending: false }),
     client.from("treasury_config").select("*").eq("id", "main").maybeSingle(),
     loadAttendances(client),
+    loadTrainingVotes(client),
   ]);
 
   assertSupabaseResult(playersResult, "players");
@@ -25,6 +26,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
   assertSupabaseResult(paymentsResult, "payments");
   assertSupabaseResult(treasuryResult, "treasury_config");
   assertSupabaseResult(attendancesResult, "attendances");
+  assertSupabaseResult(votesResult, "training_votes");
 
   const players = playersResult.data.map(fromSupabasePlayer);
   const fees = feesResult.data.map(fromSupabaseFee);
@@ -32,6 +34,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
   const attendances = attendancesResult.data
     .map(fromSupabaseAttendance)
     .filter((attendance) => !isRemovedGuestAttendance(attendance));
+  const trainingVotes = votesResult.data.map(fromSupabaseTrainingVote);
   const treasuryConfig = treasuryResult.data
     ? fromSupabaseTreasuryConfig(treasuryResult.data)
     : fallbackState.treasuryConfig;
@@ -42,7 +45,9 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     fees: fees.length > 0 ? fees : fallbackState.fees,
     payments,
     attendances,
+    trainingVotes,
     attendanceSyncReady: !attendancesResult.disabled,
+    voteSyncReady: !votesResult.disabled,
     treasuryConfig,
   };
 }
@@ -183,6 +188,26 @@ export async function submitTrainingAttendance(playerId, accessCode, attendance)
     .upsert(payload, { onConflict: "date,player_id,event_type" });
   assertSupabaseResult(fallbackResult, "attendances");
   return logMutationMode("fallback");
+}
+
+export async function submitTrainingVote(playerId, accessCode, vote) {
+  const client = await getSupabaseClient();
+  const payload = toSupabaseTrainingVote(vote);
+  const rpcResult = await client.rpc("submit_training_vote", {
+    p_player_id: playerId,
+    p_access_code: accessCode,
+    p_vote: payload,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "submit_training_vote");
+  }
+
+  throw new Error("Falta activar el SQL de votaciones en Supabase.");
 }
 
 export async function adminUpsertAttendance(adminPin, attendance) {
@@ -354,6 +379,20 @@ async function loadAttendances(client) {
   return result;
 }
 
+async function loadTrainingVotes(client) {
+  const result = await client
+    .from("training_votes")
+    .select("*")
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (result.error && isMissingRelationError(result.error)) {
+    return { data: [], error: null, disabled: true };
+  }
+
+  return result;
+}
+
 function assertSupabaseResult(result, tableName) {
   if (result.error) {
     throw new Error(`${tableName}: ${result.error.message}`);
@@ -505,6 +544,19 @@ function fromSupabaseAttendance(row) {
   };
 }
 
+function fromSupabaseTrainingVote(row) {
+  return {
+    id: row.id,
+    date: row.date,
+    voterPlayerId: row.voter_player_id,
+    featuredPlayerId: row.featured_player_id,
+    award: row.award,
+    spongePlayerId: row.sponge_player_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function toSupabasePayment(payment) {
   return {
     id: payment.id,
@@ -537,6 +589,19 @@ function toSupabaseAttendance(attendance) {
     guest_name: participantType === "guest" ? attendance.guestName ?? "" : null,
     created_at: attendance.createdAt ?? new Date().toISOString(),
     updated_at: attendance.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+function toSupabaseTrainingVote(vote) {
+  return {
+    id: vote.id,
+    date: vote.date,
+    voter_player_id: vote.voterPlayerId,
+    featured_player_id: vote.featuredPlayerId,
+    award: vote.award,
+    sponge_player_id: vote.spongePlayerId,
+    created_at: vote.createdAt ?? new Date().toISOString(),
+    updated_at: vote.updatedAt ?? new Date().toISOString(),
   };
 }
 

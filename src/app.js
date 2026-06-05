@@ -44,6 +44,7 @@ import {
   saveSupabaseState,
   submitPayment,
   submitTrainingAttendance,
+  submitTrainingVote,
   validatePlayerAccess,
 } from "./domain/supabaseRepository.js";
 
@@ -66,6 +67,9 @@ const attendanceTagOptions = [
   { id: "beer", emoji: "🍺" },
   { id: "sponge", emoji: "🧽" },
 ];
+const TRAINING_VOTE_OPEN_AT = "22:01";
+const TRAINING_VOTE_CLOSE_DAYS_AFTER = 1;
+const TRAINING_VOTE_CLOSE_AT = "23:59";
 const dinnerAttendanceTags = new Set(attendanceTagOptions.map((tag) => tag.id));
 const trainingVoteCandidateStatuses = new Set([
   "voy",
@@ -102,6 +106,7 @@ const state = {
   isAdminMode: false,
   isAdminLoginVisible: false,
   attendanceSyncReady: !isSupabaseEnabled(),
+  voteSyncReady: !isSupabaseEnabled(),
   syncStatus: isSupabaseEnabled() ? "Conectando con Supabase..." : "Modo local",
 };
 
@@ -193,7 +198,9 @@ const elements = {
   selfTrainingDinnerList: document.querySelector("#selfTrainingDinnerList"),
   selfTrainingNoResponseTitle: document.querySelector("#selfTrainingNoResponseTitle"),
   selfTrainingNoResponseList: document.querySelector("#selfTrainingNoResponseList"),
+  selfVoteGate: document.querySelector("#selfVoteGate"),
   selfTrainingVoteCard: document.querySelector("#selfTrainingVoteCard"),
+  selfTrainingVoteForm: document.querySelector("#selfTrainingVoteForm"),
   selfTrainingVoteDate: document.querySelector("#selfTrainingVoteDate"),
   selfTrainingVoteFirst: document.querySelector("#selfTrainingVoteFirst"),
   selfTrainingVoteAward: document.querySelector("#selfTrainingVoteAward"),
@@ -418,6 +425,11 @@ elements.selfTrainingVoteAward.addEventListener("change", () => {
 elements.selfTrainingVoteSecond.addEventListener("change", () => {
   state.selectedSelfTrainingVoteSecond = elements.selfTrainingVoteSecond.value;
   renderSelfTrainingVoteBeta();
+});
+
+elements.selfTrainingVoteForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await saveSelfTrainingVote();
 });
 
 elements.selfPaymentDate.addEventListener("change", () => {
@@ -1039,6 +1051,7 @@ function renderSelfService() {
     elements.selfAccessBox.hidden = true;
     elements.selfServiceProtectedContent.hidden = true;
     elements.selfTrainingCard.hidden = true;
+    elements.selfVoteGate.hidden = true;
     elements.selfTrainingVoteCard.hidden = true;
     elements.selfCurrentExpected.textContent = formatMoney(0);
     elements.selfCurrentInterest.textContent = formatMoney(0);
@@ -1074,6 +1087,7 @@ function renderSelfService() {
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
     elements.selfTrainingCard.hidden = true;
+    elements.selfVoteGate.hidden = true;
     elements.selfTrainingVoteCard.hidden = true;
     elements.selfPaymentStatus.textContent = "";
     elements.selfAccessMessage.textContent =
@@ -1141,8 +1155,24 @@ function renderSelfService() {
   updateSelfPaymentSuggestedAmount();
   updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, monthPercent);
   updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, yearPercent);
+
+  const pendingVoteDate = state.voteSyncReady && !state.isAdminMode
+    ? getPendingTrainingVoteDate(fallbackPlayer.id)
+    : "";
+
+  if (pendingVoteDate) {
+    elements.playerTabs.hidden = true;
+    elements.playerTabPanels.forEach((panel) => {
+      panel.hidden = true;
+    });
+    elements.selfVoteGate.hidden = false;
+    renderSelfTrainingVoteBeta({ requiredDate: pendingVoteDate });
+    return;
+  }
+
+  elements.playerTabs.hidden = false;
+  elements.selfVoteGate.hidden = true;
   renderSelfTrainingSignup(fallbackPlayer);
-  renderSelfTrainingVoteBeta();
   renderPlayerTabs();
 }
 
@@ -1896,6 +1926,7 @@ function renderTrainingVoteBeta() {
         }
       </div>
     </div>
+    ${renderTrainingVoteSavedResults(state.selectedTrainingVoteDate, candidates)}
   `;
 }
 
@@ -1911,10 +1942,75 @@ function renderTrainingVoteCandidateList(candidates) {
   `;
 }
 
-function renderSelfTrainingVoteBeta() {
+function renderTrainingVoteSavedResults(date, candidates) {
+  const votes = (state.trainingVotes ?? []).filter((vote) => vote.date === date);
+  if (!state.voteSyncReady) {
+    return '<p class="empty-state">Votaciones reales pendientes de activar en Supabase.</p>';
+  }
+
+  if (votes.length === 0) {
+    return '<p class="empty-state">Todavia no hay votos guardados para esta fecha.</p>';
+  }
+
+  const candidateIds = new Set(candidates.map((player) => player.id));
+  const missingVoters = candidates.filter(
+    (player) => !votes.some((vote) => vote.voterPlayerId === player.id),
+  );
+  const featuredCounts = countVotesByPlayer(votes, "featuredPlayerId");
+  const spongeCounts = countVotesByPlayer(votes, "spongePlayerId");
+
+  return `
+    <div class="vote-beta-columns">
+      <div>
+        <h3>Votos guardados (${votes.length})</h3>
+        <ol class="training-list">
+          ${votes
+            .map(
+              (vote) => `
+                <li>
+                  <strong>${escapeHtml(getPlayerNameById(vote.voterPlayerId))}</strong>:
+                  destacado ${escapeHtml(getPlayerNameById(vote.featuredPlayerId))}
+                  (${escapeHtml(getTrainingVoteAward(vote.award).label)}),
+                  esponja ${escapeHtml(getPlayerNameById(vote.spongePlayerId))}
+                </li>
+              `,
+            )
+            .join("")}
+        </ol>
+      </div>
+      <div>
+        <h3>Resumen</h3>
+        <p><strong>Destacado:</strong> ${renderVoteCountSummary(featuredCounts)}</p>
+        <p><strong>Esponja:</strong> ${renderVoteCountSummary(spongeCounts)}</p>
+        <p><strong>Faltan votar:</strong> ${missingVoters.length ? missingVoters.map((player) => escapeHtml(getPlayerName(player))).join(", ") : "nadie"}</p>
+        <p class="muted-detail">Solo se cuentan candidatos reales de esta fecha (${candidateIds.size}).</p>
+      </div>
+    </div>
+  `;
+}
+
+function countVotesByPlayer(votes, field) {
+  return votes.reduce((counts, vote) => {
+    counts.set(vote[field], (counts.get(vote[field]) ?? 0) + 1);
+    return counts;
+  }, new Map());
+}
+
+function renderVoteCountSummary(counts) {
+  if (counts.size === 0) return "sin votos";
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1] || getPlayerNameById(a[0]).localeCompare(getPlayerNameById(b[0]), "es"))
+    .map(([playerId, count]) => `${escapeHtml(getPlayerNameById(playerId))} (${count})`)
+    .join(", ");
+}
+
+function renderSelfTrainingVoteBeta(options = {}) {
   if (!elements.selfTrainingVoteCard) return;
 
-  const dates = getTrainingVoteDates().filter((date) => getTrainingVoteCandidates(date).length >= 2);
+  const dates = options.requiredDate
+    ? [options.requiredDate]
+    : getTrainingVoteDates().filter((date) => getTrainingVoteCandidates(date).length >= 2);
   elements.selfTrainingVoteCard.hidden = false;
 
   if (dates.length === 0) {
@@ -1932,7 +2028,9 @@ function renderSelfTrainingVoteBeta() {
     return;
   }
 
-  if (!state.selectedSelfTrainingVoteDate || !dates.includes(state.selectedSelfTrainingVoteDate)) {
+  if (options.requiredDate) {
+    state.selectedSelfTrainingVoteDate = options.requiredDate;
+  } else if (!state.selectedSelfTrainingVoteDate || !dates.includes(state.selectedSelfTrainingVoteDate)) {
     const openSession = getOpenTrainingSession();
     state.selectedSelfTrainingVoteDate =
       openSession && dates.includes(openSession.date) ? openSession.date : dates[0];
@@ -1951,7 +2049,7 @@ function renderSelfTrainingVoteBeta() {
     state.selectedSelfTrainingVoteAward = "pelota";
   }
 
-  elements.selfTrainingVoteDate.disabled = false;
+  elements.selfTrainingVoteDate.disabled = Boolean(options.requiredDate);
   elements.selfTrainingVoteFirst.disabled = false;
   elements.selfTrainingVoteAward.disabled = false;
   elements.selfTrainingVoteSecond.disabled = false;
@@ -1981,12 +2079,12 @@ function renderSelfTrainingVoteBeta() {
 
   if (!firstPlayer || !secondPlayer) {
     elements.selfTrainingVoteMessage.textContent =
-      "Elegir un destacado y un esponja para ver como quedaria. Es una prueba, no guarda votos.";
+      "Tenes una votacion pendiente. Elegi destacado y esponja para continuar.";
   } else if (firstPlayer.id === secondPlayer.id) {
     elements.selfTrainingVoteMessage.textContent = "Destacado y esponja tienen que ser jugadores distintos.";
   } else {
     elements.selfTrainingVoteMessage.textContent =
-      "Resultado de prueba listo. Todavia no queda guardado.";
+      "Resultado listo. Toca Guardar votacion para continuar.";
   }
 
   elements.selfTrainingVotePreview.innerHTML = `
@@ -1998,8 +2096,8 @@ function renderSelfTrainingVoteBeta() {
       </article>
       <article class="payment-summary">
         <span>Estado</span>
-        <strong>Beta</strong>
-        <span>No guarda datos reales todavia.</span>
+        <strong>Pendiente</strong>
+        <span>Al guardar queda registrado.</span>
       </article>
     </div>
     <div class="vote-beta-columns">
@@ -2020,6 +2118,112 @@ function renderSelfTrainingVoteBeta() {
       </div>
     </div>
   `;
+}
+
+async function saveSelfTrainingVote() {
+  const voter = state.players.find((player) => player.id === state.selectedSelfServicePlayerId);
+  if (!voter || !canViewSelfServicePlayer(voter)) {
+    elements.selfTrainingVoteMessage.textContent = "Ingresa tu codigo antes de votar.";
+    return;
+  }
+
+  const date = state.selectedSelfTrainingVoteDate;
+  const featuredPlayerId = state.selectedSelfTrainingVoteFirst;
+  const spongePlayerId = state.selectedSelfTrainingVoteSecond;
+  const award = state.selectedSelfTrainingVoteAward;
+  const candidates = getTrainingVoteCandidates(date);
+  const candidateIds = new Set(candidates.map((player) => player.id));
+
+  if (!date || !isTrainingVoteWindowOpen(date)) {
+    elements.selfTrainingVoteMessage.textContent = "La votacion no esta abierta para esta fecha.";
+    return;
+  }
+
+  if (!candidateIds.has(voter.id)) {
+    elements.selfTrainingVoteMessage.textContent = "Solo pueden votar quienes participaron del entrenamiento.";
+    return;
+  }
+
+  if (!candidateIds.has(featuredPlayerId) || !candidateIds.has(spongePlayerId)) {
+    elements.selfTrainingVoteMessage.textContent = "Elegir jugadores del listado de participantes.";
+    return;
+  }
+
+  if (featuredPlayerId === spongePlayerId) {
+    elements.selfTrainingVoteMessage.textContent = "Destacado y esponja tienen que ser jugadores distintos.";
+    return;
+  }
+
+  if (!["pelota", "copa"].includes(award)) {
+    elements.selfTrainingVoteMessage.textContent = "Elegir premio: Pelota o Copa.";
+    return;
+  }
+
+  const existingVote = getTrainingVoteForPlayerDate(voter.id, date);
+  const now = new Date().toISOString();
+  const vote = {
+    id: existingVote?.id ?? createId("training-vote"),
+    date,
+    voterPlayerId: voter.id,
+    featuredPlayerId,
+    award,
+    spongePlayerId,
+    createdAt: existingVote?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  const saved = await persistTrainingVote(vote);
+  elements.selfTrainingVoteMessage.textContent = saved ? "Votacion guardada." : state.syncStatus;
+}
+
+async function persistTrainingVote(vote) {
+  const previousVotes = state.trainingVotes ?? [];
+  state.trainingVotes = upsertTrainingVoteInList(previousVotes, vote);
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Guardando votacion...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await submitTrainingVote(
+        vote.voterPlayerId,
+        selfServiceAccessCodesByPlayerId.get(vote.voterPlayerId) ?? "",
+        vote,
+      );
+      state.syncStatus = getPaymentMutationMessage("Votacion guardada", mutationResult);
+      state.voteSyncReady = true;
+    } catch (error) {
+      state.trainingVotes = previousVotes;
+      state.syncStatus = `Error al guardar votacion: ${error.message}`;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return false;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = "Votacion guardada localmente";
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+  return true;
+}
+
+function upsertTrainingVoteInList(votes, vote) {
+  const existing = votes.some(
+    (item) => item.date === vote.date && item.voterPlayerId === vote.voterPlayerId,
+  );
+
+  if (!existing) return [vote, ...votes];
+
+  return votes.map((item) =>
+    item.date === vote.date && item.voterPlayerId === vote.voterPlayerId
+      ? { ...item, ...vote }
+      : item,
+  );
 }
 
 function getTrainingVoteAward(value) {
@@ -2889,6 +3093,12 @@ function removeSampleData() {
   state.attendances = state.attendances.filter(
     (attendance) => !samplePlayerIds.has(attendance.playerId),
   );
+  state.trainingVotes = (state.trainingVotes ?? []).filter(
+    (vote) =>
+      !samplePlayerIds.has(vote.voterPlayerId) &&
+      !samplePlayerIds.has(vote.featuredPlayerId) &&
+      !samplePlayerIds.has(vote.spongePlayerId),
+  );
   state.responsibilityAdjustments = state.responsibilityAdjustments.filter(
     (adjustment) => !samplePlayerIds.has(adjustment.playerId),
   );
@@ -2912,6 +3122,7 @@ function applyPersistentState(nextState) {
   state.fees = nextState.fees.map((fee) => ({ ...fee }));
   state.payments = nextState.payments.map((payment) => ({ ...payment }));
   state.attendances = nextState.attendances.map((attendance) => ({ ...attendance }));
+  state.trainingVotes = (nextState.trainingVotes ?? []).map((vote) => ({ ...vote }));
   state.responsibilityAdjustments = nextState.responsibilityAdjustments.map((adjustment) => ({
     ...adjustment,
   }));
@@ -2926,6 +3137,9 @@ function applyPersistentState(nextState) {
   };
   if (typeof nextState.attendanceSyncReady === "boolean") {
     state.attendanceSyncReady = nextState.attendanceSyncReady;
+  }
+  if (typeof nextState.voteSyncReady === "boolean") {
+    state.voteSyncReady = nextState.voteSyncReady;
   }
   state.treasuryConfig = { ...nextState.treasuryConfig };
   state.playerFilter = previousPlayerFilter || "todos";
@@ -4573,6 +4787,36 @@ function getTrainingVoteCandidates(date) {
     .map((playerId) => playersById.get(playerId))
     .filter(Boolean)
     .sort(comparePlayersByName);
+}
+
+function getPendingTrainingVoteDate(playerId) {
+  return (
+    getTrainingVoteDates()
+      .filter((date) => isTrainingVoteWindowOpen(date))
+      .filter((date) => getTrainingVoteCandidates(date).some((player) => player.id === playerId))
+      .filter((date) => !getTrainingVoteForPlayerDate(playerId, date))
+      .sort()[0] ?? ""
+  );
+}
+
+function getTrainingVoteForPlayerDate(playerId, date) {
+  return (
+    (state.trainingVotes ?? []).find(
+      (vote) => vote.voterPlayerId === playerId && vote.date === date,
+    ) ?? null
+  );
+}
+
+function isTrainingVoteWindowOpen(dateValue, now = new Date()) {
+  const trainingDate = parseDateInputValue(dateValue);
+  if (!trainingDate) return false;
+
+  const openAt = withTime(trainingDate, TRAINING_VOTE_OPEN_AT);
+  const closeDate = new Date(trainingDate);
+  closeDate.setDate(closeDate.getDate() + TRAINING_VOTE_CLOSE_DAYS_AFTER);
+  const closeAt = withTime(closeDate, TRAINING_VOTE_CLOSE_AT);
+
+  return now >= openAt && now <= closeAt;
 }
 
 function getCompletedTrainingDates(now = new Date()) {

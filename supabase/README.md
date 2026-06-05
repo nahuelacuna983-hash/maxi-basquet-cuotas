@@ -9,6 +9,7 @@ supabase/attendance-v1.sql
 supabase/attendance-tags-v1.sql
 supabase/attendance-guests-v1.sql
 supabase/attendance-delete-guest-v1.sql
+supabase/training-votes-v1.sql
 ```
 
 ## Tablas principales
@@ -17,6 +18,7 @@ supabase/attendance-delete-guest-v1.sql
 - `fees`
 - `payments`
 - `attendances`
+- `training_votes`
 - `treasury_config`
 
 ## Seguridad actual
@@ -29,6 +31,7 @@ Estado:
 - `fees`: lectura permitida; escritura directa bloqueada; escritura admin por RPC.
 - `payments`: lectura de pagos activos; insercion de pagos pendientes; aprobacion/rechazo/eliminacion por RPC.
 - `attendances`: lectura de listados; respuestas de jugador por RPC con codigo; correcciones admin por RPC; eliminacion de invitados por RPC.
+- `training_votes`: lectura permitida; escritura de votos por RPC con codigo de jugador y ventana horaria.
 - `treasury_config`: lectura permitida; escritura admin por RPC.
 
 ## RPC usadas
@@ -45,6 +48,7 @@ Estado:
 - `submit_training_attendance`
 - `admin_upsert_attendance`
 - `admin_delete_guest_attendance`
+- `submit_training_vote`
 
 ## Campos relevantes
 
@@ -73,6 +77,14 @@ Estado:
 - `guest_name`: nombre libre para invitados del listado temporal.
 - `status`: `voy`, `no_voy`, `avisa_mas_tarde`, `llega_sobre_la_hora`, `baja_sobre_la_hora`, `asistio`, `falto` o `aviso_tarde`.
 - `source`: `jugador` o `admin`. Para emoticones puede incluir tags, por ejemplo `jugador|tags=meat,cook`.
+
+`training_votes`:
+
+- `date`: fecha del entrenamiento votado.
+- `voter_player_id`: jugador que voto.
+- `featured_player_id`: jugador elegido como destacado.
+- `award`: `pelota` o `copa`.
+- `sponge_player_id`: jugador elegido como esponja.
 
 ## Nota de seguridad
 

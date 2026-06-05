@@ -89,6 +89,8 @@ export const initialTreasuryConfig = {
 
 export const initialAttendances = [];
 
+export const initialTrainingVotes = [];
+
 export const initialResponsibilityConfig = {
   attendanceStartDate: "2026-04-06",
   attendanceEndDate: "2026-12-31",
@@ -123,6 +125,7 @@ export function createInitialAppState() {
     fees: initialFees.map((fee) => ({ ...fee })),
     payments: initialPayments.map((payment) => ({ ...payment })),
     attendances: initialAttendances.map((attendance) => ({ ...attendance })),
+    trainingVotes: initialTrainingVotes.map((vote) => ({ ...vote })),
     responsibilityAdjustments: initialResponsibilityAdjustments.map((adjustment) => ({
       ...adjustment,
     })),

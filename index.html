@@ -58,9 +58,6 @@
               <button class="self-tab-button" type="button" data-player-tab="training" aria-controls="selfTrainingTab">
                 Entrenamientos
               </button>
-              <button class="self-tab-button" type="button" data-player-tab="vote" aria-controls="selfVoteTab">
-                Votacion beta
-              </button>
             </nav>
 
             <section class="self-tab-panel" id="selfQuotaTab" data-player-panel="quota">
@@ -208,16 +205,16 @@
               </section>
             </section>
 
-            <section class="self-tab-panel" id="selfVoteTab" data-player-panel="vote" hidden>
+            <section class="self-vote-gate" id="selfVoteGate" hidden>
               <section class="training-signup-card" id="selfTrainingVoteCard">
                 <div class="training-card-header">
                   <div>
-                    <span class="section-kicker">Votacion beta</span>
+                    <span class="section-kicker">Votacion pendiente</span>
                     <h3>Destacado y esponja</h3>
-                    <p>Prueba visual: todavia no guarda votos reales.</p>
+                    <p>Para continuar, elegi destacado y esponja del entrenamiento.</p>
                   </div>
                 </div>
-                <div class="form-grid">
+                <form class="form-grid" id="selfTrainingVoteForm">
                   <label>
                     Entrenamiento
                     <select id="selfTrainingVoteDate"></select>
@@ -237,7 +234,8 @@
                     Esponja
                     <select id="selfTrainingVoteSecond"></select>
                   </label>
-                </div>
+                  <button class="primary-button wide-field" type="submit">Guardar votacion</button>
+                </form>
                 <p class="form-message" id="selfTrainingVoteMessage"></p>
                 <div id="selfTrainingVotePreview"></div>
               </section>
@@ -850,7 +848,7 @@
       </section>
     </main>
     <script src="./src/vendor/supabase.umd.js?v=local-supabase-1"></script>
-    <script type="module" src="./src/app.js?v=player-vote-beta-1"></script>
+    <script type="module" src="./src/app.js?v=training-votes-v1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-13"></script>
   </body>
 </html>

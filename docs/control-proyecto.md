@@ -1,6 +1,6 @@
 # Control del proyecto
 
-Ultima actualizacion: 2026-05-31
+Ultima actualizacion: 2026-06-05
 
 Este documento acompana al `README.md` y sirve para registrar avances, pendientes y estimacion de cierre.
 
@@ -35,6 +35,7 @@ Ya permite:
 - registrar pagos manuales aprobados
 - proteger escrituras principales con RPC
 - registrar respuestas de listado temporal de entrenamientos
+- guardar votaciones posteriores al entrenamiento
 
 ## Cierre de etapa
 
@@ -45,7 +46,7 @@ Criterio acordado:
 - No sumar modulos grandes antes de usarla con jugadores.
 - Mantener la experiencia actual de jugador: `Mi cuota` y `Entrenamientos`.
 - Mantener admin con pestanas y subtabs internos.
-- Mantener `Votaciones beta` solo como herramienta admin experimental, sin guardar votos reales todavia.
+- Mantener votaciones posteriores al entrenamiento como v1 acotada, sin afectar estadisticas ni responsabilidad todavia.
 - Mantener estadisticas e informes como primera version util.
 - Dejar que el uso real indique que texto, boton, orden o flujo hay que corregir.
 - Priorizar correcciones de confusion, errores de datos o problemas de celular antes que nuevas funciones.
@@ -86,7 +87,7 @@ Criterio acordado:
 Los puntos abiertos quedan cerrados como decision de producto para esta version:
 
 - Admin ordenado: se mantiene el esquema de pestanas y subtabs internos.
-- `Votaciones beta`: queda disponible solo para admin, sin guardar votos reales todavia.
+- Votaciones de entrenamiento: pasan a v1 real con guardado, bloqueo de jugador y revision admin.
 - Estadisticas e informes: se mantienen como primera version; se ajustaran cuando haya uso real.
 - VIP: queda como modulo preparado, no activo como producto pago.
 - Fixture/prode: queda postergado como modulo separado, fuera de esta etapa.
@@ -231,8 +232,8 @@ Al 2026-05-31:
 
 - Se declaro la MVP cerrada para uso controlado con jugadores reales.
 - Los puntos abiertos quedan pausados hasta tener feedback de uso real.
-- `Votaciones beta` queda como herramienta admin experimental, sin guardado real.
-- `Votaciones beta` usa `Destacado` con premio `Pelota` o `Copa`, y `Esponja` como voto separado.
+- `Votaciones beta` quedo como antecedente experimental.
+- El flujo actual pasa a `Votacion real v1`: destacado con premio `Pelota` o `Copa`, y `Esponja` como voto separado.
 - Estadisticas e informes quedan como primera version util.
 - El admin ordenado por pestanas y subtabs queda como base actual.
 - Las proximas mejoras se priorizaran por fricciones reales: textos confusos, errores de celular, datos mal calculados o acciones admin dificiles.
@@ -241,7 +242,13 @@ Al 2026-06-03:
 
 - Se corrigio la carga de Supabase en celulares: la app dejo de depender del CDN `esm.sh` y usa una copia local en `src/vendor/supabase.umd.js`.
 - Se actualizo la version de PWA para que la app instalada pueda tomar el cambio publicado.
-- Se habilito `Votacion beta` tambien para jugadores con codigo de acceso, sin guardar votos reales todavia.
+- Se habilito una prueba visual de votacion para jugadores con codigo de acceso.
+
+Al 2026-06-05:
+
+- Se reemplazo la pestana publica de votacion por `Votacion real v1`: despues del entrenamiento, desde las 22:01, bloquea la vista jugador hasta guardar destacado y esponja.
+- Se agrego soporte de tabla/RPC `training_votes` mediante `supabase/training-votes-v1.sql`.
+- Admin puede ver votos guardados, resumen de destacado/esponja y jugadores pendientes de votar.
 
 Al 2026-05-24:
 
@@ -260,4 +267,4 @@ Al 2026-05-24:
 - Se pulio la vista celular del listado temporal con contadores por bloque, botones mas tocables, numeros visibles y scroll interno para la lista de `No me interesa`.
 - Se ordeno el admin con subtabs internos por pestana para mostrar una sola herramienta a la vez y reducir la vista tipo sabana.
 - Se agrego emoticon `🧽` para lavado/platos en el listado de jueves.
-- Se agrego pestaña admin `Votaciones beta` para simular destacado con premio y voto esponja por entrenamiento sin mostrarlo a jugadores ni guardar votos.
+- Se agrego pestana admin `Votaciones beta` como antecedente para simular destacado con premio y voto esponja.

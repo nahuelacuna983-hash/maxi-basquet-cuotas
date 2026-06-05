@@ -13,7 +13,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - MVP cerrada para uso controlado con jugadores reales.
 - App publicada en GitHub Pages.
 - Datos compartidos con Supabase.
-- Vista jugador separada en pestanas: `Mi cuota`, `Entrenamientos` y `Votacion beta`.
+- Vista jugador separada en pestanas: `Mi cuota` y `Entrenamientos`.
 - Jugadores mostrados por apellido y nombre, ordenados alfabeticamente.
 - Acceso simple por codigo de jugador.
 - La app instalada recuerda el acceso del jugador en ese dispositivo para no pedir codigo al minimizar o reabrir.
@@ -22,7 +22,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Panel admin organizado por pestanas y subtabs internos para ver una sola herramienta por vez.
 - Estado de jugador editable desde la tabla admin.
 - Secciones base disponibles para estadisticas, convocatorias y VIP.
-- `Votacion beta` visible para jugadores y admin, sin guardar votos reales todavia.
+- Votacion real v1: despues del entrenamiento bloquea la vista jugador hasta guardar destacado y esponja.
 - Asistencia historica inicial cargada para iniciar estadisticas reales.
 - Responsabilidad descuenta bajas, faltas explicitas y ausencias inferidas de jugadores activos en entrenamientos cerrados.
 - Las estadisticas consideran todos los martes y jueves cerrados desde la fecha de inicio, aunque no haya ningun registro cargado.
@@ -234,17 +234,20 @@ Reglas de la primera version:
 
 - En celular, el listado muestra contadores por bloque, evita que se corten los numeros y deja la lista larga de `No me interesa` con scroll interno para no tapar toda la pantalla.
 
-## Votaciones beta
+## Votaciones de entrenamiento
 
-La pestana `Votacion beta` permite probar con jugadores una futura votacion de destacados sin guardar votos reales todavia.
+La votacion de entrenamiento se abre despues del entrenamiento y guarda votos reales en Supabase.
 
 Reglas actuales:
 
-- La ven jugadores con codigo de acceso y tambien el admin.
+- Aparece como pantalla pendiente para jugadores con codigo de acceso que participaron.
+- Se abre a las 22:01 del dia del entrenamiento.
+- Cierra al dia siguiente a las 23:59.
 - Lee asistencias ya cargadas.
 - Propone como candidatos a jugadores reales con `Voy`, `Avisa mas tarde`, `Llega sobre la hora` o `Asistio`.
-- Permite simular un `Destacado` con premio `Pelota` o `Copa`, y un voto separado de `Esponja`.
-- No guarda votos, no bloquea jugadores y no modifica estadisticas.
+- Guarda un `Destacado` con premio `Pelota` o `Copa`, y un voto separado de `Esponja`.
+- Si el jugador tiene una votacion pendiente, no puede usar `Mi cuota` o `Entrenamientos` hasta guardar.
+- No modifica todavia responsabilidad ni estadisticas.
 
 Estados de jugador:
 

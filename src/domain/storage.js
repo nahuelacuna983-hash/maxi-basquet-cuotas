@@ -8,6 +8,7 @@ export function createPersistedState(source) {
     fees: source.fees,
     payments: source.payments,
     attendances: source.attendances,
+    trainingVotes: source.trainingVotes,
     responsibilityAdjustments: source.responsibilityAdjustments,
     responsibilityConfig: source.responsibilityConfig,
     attendanceConfig: source.attendanceConfig,
@@ -56,6 +57,9 @@ export function normalizePersistedState(parsedState, fallbackState) {
     attendances: Array.isArray(parsedState.attendances)
       ? parsedState.attendances
       : fallbackState.attendances,
+    trainingVotes: Array.isArray(parsedState.trainingVotes)
+      ? parsedState.trainingVotes
+      : fallbackState.trainingVotes ?? [],
     responsibilityAdjustments: Array.isArray(parsedState.responsibilityAdjustments)
       ? parsedState.responsibilityAdjustments
       : fallbackState.responsibilityAdjustments,
