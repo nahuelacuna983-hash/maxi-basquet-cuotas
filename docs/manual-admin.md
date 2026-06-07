@@ -466,6 +466,7 @@ Los informes no modifican nada. Solo leen lo que ya esta cargado en jugadores, c
    - `Asistencia general`
    - `Responsabilidad general`
    - `General del equipo`
+   - `Historial detallado`
    - `Graficos`
 4. Elegir jugador si el informe es individual.
 5. Elegir mes o `Todos los meses`.
@@ -475,6 +476,8 @@ Los informes no modifican nada. Solo leen lo que ya esta cargado en jugadores, c
 **Que mirar**
 
 En pagos, revisar deuda, interes y pagos pendientes. En asistencia, revisar no respuestas y bajas sobre la hora. En responsabilidad, revisar descuentos y motivo principal.
+
+El `Historial detallado` sirve cuando necesitas revisar todo lo ocurrido en un periodo: pagos informados, respuestas de entrenamiento, no respuestas inferidas, invitados y votaciones guardadas. Es util para entender un caso puntual antes de corregir datos o para copiar un resumen de control.
 
 **Que no hacer**
 

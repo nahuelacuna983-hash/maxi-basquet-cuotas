@@ -35,7 +35,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Metodo de pago real por alias Mercado Pago `maxisuda`.
 - Instalable en celular como PWA simple.
 - Listado temporal de entrenamientos martes/jueves.
-- Informes MVP por jugador, pagos general, asistencia general, responsabilidad general, resumen de equipo y graficos simples.
+- Informes MVP por jugador, pagos general, asistencia general, responsabilidad general, historial detallado, resumen de equipo y graficos simples.
 - Escrituras principales protegidas con RPC en Supabase.
 
 ## Criterio de cambios
@@ -57,7 +57,7 @@ El jugador puede:
 - ver proxima cuota estimada
 - ver alias e instrucciones de pago
 - informar pago
-- ver un aviso claro cuando el pago ya fue informado, aprobado o rechazado
+- ver una tarjeta clara cuando el pago ya fue informado, aprobado o rechazado
 - responder al listado temporal de entrenamiento cuando esta abierto
 - marcar `Solo cena` los jueves y sumar emoticones opcionales como cena, cocinero, vino, pan o bebida
 - ver el listado de entrenamiento separado de la cuota
@@ -112,6 +112,7 @@ Tablas principales:
 - `fees`
 - `payments`
 - `attendances`
+- `training_votes`
 - `treasury_config`
 
 Funciones RPC usadas por la app:
@@ -123,6 +124,7 @@ Funciones RPC usadas por la app:
 - `admin_upsert_fee`
 - `submit_payment`
 - `submit_training_attendance`
+- `submit_training_vote`
 - `admin_upsert_attendance`
 - `admin_delete_guest_attendance`
 - `admin_review_payment`
@@ -248,6 +250,20 @@ Reglas actuales:
 - Guarda un `Destacado` con premio `Pelota` o `Copa`, y un voto separado de `Esponja`.
 - Si el jugador tiene una votacion pendiente, no puede usar `Mi cuota` o `Entrenamientos` hasta guardar.
 - No modifica todavia responsabilidad ni estadisticas.
+
+## Informes
+
+La pestana `Reportes` permite generar:
+
+- informe individual por jugador
+- pagos general
+- asistencia general
+- responsabilidad general
+- general del equipo
+- historial detallado
+- graficos simples
+
+El `Historial detallado` muestra pagos, asistencia/no respuestas y votaciones guardadas en el periodo elegido. No modifica datos y no genera PDF todavia.
 
 Estados de jugador:
 

@@ -1,6 +1,6 @@
 # Control del proyecto
 
-Ultima actualizacion: 2026-06-05
+Ultima actualizacion: 2026-06-07
 
 Este documento acompana al `README.md` y sirve para registrar avances, pendientes y estimacion de cierre.
 
@@ -36,6 +36,7 @@ Ya permite:
 - proteger escrituras principales con RPC
 - registrar respuestas de listado temporal de entrenamientos
 - guardar votaciones posteriores al entrenamiento
+- generar informes detallados por jugador, por modulo y por historial del equipo
 
 ## Cierre de etapa
 
@@ -149,7 +150,6 @@ Para una version posterior mas firme:
 
 Queda fuera de la version operativa controlada:
 
-- guardar votaciones reales de destacados
 - ranking de responsabilidad calculado desde eventos
 - reporte WhatsApp mas completo
 - habilitados por liga
@@ -157,7 +157,6 @@ Queda fuera de la version operativa controlada:
 - Mercado Pago API
 - debito automatico
 - PDF
-- graficos
 - modulo VIP o usuario extendido activo
 - cocina/lavado como modulo formal
 - fixture/prode
@@ -249,6 +248,14 @@ Al 2026-06-05:
 - Se reemplazo la pestana publica de votacion por `Votacion real v1`: despues del entrenamiento, desde las 22:01, bloquea la vista jugador hasta guardar destacado y esponja.
 - Se agrego soporte de tabla/RPC `training_votes` mediante `supabase/training-votes-v1.sql`.
 - Admin puede ver votos guardados, resumen de destacado/esponja y jugadores pendientes de votar.
+
+Al 2026-06-07:
+
+- Se reforzo el aviso de pago informado en la vista jugador: ahora muestra una tarjeta con estado, cuota, monto, fecha, metodo y accion sugerida.
+- Se agrego `Historial detallado` dentro de `Reportes`.
+- El informe individual ahora incluye detalle de pagos, asistencia/no respuestas y votaciones relacionadas al jugador.
+- El historial detallado permite revisar pagos, asistencia/no respuestas, invitados y votos guardados por periodo.
+- No se modifico logica de deuda, pagos, asistencia ni Supabase.
 
 Al 2026-05-24:
 

@@ -2472,6 +2472,7 @@ function buildDetailedReport() {
   if (type === "pagos_general") return buildGeneralPaymentsReport(context);
   if (type === "asistencia_general") return buildGeneralAttendanceReport(context);
   if (type === "responsabilidad_general") return buildGeneralResponsibilityReport(context);
+  if (type === "historial_detallado") return buildDetailedHistoryReport(context);
   if (type === "graficos") return buildChartsReport(context);
   return buildTeamGeneralReport(context);
 }
@@ -2485,6 +2486,7 @@ function getReportContext() {
     fees,
     completedTrainingDates,
     scopeLabel,
+    selectedMonth: state.selectedReportMonth,
     players: getSortedPlayers(),
   };
 }
@@ -2497,6 +2499,9 @@ function buildIndividualReport(context) {
   const attendanceSummary = getPlayerAttendanceReport(player, context.completedTrainingDates);
   const responsibility = getResponsibilityDetails(player.id, context.completedTrainingDates);
   const discountTotal = responsibility.historicalDiscount + responsibility.attendanceDiscount;
+  const paymentRows = getReportPaymentDetailRows(context, player.id);
+  const attendanceRows = getReportAttendanceDetailRows(context, player.id);
+  const voteRows = getReportVoteDetailRows(context, player.id);
 
   const lines = [
     `Informe individual - ${getPlayerName(player)}`,
@@ -2526,6 +2531,24 @@ function buildIndividualReport(context) {
     `- Ausencias inferidas: ${responsibility.implicitAbsenceDiscount}`,
     `- Puntaje actual: ${responsibility.score}`,
   ];
+  appendReportTextTable(
+    lines,
+    "Detalle de pagos",
+    ["Cuota", "Monto", "Fecha", "Metodo", "Estado", "Observacion"],
+    paymentRows.map((row) => row.slice(1)),
+  );
+  appendReportTextTable(
+    lines,
+    "Detalle de asistencia",
+    ["Fecha", "Estado", "Origen", "Emoticones", "Registro"],
+    attendanceRows.map((row) => [row[0], row[2], row[3], row[4], row[5]]),
+  );
+  appendReportTextTable(
+    lines,
+    "Detalle de votaciones",
+    ["Fecha", "Rol", "Detalle"],
+    voteRows,
+  );
 
   const html = `
     <div class="report-card">
@@ -2560,6 +2583,18 @@ function buildIndividualReport(context) {
         attendanceSummary.lastMinuteDrops,
         attendanceSummary.dinner,
       ]],
+    )}
+    ${renderReportSection(
+      "Detalle de pagos",
+      renderReportTable(["Cuota", "Monto", "Fecha", "Metodo", "Estado", "Observacion"], paymentRows.map((row) => row.slice(1))),
+    )}
+    ${renderReportSection(
+      "Detalle de asistencia",
+      renderReportTable(["Fecha", "Estado", "Origen", "Emoticones", "Registro"], attendanceRows.map((row) => [row[0], row[2], row[3], row[4], row[5]])),
+    )}
+    ${renderReportSection(
+      "Detalle de votaciones",
+      renderReportTable(["Fecha", "Rol", "Detalle"], voteRows),
     )}
   `;
 
@@ -2791,6 +2826,188 @@ function buildChartsReport(context) {
   return { text: lines.join("\n"), html };
 }
 
+function buildDetailedHistoryReport(context) {
+  const paymentRows = getReportPaymentDetailRows(context);
+  const attendanceRows = getReportAttendanceDetailRows(context);
+  const voteRows = getReportVoteDetailRows(context);
+
+  const lines = [
+    "Historial detallado del equipo",
+    `Periodo: ${context.scopeLabel}`,
+  ];
+  appendReportTextTable(
+    lines,
+    "Pagos",
+    ["Jugador", "Cuota", "Monto", "Fecha", "Metodo", "Estado", "Observacion"],
+    paymentRows,
+  );
+  appendReportTextTable(
+    lines,
+    "Asistencia y no respuestas",
+    ["Fecha", "Jugador", "Estado", "Origen", "Emoticones", "Registro"],
+    attendanceRows,
+  );
+  appendReportTextTable(
+    lines,
+    "Votaciones",
+    ["Fecha", "Votante", "Destacado", "Premio", "Esponja", "Registro"],
+    voteRows,
+  );
+
+  const html = `
+    ${renderReportSection(
+      "Pagos",
+      renderReportTable(["Jugador", "Cuota", "Monto", "Fecha", "Metodo", "Estado", "Observacion"], paymentRows),
+    )}
+    ${renderReportSection(
+      "Asistencia y no respuestas",
+      renderReportTable(["Fecha", "Jugador", "Estado", "Origen", "Emoticones", "Registro"], attendanceRows),
+    )}
+    ${renderReportSection(
+      "Votaciones",
+      renderReportTable(["Fecha", "Votante", "Destacado", "Premio", "Esponja", "Registro"], voteRows),
+    )}
+  `;
+
+  return { text: lines.join("\n"), html };
+}
+
+function appendReportTextTable(lines, title, headers, rows) {
+  lines.push("", title);
+  if (!rows.length) {
+    lines.push("- Sin datos.");
+    return;
+  }
+
+  lines.push(headers.join(" | "));
+  rows.forEach((row) => {
+    lines.push(row.join(" | "));
+  });
+}
+
+function getReportPaymentDetailRows(context, playerId = null) {
+  const feesById = new Map(context.fees.map((fee) => [fee.id, fee]));
+
+  return getScopedPayments(context.fees, playerId)
+    .slice()
+    .sort((a, b) => `${a.paidAt ?? ""}${a.createdAt ?? ""}`.localeCompare(`${b.paidAt ?? ""}${b.createdAt ?? ""}`))
+    .map((payment) => {
+      const fee = feesById.get(payment.feeId);
+      const note = payment.note || payment.receiptNote || payment.operationNumber || "-";
+      return [
+        getPlayerNameById(payment.playerId),
+        fee ? formatMonthLabel(fee.month) : payment.feeId,
+        formatMoney(Number(payment.amount) || 0),
+        payment.paidAt || "-",
+        formatPaymentMethod(payment.method),
+        formatPaymentStatus(payment.status ?? "pendiente"),
+        note,
+      ];
+    });
+}
+
+function getReportAttendanceDetailRows(context, playerId = null) {
+  const selectedPlayer = playerId ? state.players.find((player) => player.id === playerId) : null;
+  const targetPlayers = selectedPlayer
+    ? [selectedPlayer]
+    : context.players.filter((player) => player.status === "activo");
+  const rows = [];
+
+  context.completedTrainingDates.forEach((date) => {
+    targetPlayers.forEach((player) => {
+      const attendance = getAttendanceForPlayerDate(player.id, date);
+      if (!attendance && player.status !== "activo") return;
+
+      rows.push([
+        date,
+        getPlayerName(player),
+        attendance ? formatAttendanceStatus(attendance.status) : "No respondio",
+        formatAttendanceSourceForReport(attendance),
+        attendance ? formatAttendanceTagsForReport(attendance) : "-",
+        attendance?.createdAt ?? "-",
+      ]);
+    });
+
+    if (!playerId) {
+      getAttendancesForDate(date)
+        .filter((attendance) => isGuestAttendance(attendance))
+        .forEach((attendance) => {
+          rows.push([
+            date,
+            `${getAttendanceDisplayName(attendance)} (invitado)`,
+            formatAttendanceStatus(attendance.status),
+            formatAttendanceSourceForReport(attendance),
+            formatAttendanceTagsForReport(attendance),
+            attendance.createdAt ?? "-",
+          ]);
+        });
+    }
+  });
+
+  return rows;
+}
+
+function getReportVoteDetailRows(context, playerId = null) {
+  const votes = (state.trainingVotes ?? [])
+    .filter((vote) => isReportDateInScope(vote.date, context))
+    .slice()
+    .sort((a, b) => `${a.date}${a.createdAt ?? ""}`.localeCompare(`${b.date}${b.createdAt ?? ""}`));
+
+  if (!playerId) {
+    return votes.map((vote) => [
+      vote.date,
+      getPlayerNameById(vote.voterPlayerId),
+      getPlayerNameById(vote.featuredPlayerId),
+      getTrainingVoteAward(vote.award).label,
+      getPlayerNameById(vote.spongePlayerId),
+      vote.createdAt ?? "-",
+    ]);
+  }
+
+  const rows = [];
+  votes.forEach((vote) => {
+    const award = getTrainingVoteAward(vote.award).label;
+    if (vote.voterPlayerId === playerId) {
+      rows.push([
+        vote.date,
+        "Voto emitido",
+        `Destacado: ${getPlayerNameById(vote.featuredPlayerId)} (${award}) / Esponja: ${getPlayerNameById(vote.spongePlayerId)}`,
+      ]);
+    }
+    if (vote.featuredPlayerId === playerId) {
+      rows.push([
+        vote.date,
+        "Recibio destacado",
+        `${getPlayerNameById(vote.voterPlayerId)} lo voto como destacado (${award})`,
+      ]);
+    }
+    if (vote.spongePlayerId === playerId) {
+      rows.push([
+        vote.date,
+        "Recibio esponja",
+        `${getPlayerNameById(vote.voterPlayerId)} lo voto para esponja`,
+      ]);
+    }
+  });
+
+  return rows;
+}
+
+function isReportDateInScope(date, context) {
+  return context.selectedMonth === "all" || String(date ?? "").startsWith(context.selectedMonth);
+}
+
+function formatAttendanceSourceForReport(attendance) {
+  if (!attendance) return "inferido";
+  if (isGuestAttendance(attendance)) return "admin invitado";
+  const source = getAttendanceBaseSource(attendance);
+  return source === "admin" ? "admin" : "jugador";
+}
+
+function formatAttendanceTagsForReport(attendance) {
+  return formatAttendanceTags(getAttendanceTags(attendance)).trim() || "-";
+}
+
 function getReportFeeMonths() {
   return [...new Set(state.fees.map((fee) => fee.month))].sort().reverse();
 }
@@ -2909,6 +3126,15 @@ function renderReportMetric(label, value) {
       <span>${escapeHtml(label)}</span>
       <strong>${escapeHtml(value)}</strong>
     </article>
+  `;
+}
+
+function renderReportSection(title, content) {
+  return `
+    <section class="report-subsection">
+      <h3>${escapeHtml(title)}</h3>
+      ${content}
+    </section>
   `;
 }
 
@@ -3224,29 +3450,69 @@ function renderSelfPaymentAlert(payment, pendingAmount, expectedAmount, payableA
 
   const monthLabel = fee ? formatMonthLabel(fee.month) : "este mes";
   let className = "pending";
+  let eyebrow = "Cuota pendiente";
   let title = "Tenes pendiente esta cuota";
   let detail = `Para ${monthLabel}, primero paga y despues informa el pago con monto, fecha y observacion.`;
+  let action = "Cuando informes el pago, Tesoreria lo revisa y lo aprueba si coincide.";
 
   if (pendingAmount > 0 || payment?.status === "pendiente") {
     className = "pending";
-    title = "Ya informaste un pago";
+    eyebrow = "Pago informado";
+    title = "Tu pago ya fue informado";
     detail =
       `Tu pago de ${monthLabel} esta pendiente de validacion. No hace falta cargarlo otra vez; si hay un error, avisale al administrador.`;
+    action = "Hasta que se apruebe, la deuda puede seguir apareciendo como pendiente.";
   } else if (payment?.status === "aprobado" || payableAmount <= 0) {
     className = "approved";
+    eyebrow = "Pago validado";
     title = "Pago confirmado";
     detail = `Tu pago de ${monthLabel} ya fue aprobado.`;
+    action = "No tenes que hacer nada mas para esta cuota.";
   } else if (payment?.status === "rechazado") {
     className = "rejected";
+    eyebrow = "Pago rechazado";
     title = "Pago rechazado";
     detail = "Revisa el dato con el administrador y volve a informar el pago si corresponde.";
+    action = "Si fue un error de carga, el admin puede ayudarte a corregirlo.";
   }
+
+  const detailRows = payment
+    ? [
+        ["Cuota", monthLabel],
+        ["Monto informado", formatMoney(Number(payment.amount) || 0)],
+        ["Fecha informada", payment.paidAt || "-"],
+        ["Metodo", formatPaymentMethod(payment.method)],
+        ["Estado", formatPaymentStatus(payment.status ?? "pendiente")],
+      ]
+    : [["Cuota", monthLabel], ["Saldo a pagar", formatMoney(payableAmount)]];
+  const note = payment?.note || payment?.receiptNote || payment?.operationNumber;
 
   elements.selfPaymentAlert.hidden = false;
   elements.selfPaymentAlert.className = `self-payment-alert ${className}`;
   elements.selfPaymentAlert.innerHTML = `
-    <strong>${escapeHtml(title)}</strong>
-    <span>${escapeHtml(detail)}</span>
+    <div class="payment-alert-heading">
+      <span class="payment-alert-eyebrow">${escapeHtml(eyebrow)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <span>${escapeHtml(detail)}</span>
+    </div>
+    <dl class="payment-alert-details">
+      ${detailRows
+        .map(
+          ([label, value]) => `
+            <div>
+              <dt>${escapeHtml(label)}</dt>
+              <dd>${escapeHtml(value)}</dd>
+            </div>
+          `,
+        )
+        .join("")}
+      ${
+        note
+          ? `<div class="payment-alert-note"><dt>Observacion</dt><dd>${escapeHtml(note)}</dd></div>`
+          : ""
+      }
+    </dl>
+    <p class="payment-alert-action">${escapeHtml(action)}</p>
   `;
 }
 
