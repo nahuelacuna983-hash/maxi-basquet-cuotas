@@ -1384,7 +1384,11 @@ function renderPlayersTable(debts) {
         <tr>
           <td><strong>${escapeHtml(getPlayerName(debt.player))}</strong></td>
           <td>${escapeHtml(debt.player.phone || "-")}</td>
-          <td>${formatPlayerType(debt.player.type)}</td>
+          <td>
+            <select class="table-select" data-player-type="${debt.player.id}">
+              ${renderPlayerTypeOptions(debt.player.type)}
+            </select>
+          </td>
           <td>
             <select class="table-select" data-player-status="${debt.player.id}">
               ${renderPlayerStatusOptions(debt.player.status)}
@@ -1424,6 +1428,12 @@ function renderPlayersTable(debts) {
   document.querySelectorAll("[data-player-status]").forEach((select) => {
     select.addEventListener("change", () => {
       updatePlayerStatus(select.dataset.playerStatus, select.value);
+    });
+  });
+
+  document.querySelectorAll("[data-player-type]").forEach((select) => {
+    select.addEventListener("change", () => {
+      updatePlayerType(select.dataset.playerType, select.value);
     });
   });
 
@@ -2529,6 +2539,7 @@ function buildIndividualReport(context) {
     `- Puntaje base: ${responsibility.baseScore}`,
     `- Descuentos: ${discountTotal}`,
     `- Ausencias inferidas: ${responsibility.implicitAbsenceDiscount}`,
+    `- Penalidad mensual por acumulacion: ${responsibility.monthlyNoShowDiscount ?? 0}`,
     `- Puntaje actual: ${responsibility.score}`,
   ];
   appendReportTextTable(
@@ -3113,6 +3124,7 @@ function getMainResponsibilityDiscountReason(player, details, completedTrainingD
   const attendance = getPlayerAttendanceReport(player, completedTrainingDates);
 
   if (details.implicitAbsenceDiscount > 0) return "ausencias inferidas";
+  if ((details.monthlyNoShowDiscount ?? 0) > 0) return "acumulacion mensual";
   if (attendance.lastMinuteDrops > 0 || adjustment.accumulatedLastMinuteDrops > 0) return "bajas sobre hora";
   if (attendance.noVoy > 0 || adjustment.accumulatedAbsences > 0) return "faltas/no voy";
   if (attendance.lateNotice > 0 || adjustment.accumulatedLateNotices > 0) return "avisos tarde";
@@ -3517,7 +3529,7 @@ function renderSelfPaymentAlert(payment, pendingAmount, expectedAmount, payableA
 }
 
 function renderSelfTrainingSignup(player) {
-  const session = getOpenTrainingSession();
+  const session = getVisibleTrainingSession();
   if (!isBillablePlayer(player)) {
     renderSelfTrainingUnavailable(
       "Entrenamientos",
@@ -3558,14 +3570,18 @@ function renderSelfTrainingSignup(player) {
     (Number(state.attendanceConfig.trainingMinimumPlayers) || 10) - visibleAttendances.length,
     0,
   );
+  const isReadOnly = Boolean(session.isReadOnly);
 
   elements.selfTrainingCard.hidden = false;
-  elements.selfTrainingActions.hidden = false;
+  elements.selfTrainingActions.hidden = isReadOnly;
   elements.selfTrainingLists.hidden = false;
-  elements.selfTrainingGuestForm.hidden = !state.isAdminMode;
-  elements.selfTrainingTitle.textContent = `${formatTrainingDateLabel(session.date)} - listado temporal`;
+  elements.selfTrainingGuestForm.hidden = !state.isAdminMode || isReadOnly;
+  elements.selfTrainingTitle.textContent =
+    `${formatTrainingDateLabel(session.date)} - ${isReadOnly ? "listado cerrado" : "listado temporal"}`;
   elements.selfTrainingWindow.textContent =
-    `Abierto hasta ${state.attendanceConfig.closeAt}. Minimo sugerido: ${state.attendanceConfig.trainingMinimumPlayers}.`;
+    isReadOnly
+      ? `Cerrado a las ${state.attendanceConfig.closeAt}. Visible solo para consulta hasta fin del dia.`
+      : `Abierto hasta ${state.attendanceConfig.closeAt}. Minimo sugerido: ${state.attendanceConfig.trainingMinimumPlayers}.`;
   elements.selfTrainingNoResponseTitle.textContent =
     `${state.attendanceConfig.publicNoResponseLabel ?? "No me interesa"} (${noResponsePlayers.length})`;
   elements.selfTrainingMainTitle.textContent = `Listado (${visibleAttendances.length})`;
@@ -3594,31 +3610,41 @@ function renderSelfTrainingSignup(player) {
   );
 
   elements.selfTrainingMessage.textContent =
-    missingCount > 0
+    isReadOnly
+      ? `Listado cerrado. Anotados: ${visibleAttendances.length}. ${
+          missingCount > 0
+            ? `Faltaron ${missingCount} para llegar a ${state.attendanceConfig.trainingMinimumPlayers}.`
+            : "Llegaron al minimo sugerido."
+        }`
+      : missingCount > 0
       ? `Anotados: ${visibleAttendances.length}. Faltan ${missingCount} para llegar a ${state.attendanceConfig.trainingMinimumPlayers}.`
       : `Anotados: ${visibleAttendances.length}. Ya llegan al minimo sugerido.`;
 
-  document
-    .querySelectorAll("[data-self-training-status]")
-    .forEach((button) => {
-      const status = button.dataset.selfTrainingStatus;
-      const isDinnerOnly = button.dataset.selfTrainingDinnerOnly === "true";
-      const hasDinnerTags = hasDinnerAttendanceTags(currentAttendance);
-      const isLastMinuteDrop = status === "baja_sobre_la_hora";
-      const canDrop =
-        isLastMinuteDrop &&
-        isLastMinuteDropWindow(session) &&
-        currentAttendance &&
-        currentAttendance.status !== "no_voy" &&
-        currentAttendance.status !== "baja_sobre_la_hora";
+  document.querySelectorAll("[data-self-training-status]").forEach((button) => {
+    if (isReadOnly) {
+      button.hidden = true;
+      button.classList.remove("active");
+      return;
+    }
 
-      button.hidden = (isLastMinuteDrop && !canDrop) || (isDinnerOnly && !isDinnerDay);
-      let isActive = currentAttendance?.status === status;
-      if (status === "no_voy") {
-        isActive = isActive && (isDinnerOnly ? hasDinnerTags : !hasDinnerTags);
-      }
-      button.classList.toggle("active", isActive);
-    });
+    const status = button.dataset.selfTrainingStatus;
+    const isDinnerOnly = button.dataset.selfTrainingDinnerOnly === "true";
+    const hasDinnerTags = hasDinnerAttendanceTags(currentAttendance);
+    const isLastMinuteDrop = status === "baja_sobre_la_hora";
+    const canDrop =
+      isLastMinuteDrop &&
+      isLastMinuteDropWindow(session) &&
+      currentAttendance &&
+      currentAttendance.status !== "no_voy" &&
+      currentAttendance.status !== "baja_sobre_la_hora";
+
+    button.hidden = (isLastMinuteDrop && !canDrop) || (isDinnerOnly && !isDinnerDay);
+    let isActive = currentAttendance?.status === status;
+    if (status === "no_voy") {
+      isActive = isActive && (isDinnerOnly ? hasDinnerTags : !hasDinnerTags);
+    }
+    button.classList.toggle("active", isActive);
+  });
 
   elements.selfTrainingLists.querySelectorAll("[data-delete-guest-attendance]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -3626,7 +3652,7 @@ function renderSelfTrainingSignup(player) {
     });
   });
 
-  renderTrainingTagButtons(currentAttendance, isDinnerDay);
+  renderTrainingTagButtons(currentAttendance, isDinnerDay, isReadOnly);
 }
 
 function renderSelfTrainingUnavailable(title, message) {
@@ -3683,9 +3709,9 @@ function isDinnerTrainingDate(dateValue) {
   return parseDateInputValue(dateValue)?.getDay() === 4;
 }
 
-function renderTrainingTagButtons(currentAttendance, isDinnerDay) {
-  elements.selfTrainingTags.hidden = !isDinnerDay;
-  if (!isDinnerDay) return;
+function renderTrainingTagButtons(currentAttendance, isDinnerDay, isReadOnly = false) {
+  elements.selfTrainingTags.hidden = !isDinnerDay || isReadOnly;
+  if (!isDinnerDay || isReadOnly) return;
 
   const currentTags = new Set(getAttendanceTags(currentAttendance));
   const hasAnswered = Boolean(currentAttendance);
@@ -4577,6 +4603,26 @@ async function updatePlayerStatus(playerId, status) {
   );
 }
 
+async function updatePlayerType(playerId, type) {
+  if (!requireAdmin()) return;
+
+  const previousPlayers = state.players;
+  let updatedPlayer = null;
+  state.players = state.players.map((player) =>
+    player.id === playerId
+      ? (updatedPlayer = { ...player, type })
+      : player,
+  );
+
+  if (!updatedPlayer) return;
+  await persistAdminPlayers(
+    [updatedPlayer],
+    previousPlayers,
+    "Tipo de jugador actualizado",
+    "Error al actualizar tipo",
+  );
+}
+
 async function updatePlayerAccessCode(playerId, value) {
   if (!requireAdmin()) return;
 
@@ -4701,6 +4747,15 @@ async function updateFeeBillingBase(feeId, field, value) {
 
 function formatPlayerType(type) {
   return type === "competidor" ? "Competidor" : "Solo entrenamientos";
+}
+
+function renderPlayerTypeOptions(selectedType) {
+  return ["competidor", "solo_entrenamientos"]
+    .map(
+      (type) =>
+        `<option value="${type}" ${selectedType === type ? "selected" : ""}>${formatPlayerType(type)}</option>`,
+    )
+    .join("");
 }
 
 function formatPlayerStatus(status) {
@@ -4928,6 +4983,30 @@ function getOpenTrainingSession(now = new Date()) {
 
     const session = getTrainingSessionWindow(dateValue);
     if (session && now >= session.openAt && now <= session.closeAt) return session;
+  }
+
+  return null;
+}
+
+function getVisibleTrainingSession(now = new Date()) {
+  for (let offset = -5; offset <= 8; offset += 1) {
+    const date = new Date(now);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + offset);
+    const dateValue = formatDateInputValue(date);
+    if (!isTrainingDate(dateValue)) continue;
+
+    const session = getTrainingSessionWindow(dateValue);
+    if (!session) continue;
+
+    const visibleUntil = withTime(date, "23:59");
+    if (now >= session.openAt && now <= visibleUntil) {
+      return {
+        ...session,
+        visibleUntil,
+        isReadOnly: now > session.closeAt,
+      };
+    }
   }
 
   return null;

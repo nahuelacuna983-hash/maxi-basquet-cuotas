@@ -97,6 +97,9 @@ export const initialResponsibilityConfig = {
   trainingWeekdays: [2, 4],
   pointsPerTraining: 10,
   absencePenalty: 10,
+  noShowPenalty: 2,
+  monthlyNoShowThreshold: 3,
+  monthlyNoShowPenalty: 5,
   lateNoticePenalty: 5,
   lastMinuteDropPenalty: 15,
 };

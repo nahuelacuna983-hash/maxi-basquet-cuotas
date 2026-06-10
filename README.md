@@ -20,11 +20,11 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Link directo por jugador con `?player=ID_DEL_JUGADOR`.
 - Modo admin con PIN simple.
 - Panel admin organizado por pestanas y subtabs internos para ver una sola herramienta por vez.
-- Estado de jugador editable desde la tabla admin.
+- Estado y tipo de jugador editables desde la tabla admin.
 - Secciones base disponibles para estadisticas, convocatorias y VIP.
 - Votacion real v1: despues del entrenamiento bloquea la vista jugador hasta guardar destacado y esponja.
 - Asistencia historica inicial cargada para iniciar estadisticas reales.
-- Responsabilidad descuenta bajas, faltas explicitas y ausencias inferidas de jugadores activos en entrenamientos cerrados.
+- Responsabilidad descuenta bajas, faltas explicitas, `No voy` con penalidad menor y ausencias inferidas de jugadores activos en entrenamientos cerrados.
 - Las estadisticas consideran todos los martes y jueves cerrados desde la fecha de inicio, aunque no haya ningun registro cargado.
 - Seleccion de mes para consultar abril, mayo u otras cuotas cargadas.
 - Pagos con estado `pendiente`, `aprobado` o `rechazado`.
@@ -223,14 +223,16 @@ Reglas de la primera version:
 
 - Martes abre el viernes anterior.
 - Jueves abre el miercoles anterior.
-- El listado publico cierra el mismo dia a las `20:30`.
+- El listado publico cierra para respuestas el mismo dia a las `20:30`.
+- Despues de las `20:30`, el listado queda visible solo como consulta hasta fin del dia.
 - Desde las `12:00` aparece `Baja sobre la hora`.
 - Entrenamientos no tienen maximo de jugadores.
 - Minimo sugerido para entrenar: `10`.
 - `Todavia no respondieron` muestra jugadores activos sin respuesta.
-- `No voy` queda registrado, pero no aparece en el listado publico.
+- `No voy` queda registrado, no aparece en el listado principal y resta menos que no responder.
 - Admin conserva el historico para presentismo y estadisticas.
 - Si un martes o jueves ya cerro y nadie respondio, la fecha cuenta igual para estadisticas: todos los jugadores activos quedan como ausentes inferidos.
+- En responsabilidad: no responder resta 10, `No voy` resta 2 y acumular 3 o mas `No voy/Falto` en un mes suma 5 puntos extra de descuento.
 - En modo admin se puede agregar o quitar un invitado del listado temporal. El invitado aparece como `Nombre (invitado)`, no se crea como jugador y no afecta cuotas, deuda ni responsabilidad.
 - En jueves se pueden agregar emoticones opcionales, incluida esponja `🧽` para lavado/platos.
 

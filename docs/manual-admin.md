@@ -69,7 +69,7 @@ La cuota se calcula sobre los jugadores cargados y su tipo. Si faltan jugadores 
    - `Lesionado`, `Lista de espera`, `Esporadico` o `Baja`: no deberian contar como cuota mensual normal.
 5. Asignar codigo de acceso.
 6. Revisar `Habilitado interno`.
-7. Para cambiar un jugador ya cargado, usar la tabla de jugadores: la columna `Estado` tiene un selector editable.
+7. Para cambiar un jugador ya cargado, usar la tabla de jugadores: las columnas `Tipo` y `Estado` tienen selectores editables.
 
 **Que no hacer**
 
@@ -298,9 +298,11 @@ Sirve para saber cuantos van a entrenar y si hace falta invitar gente.
 
 **Por que se usa asi**
 
-El listado se abre antes del entrenamiento y se cierra al publico a las `20:30` del mismo dia. Aunque desaparezca para jugadores, queda guardado para historial y estadisticas.
+El listado se abre antes del entrenamiento y se cierra para respuestas a las `20:30` del mismo dia. Despues de esa hora queda visible para jugadores solo como consulta hasta fin del dia, para que puedan ver cuantos eran y quienes estaban anotados. El registro queda guardado para historial y estadisticas.
 
 Desde el cierre, todos los martes y jueves configurados cuentan para estadisticas. Si una fecha no tiene ninguna respuesta cargada, la app interpreta que todos los jugadores activos estuvieron ausentes. No crea registros falsos, pero si lo usa para estadisticas y responsabilidad.
+
+Para responsabilidad, `No voy` descuenta menos que no responder. La regla actual es: no responder resta 10 puntos, `No voy` resta 2 puntos y si un jugador acumula 3 o mas `No voy/Falto` en un mismo mes, suma una penalidad extra de 5 puntos en ese mes.
 
 **Como se usa**
 

@@ -44,6 +44,11 @@ export function getHistoricalDiscount(adjustment, config) {
 }
 
 export function getExplicitAttendanceDiscount(attendances, playerId, config) {
+  return getStatusAttendanceDiscount(attendances, playerId, config) +
+    getMonthlyNoShowDiscount(attendances, playerId, config);
+}
+
+export function getStatusAttendanceDiscount(attendances, playerId, config) {
   return attendances
     .filter(
       (attendance) =>
@@ -52,6 +57,28 @@ export function getExplicitAttendanceDiscount(attendances, playerId, config) {
         attendance.date >= config.attendanceStartDate,
     )
     .reduce((sum, attendance) => sum + getStatusPenalty(attendance.status, config), 0);
+}
+
+export function getMonthlyNoShowDiscount(attendances, playerId, config) {
+  const threshold = Number(config.monthlyNoShowThreshold) || 0;
+  const penalty = Number(config.monthlyNoShowPenalty) || 0;
+  if (threshold <= 0 || penalty <= 0) return 0;
+
+  const countsByMonth = attendances
+    .filter(
+      (attendance) =>
+        attendance.playerId === playerId &&
+        (attendance.eventType ?? "entrenamiento") === "entrenamiento" &&
+        attendance.date >= config.attendanceStartDate &&
+        ["no_voy", "falto"].includes(attendance.status),
+    )
+    .reduce((counts, attendance) => {
+      const month = attendance.date.slice(0, 7);
+      counts.set(month, (counts.get(month) ?? 0) + 1);
+      return counts;
+    }, new Map());
+
+  return Array.from(countsByMonth.values()).filter((count) => count >= threshold).length * penalty;
 }
 
 export function getAttendanceDiscount(attendances, playerId, config, options = {}) {
@@ -90,7 +117,7 @@ export function getImplicitAbsenceDiscount(attendances, playerId, config, option
 export function getStatusPenalty(status, config) {
   const penalties = {
     falto: config.absencePenalty,
-    no_voy: config.absencePenalty,
+    no_voy: config.noShowPenalty ?? 0,
     aviso_tarde: config.lateNoticePenalty,
     baja_sobre_la_hora: config.lastMinuteDropPenalty,
     baja_sobre_hora: config.lastMinuteDropPenalty,
@@ -110,6 +137,8 @@ export function calculateResponsibilityScore({
   const adjustment = adjustments.find((item) => item.playerId === playerId);
   const baseScore = getBaseResponsibilityScore(config);
   const historicalDiscount = getHistoricalDiscount(adjustment, config);
+  const statusAttendanceDiscount = getStatusAttendanceDiscount(attendances, playerId, config);
+  const monthlyNoShowDiscount = getMonthlyNoShowDiscount(attendances, playerId, config);
   const explicitAttendanceDiscount = getExplicitAttendanceDiscount(attendances, playerId, config);
   const implicitAbsenceDiscount = getImplicitAbsenceDiscount(attendances, playerId, config, {
     players,
@@ -120,6 +149,8 @@ export function calculateResponsibilityScore({
   return {
     baseScore,
     historicalDiscount,
+    statusAttendanceDiscount,
+    monthlyNoShowDiscount,
     explicitAttendanceDiscount,
     implicitAbsenceDiscount,
     attendanceDiscount,
