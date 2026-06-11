@@ -25,7 +25,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Votacion real v1: despues del entrenamiento bloquea la vista jugador hasta guardar destacado y esponja.
 - Asistencia historica inicial cargada para iniciar estadisticas reales.
 - Responsabilidad descuenta bajas, faltas explicitas, `No voy` con penalidad menor y ausencias inferidas de jugadores activos en entrenamientos cerrados.
-- Las estadisticas consideran todos los martes y jueves cerrados desde la fecha de inicio, aunque no haya ningun registro cargado.
+- Las estadisticas consideran todos los martes y jueves cerrados desde el `2026-04-02`, primer dia de datos historicos cargados, aunque no haya ningun registro cargado.
 - Seleccion de mes para consultar abril, mayo u otras cuotas cargadas.
 - Pagos con estado `pendiente`, `aprobado` o `rechazado`.
 - Solo pagos aprobados descuentan deuda.

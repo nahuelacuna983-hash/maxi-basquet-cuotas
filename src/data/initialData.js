@@ -92,7 +92,7 @@ export const initialAttendances = [];
 export const initialTrainingVotes = [];
 
 export const initialResponsibilityConfig = {
-  attendanceStartDate: "2026-04-06",
+  attendanceStartDate: "2026-04-02",
   attendanceEndDate: "2026-12-31",
   trainingWeekdays: [2, 4],
   pointsPerTraining: 10,

@@ -65,7 +65,10 @@ export function normalizePersistedState(parsedState, fallbackState) {
       : fallbackState.responsibilityAdjustments,
     responsibilityConfig:
       parsedState.responsibilityConfig && typeof parsedState.responsibilityConfig === "object"
-        ? { ...fallbackState.responsibilityConfig, ...parsedState.responsibilityConfig }
+        ? normalizeResponsibilityConfig(
+            parsedState.responsibilityConfig,
+            fallbackState.responsibilityConfig,
+          )
         : fallbackState.responsibilityConfig,
     attendanceConfig:
       parsedState.attendanceConfig && typeof parsedState.attendanceConfig === "object"
@@ -76,6 +79,19 @@ export function normalizePersistedState(parsedState, fallbackState) {
         ? { ...fallbackState.treasuryConfig, ...parsedState.treasuryConfig }
         : fallbackState.treasuryConfig,
   };
+}
+
+function normalizeResponsibilityConfig(responsibilityConfig, fallbackResponsibilityConfig) {
+  const mergedConfig = {
+    ...fallbackResponsibilityConfig,
+    ...responsibilityConfig,
+  };
+
+  if (mergedConfig.attendanceStartDate === "2026-04-06") {
+    mergedConfig.attendanceStartDate = fallbackResponsibilityConfig.attendanceStartDate;
+  }
+
+  return mergedConfig;
 }
 
 function normalizeAttendanceConfig(attendanceConfig, fallbackAttendanceConfig) {

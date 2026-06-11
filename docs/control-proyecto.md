@@ -1,6 +1,6 @@
 # Control del proyecto
 
-Ultima actualizacion: 2026-06-10
+Ultima actualizacion: 2026-06-11
 
 Este documento acompana al `README.md` y sirve para registrar avances, pendientes y estimacion de cierre.
 
@@ -262,6 +262,11 @@ Al 2026-06-10:
 - El listado de entrenamiento cierra para respuestas a las `20:30`, pero queda visible solo como consulta hasta fin del dia.
 - El admin puede editar el `Tipo` del jugador desde la tabla de jugadores, igual que el estado.
 - Responsabilidad separa ausente/no respondio de `No voy`: no responder mantiene descuento alto, `No voy` descuenta menos y 3 o mas `No voy/Falto` en un mes agregan penalidad mensual.
+
+Al 2026-06-11:
+
+- El inicio de responsabilidad y estadisticas se ajusto de `2026-04-06` a `2026-04-02`, primer dia de datos historicos cargados.
+- Se agrego migracion local para que dispositivos con configuracion vieja adopten automaticamente el nuevo inicio si tenian `2026-04-06`.
 
 Al 2026-05-24:
 
