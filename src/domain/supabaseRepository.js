@@ -441,6 +441,7 @@ function fromSupabasePlayer(row) {
     status: row.status,
     internalEnabled: Boolean(row.internal_enabled),
     responsibilityScore: Number(row.responsibility_score) || 0,
+    billingStartMonth: row.billing_start_month ?? "",
     accessCode,
     hasAccessCode:
       row.has_access_code === null || row.has_access_code === undefined
@@ -460,6 +461,7 @@ function toSupabasePlayer(player) {
     status: player.status,
     internal_enabled: Boolean(player.internalEnabled),
     responsibility_score: Number(player.responsibilityScore) || 0,
+    billing_start_month: normalizeBillingStartMonth(player.billingStartMonth) || null,
     updated_at: new Date().toISOString(),
   };
 
@@ -616,6 +618,11 @@ function createGuestPlayerId(date, guestName) {
     .slice(0, 40);
 
   return `guest-${date}-${normalizedName || "invitado"}`;
+}
+
+function normalizeBillingStartMonth(value) {
+  const month = String(value ?? "").trim();
+  return /^\d{4}-\d{2}$/.test(month) ? month : "";
 }
 
 function fromSupabaseTreasuryConfig(row) {

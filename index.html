@@ -11,7 +11,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <link rel="stylesheet" href="./src/styles.css?v=reports-payment-alert-1" />
+    <link rel="stylesheet" href="./src/styles.css?v=player-billing-start-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -350,6 +350,10 @@
                   <option value="baja">Baja</option>
                 </select>
               </label>
+              <label>
+                Inicio cobro
+                <input id="playerBillingStartMonth" type="month" />
+              </label>
               <label class="check-row">
                 <input id="playerInternalEnabled" type="checkbox" checked />
                 Habilitado interno
@@ -374,6 +378,9 @@
                   class="bulk-textarea"
                   placeholder="Nombre | Tipo | Estado | Telefono | Habilitado interno | Resp. pts&#10;Acuña Nahuel | competidor | activo | 2210000000 | si | 1050&#10;García Jerónimo | solo_entrenamientos | activo | 2210000000 | no | 1000&#10;Pérez Bruno | solo_entrenamientos | lista_espera | 2210000000 | no | 0"
                 ></textarea>
+                <small class="muted-detail">
+                  Formato: Nombre | Tipo | Estado | Telefono | Habilitado interno | Resp. pts | Codigo | Inicio cobro
+                </small>
               </label>
               <p class="form-message wide-field" id="bulkPlayersMessage"></p>
               <button class="primary-button" type="submit">Importar jugadores</button>
@@ -670,6 +677,7 @@
                     <th>Telefono</th>
                     <th>Tipo</th>
                     <th>Estado</th>
+                    <th>Inicio cobro</th>
                     <th>Resp. pts</th>
                     <th>Codigo acceso</th>
                     <th>Habilitado interno</th>
@@ -849,7 +857,7 @@
       </section>
     </main>
     <script src="./src/vendor/supabase.umd.js?v=local-supabase-1"></script>
-    <script type="module" src="./src/app.js?v=responsibility-start-20260402"></script>
+    <script type="module" src="./src/app.js?v=player-billing-start-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-13"></script>
   </body>
 </html>

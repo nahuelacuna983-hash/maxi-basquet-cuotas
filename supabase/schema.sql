@@ -8,12 +8,16 @@ create table if not exists public.players (
   internal_enabled boolean not null default false,
   responsibility_score integer not null default 0,
   access_code text default '',
+  billing_start_month text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 alter table public.players
 add column if not exists access_code text default '';
+
+alter table public.players
+add column if not exists billing_start_month text;
 
 create table if not exists public.fees (
   id text primary key,

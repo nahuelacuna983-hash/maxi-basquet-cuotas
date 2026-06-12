@@ -10,6 +10,7 @@ supabase/attendance-tags-v1.sql
 supabase/attendance-guests-v1.sql
 supabase/attendance-delete-guest-v1.sql
 supabase/training-votes-v1.sql
+supabase/player-billing-start-v1.sql
 ```
 
 ## Tablas principales
@@ -55,6 +56,7 @@ Estado:
 `players`:
 
 - `access_code`: codigo simple del jugador. No debe salir en el listado publico.
+- `billing_start_month`: mes desde el que el jugador empieza a participar del cobro. Si esta vacio, conserva el comportamiento historico y cuenta desde las cuotas cargadas.
 
 `fees`:
 

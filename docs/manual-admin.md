@@ -68,12 +68,15 @@ La cuota se calcula sobre los jugadores cargados y su tipo. Si faltan jugadores 
    - `Activo`: cuenta para cuota y entrenamientos.
    - `Lesionado`, `Lista de espera`, `Esporadico` o `Baja`: no deberian contar como cuota mensual normal.
 5. Asignar codigo de acceso.
-6. Revisar `Habilitado interno`.
-7. Para cambiar un jugador ya cargado, usar la tabla de jugadores: las columnas `Tipo` y `Estado` tienen selectores editables.
+6. Revisar `Inicio cobro`.
+7. Revisar `Habilitado interno`.
+8. Para cambiar un jugador ya cargado, usar la tabla de jugadores: las columnas `Tipo`, `Estado` e `Inicio cobro` son editables.
+
+`Inicio cobro` define desde que mes el jugador participa del calculo de cuotas. Si un jugador entra en junio, cargar `2026-06` evita que aparezca como deudor de abril o mayo y tambien evita que modifique el divisor de esos meses anteriores. Los jugadores antiguos pueden quedar sin inicio de cobro si ya venian contando desde el primer mes cargado.
 
 **Que no hacer**
 
-No cargar duplicados con nombres escritos distinto. No dejar jugadores reales sin codigo si van a probar desde su celular. No cambiar estado o tipo sin entender que puede afectar el calculo de cuota.
+No cargar duplicados con nombres escritos distinto. No dejar jugadores reales sin codigo si van a probar desde su celular. No cambiar estado, tipo o inicio de cobro sin entender que puede afectar el calculo de cuota.
 
 **Ejemplo**
 

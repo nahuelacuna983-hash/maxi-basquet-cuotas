@@ -27,6 +27,18 @@ export function isBillablePlayer(player) {
   );
 }
 
+export function normalizeBillingStartMonth(value) {
+  const month = String(value ?? "").trim();
+  return /^\d{4}-\d{2}$/.test(month) ? month : "";
+}
+
+export function isPlayerBillableForFee(player, fee) {
+  if (!isBillablePlayer(player)) return false;
+
+  const billingStartMonth = normalizeBillingStartMonth(player.billingStartMonth);
+  return !billingStartMonth || fee.month >= billingStartMonth;
+}
+
 export function getPaymentsForPlayerFee(payments, playerId, feeId) {
   return payments.filter(
     (payment) => payment.playerId === playerId && payment.feeId === feeId,
@@ -76,7 +88,7 @@ export function getFeeDueDateObject(fee) {
 }
 
 export function getFeeBreakdown(fee, players) {
-  const billablePlayers = players.filter(isBillablePlayer);
+  const billablePlayers = players.filter((player) => isPlayerBillableForFee(player, fee));
   const tuesdays = countWeekdaysInMonth(fee.month, 2);
   const thursdays = countWeekdaysInMonth(fee.month, 4);
   const sundays = countWeekdaysInMonth(fee.month, 0);
@@ -124,7 +136,7 @@ export function getFeeBreakdown(fee, players) {
 }
 
 export function getExpectedFeeForPlayer(player, fee, players) {
-  if (!isBillablePlayer(player)) return 0;
+  if (!isPlayerBillableForFee(player, fee)) return 0;
 
   const breakdown = getFeeBreakdown(fee, players);
   const fixedExpected =

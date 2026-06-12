@@ -268,6 +268,11 @@ Al 2026-06-11:
 - El inicio de responsabilidad y estadisticas se ajusto de `2026-04-06` a `2026-04-02`, primer dia de datos historicos cargados.
 - Se agrego migracion local para que dispositivos con configuracion vieja adopten automaticamente el nuevo inicio si tenian `2026-04-06`.
 
+Al 2026-06-12:
+
+- Se agrego `Inicio cobro` por jugador para altas nuevas. Un jugador con inicio `2026-06` no debe meses anteriores y tampoco entra en el divisor automatico de abril/mayo.
+- Se agrego SQL incremental `supabase/player-billing-start-v1.sql` para persistir el campo en Supabase y actualizar las RPC de jugadores.
+
 Al 2026-05-24:
 
 - Las estadisticas de asistencia y responsabilidad pasan a considerar todos los martes y jueves cerrados desde `attendanceStartDate`, aunque no exista ningun registro de esa fecha.

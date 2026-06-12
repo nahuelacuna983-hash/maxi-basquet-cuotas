@@ -114,6 +114,7 @@ function normalizeAttendanceConfig(attendanceConfig, fallbackAttendanceConfig) {
 function normalizePlayer(player) {
   return {
     ...player,
+    billingStartMonth: normalizeBillingStartMonth(player.billingStartMonth),
     accessCode: player.accessCode ?? "",
     hasAccessCode:
       player.hasAccessCode === null || player.hasAccessCode === undefined
@@ -121,6 +122,11 @@ function normalizePlayer(player) {
         : Boolean(player.hasAccessCode),
     hasPrivateAccessCode: Boolean(player.hasPrivateAccessCode),
   };
+}
+
+function normalizeBillingStartMonth(value) {
+  const month = String(value ?? "").trim();
+  return /^\d{4}-\d{2}$/.test(month) ? month : "";
 }
 
 function dedupeFeesByMonth(fees) {

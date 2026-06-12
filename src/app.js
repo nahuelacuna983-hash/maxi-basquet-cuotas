@@ -13,6 +13,7 @@ import {
   getPendingPayments,
   getPaidAmount,
   getPlayerName,
+  normalizeBillingStartMonth,
   isBillablePlayer,
   isApprovedPayment,
   isFeeOverdue,
@@ -259,6 +260,7 @@ const elements = {
 elements.paymentDate.value = new Date().toISOString().slice(0, 10);
 elements.selfPaymentDate.value = new Date().toISOString().slice(0, 10);
 elements.playerPaymentDate.value = new Date().toISOString().slice(0, 10);
+document.querySelector("#playerBillingStartMonth").value = getCurrentMonth();
 elements.attendanceDate.value = new Date().toISOString().slice(0, 10);
 elements.attendanceNoveltyDate.value = getDefaultTrainingResponseDate();
 elements.trainingVoteDate.value = state.selectedTrainingVoteDate;
@@ -580,6 +582,9 @@ elements.playerForm.addEventListener("submit", async (event) => {
   const accessCode = document.querySelector("#playerAccessCode").value.trim();
   const type = document.querySelector("#playerType").value;
   const status = document.querySelector("#playerStatus").value;
+  const billingStartMonth = normalizeBillingStartMonth(
+    document.querySelector("#playerBillingStartMonth").value,
+  );
   const internalEnabled = document.querySelector("#playerInternalEnabled").checked;
 
   if (!firstName || !lastName) return;
@@ -595,6 +600,7 @@ elements.playerForm.addEventListener("submit", async (event) => {
     hasPrivateAccessCode: true,
     type,
     status,
+    billingStartMonth,
     internalEnabled,
   };
   state.players = [...state.players, player];
@@ -609,6 +615,7 @@ elements.playerForm.addEventListener("submit", async (event) => {
 
   elements.playerForm.reset();
   document.querySelector("#playerInternalEnabled").checked = true;
+  document.querySelector("#playerBillingStartMonth").value = getCurrentMonth();
 });
 
 elements.bulkPlayersForm.addEventListener("submit", async (event) => {
@@ -1394,6 +1401,15 @@ function renderPlayersTable(debts) {
               ${renderPlayerStatusOptions(debt.player.status)}
             </select>
           </td>
+          <td>
+            <input
+              class="table-input"
+              data-player-billing-start="${debt.player.id}"
+              type="month"
+              value="${escapeHtml(debt.player.billingStartMonth ?? "")}"
+              title="Mes desde el que empieza a pagar"
+            />
+          </td>
           <td><strong>${getResponsibilityDetails(debt.player.id).score}</strong></td>
           <td>
             <input
@@ -1434,6 +1450,12 @@ function renderPlayersTable(debts) {
   document.querySelectorAll("[data-player-type]").forEach((select) => {
     select.addEventListener("change", () => {
       updatePlayerType(select.dataset.playerType, select.value);
+    });
+  });
+
+  document.querySelectorAll("[data-player-billing-start]").forEach((input) => {
+    input.addEventListener("change", () => {
+      updatePlayerBillingStart(input.dataset.playerBillingStart, input.value);
     });
   });
 
@@ -4012,6 +4034,7 @@ function importBulkPlayers(rawValue) {
     const internalEnabled = parsedRecord.internalEnabled;
     const responsibilityScore = parsedRecord.responsibilityScore;
     const accessCode = parsedRecord.accessCode;
+    const billingStartMonth = parsedRecord.billingStartMonth || getCurrentMonth();
 
     if (!type || !status || internalEnabled === null) {
       result.errors += 1;
@@ -4028,6 +4051,7 @@ function importBulkPlayers(rawValue) {
       status,
       internalEnabled,
       responsibilityScore,
+      billingStartMonth,
       accessCode,
       hasAccessCode: Boolean(accessCode),
       hasPrivateAccessCode: true,
@@ -4111,6 +4135,7 @@ function parseBulkPlayerRecord(record) {
       internalEnabled,
       responsibilityScore: Number(columns[5]) || 0,
       accessCode: columns[6]?.trim() ?? "",
+      billingStartMonth: normalizeBillingStartMonth(columns[7]) || getCurrentMonth(),
     };
   }
 
@@ -4142,6 +4167,7 @@ function parseLooseBulkPlayerRecord(record) {
       internalEnabled: null,
       responsibilityScore: 0,
       accessCode: "",
+      billingStartMonth: getCurrentMonth(),
     };
   }
 
@@ -4156,6 +4182,7 @@ function parseLooseBulkPlayerRecord(record) {
     internalEnabled: defaultInternalEnabled(statusMatch.value),
     responsibilityScore: 0,
     accessCode: "",
+    billingStartMonth: getCurrentMonth(),
   };
 }
 
@@ -4620,6 +4647,27 @@ async function updatePlayerType(playerId, type) {
     previousPlayers,
     "Tipo de jugador actualizado",
     "Error al actualizar tipo",
+  );
+}
+
+async function updatePlayerBillingStart(playerId, value) {
+  if (!requireAdmin()) return;
+
+  const billingStartMonth = normalizeBillingStartMonth(value);
+  const previousPlayers = state.players;
+  let updatedPlayer = null;
+  state.players = state.players.map((player) =>
+    player.id === playerId
+      ? (updatedPlayer = { ...player, billingStartMonth })
+      : player,
+  );
+
+  if (!updatedPlayer) return;
+  await persistAdminPlayers(
+    [updatedPlayer],
+    previousPlayers,
+    "Inicio de cobro actualizado",
+    "Error al actualizar inicio de cobro",
   );
 }
 

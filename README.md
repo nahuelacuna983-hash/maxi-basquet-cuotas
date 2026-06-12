@@ -267,6 +267,16 @@ La pestana `Reportes` permite generar:
 
 El `Historial detallado` muestra pagos, asistencia/no respuestas y votaciones guardadas en el periodo elegido. No modifica datos y no genera PDF todavia.
 
+## Altas nuevas y deuda historica
+
+Cada jugador puede tener `Inicio cobro`, con formato `AAAA-MM`.
+
+- Si esta vacio, el jugador cuenta como antes para todas las cuotas cargadas.
+- Si tiene un mes, por ejemplo `2026-06`, no se le calcula deuda de cuotas anteriores.
+- Ese jugador tampoco entra en el divisor automatico de meses anteriores.
+
+Esto sirve para jugadores agregados tarde, invitados que pasan a ser activos o altas nuevas que no deben abril/mayo.
+
 Estados de jugador:
 
 - `Voy`
