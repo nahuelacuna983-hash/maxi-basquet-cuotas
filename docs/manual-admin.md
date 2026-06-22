@@ -66,7 +66,8 @@ La cuota se calcula sobre los jugadores cargados y su tipo. Si faltan jugadores 
    - `Solo entrenamientos`: solo participa del costo de martes y jueves.
 4. Revisar estado:
    - `Activo`: cuenta para cuota y entrenamientos.
-   - `Lesionado`, `Lista de espera`, `Esporadico` o `Baja`: no deberian contar como cuota mensual normal.
+   - `Esporadico`: no cuenta para cuota mensual, pero puede anotarse cuando participa de un entrenamiento.
+   - `Lesionado`, `Lista de espera` o `Baja`: no cuentan para cuota mensual ni pueden anotarse desde la vista jugador.
 5. Asignar codigo de acceso.
 6. Revisar `Inicio cobro`.
 7. Revisar `Habilitado interno`.
@@ -80,7 +81,7 @@ No cargar duplicados con nombres escritos distinto. No dejar jugadores reales si
 
 **Ejemplo**
 
-Si un jugador compite los domingos y esta activo, debe quedar como `Competidor` y `Activo`. Si solo viene a entrenar y paga entrenamientos, debe quedar como `Solo entrenamientos` y `Activo`.
+Si un jugador compite los domingos y esta activo, debe quedar como `Competidor` y `Activo`. Si solo viene a entrenar y paga entrenamientos, debe quedar como `Solo entrenamientos` y `Activo`. Si pertenece al grupo, viene ocasionalmente y no paga cuota fija, puede quedar como `Solo entrenamientos` y `Esporadico`.
 
 ## Cuotas
 

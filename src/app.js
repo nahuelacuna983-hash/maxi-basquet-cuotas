@@ -3552,7 +3552,7 @@ function renderSelfPaymentAlert(payment, pendingAmount, expectedAmount, payableA
 
 function renderSelfTrainingSignup(player) {
   const session = getVisibleTrainingSession();
-  if (!isBillablePlayer(player)) {
+  if (!canParticipateInTraining(player)) {
     renderSelfTrainingUnavailable(
       "Entrenamientos",
       "Este jugador no participa de los listados de entrenamiento.",
@@ -3749,6 +3749,12 @@ async function submitSelfTrainingStatus(status, options = {}) {
   const session = getOpenTrainingSession();
   if (!player || !canViewSelfServicePlayer(player)) {
     elements.selfTrainingMessage.textContent = "Ingresa tu codigo antes de responder.";
+    return;
+  }
+
+  if (!canParticipateInTraining(player)) {
+    elements.selfTrainingMessage.textContent =
+      "Este jugador no participa de los listados de entrenamiento.";
     return;
   }
 
@@ -5004,6 +5010,13 @@ function getCombinedMutationResult(results) {
 
 function getSortedPlayers(players = state.players) {
   return [...players].sort(comparePlayersByName);
+}
+
+function canParticipateInTraining(player) {
+  return (
+    ["activo", "esporadico"].includes(player?.status) &&
+    ["competidor", "solo_entrenamientos"].includes(player?.type)
+  );
 }
 
 function comparePlayersByName(a, b) {

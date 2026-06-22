@@ -229,6 +229,7 @@ Reglas de la primera version:
 - Entrenamientos no tienen maximo de jugadores.
 - Minimo sugerido para entrenar: `10`.
 - `Todavia no respondieron` muestra jugadores activos sin respuesta.
+- Los jugadores `Esporadicos` pueden anotarse cuando participan, pero no pagan cuota mensual ni aparecen como ausentes si no responden.
 - `No voy` queda registrado, no aparece en el listado principal y resta menos que no responder.
 - Admin conserva el historico para presentismo y estadisticas.
 - Si un martes o jueves ya cerro y nadie respondio, la fecha cuenta igual para estadisticas: todos los jugadores activos quedan como ausentes inferidos.

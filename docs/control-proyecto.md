@@ -273,6 +273,11 @@ Al 2026-06-12:
 - Se agrego `Inicio cobro` por jugador para altas nuevas. Un jugador con inicio `2026-06` no debe meses anteriores y tampoco entra en el divisor automatico de abril/mayo.
 - Se agrego SQL incremental `supabase/player-billing-start-v1.sql` para persistir el campo en Supabase y actualizar las RPC de jugadores.
 
+Al 2026-06-22:
+
+- Se separo participacion en entrenamientos de cobro mensual: los jugadores `Esporadicos` pueden anotarse con su codigo sin generar cuota ni deuda.
+- Los esporadicos no se agregan a las ausencias automaticas cuando no responden; solo quedan registrados cuando eligen una opcion.
+
 Al 2026-05-24:
 
 - Las estadisticas de asistencia y responsabilidad pasan a considerar todos los martes y jueves cerrados desde `attendanceStartDate`, aunque no exista ningun registro de esa fecha.
