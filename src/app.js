@@ -72,6 +72,8 @@ const TRAINING_VOTE_OPEN_AT = "22:01";
 const TRAINING_VOTE_CLOSE_DAYS_AFTER = 1;
 const TRAINING_VOTE_CLOSE_AT = "23:59";
 const dinnerAttendanceTags = new Set(attendanceTagOptions.map((tag) => tag.id));
+const BIRTHDAY_SYMBOL_HTML = "&#127874;";
+const BIRTHDAY_SYMBOL_TEXT = String.fromCodePoint(0x1f382);
 const trainingVoteCandidateStatuses = new Set([
   "voy",
   "avisa_mas_tarde",
@@ -183,6 +185,7 @@ const elements = {
   selfPaymentAmount: document.querySelector("#selfPaymentAmount"),
   selfPaymentDate: document.querySelector("#selfPaymentDate"),
   selfPaymentNote: document.querySelector("#selfPaymentNote"),
+  selfBirthdayNotice: document.querySelector("#selfBirthdayNotice"),
   selfTrainingCard: document.querySelector("#selfTrainingCard"),
   selfTrainingTitle: document.querySelector("#selfTrainingTitle"),
   selfTrainingWindow: document.querySelector("#selfTrainingWindow"),
@@ -190,6 +193,7 @@ const elements = {
   selfTrainingTags: document.querySelector("#selfTrainingTags"),
   selfTrainingGuestForm: document.querySelector("#selfTrainingGuestForm"),
   selfTrainingGuestName: document.querySelector("#selfTrainingGuestName"),
+  selfTrainingGuestMode: document.querySelector("#selfTrainingGuestMode"),
   selfTrainingMessage: document.querySelector("#selfTrainingMessage"),
   selfTrainingLists: document.querySelector("#selfTrainingLists"),
   selfTrainingMainTitle: document.querySelector("#selfTrainingMainTitle"),
@@ -580,6 +584,7 @@ elements.playerForm.addEventListener("submit", async (event) => {
   const lastName = document.querySelector("#playerLastName").value.trim();
   const phone = document.querySelector("#playerPhone").value.trim();
   const accessCode = document.querySelector("#playerAccessCode").value.trim();
+  const birthDate = normalizeBirthDate(document.querySelector("#playerBirthDate").value);
   const type = document.querySelector("#playerType").value;
   const status = document.querySelector("#playerStatus").value;
   const billingStartMonth = normalizeBillingStartMonth(
@@ -595,6 +600,7 @@ elements.playerForm.addEventListener("submit", async (event) => {
     firstName,
     lastName,
     phone,
+    birthDate,
     accessCode,
     hasAccessCode: Boolean(accessCode),
     hasPrivateAccessCode: true,
@@ -1049,7 +1055,7 @@ function renderSelfService() {
 
   state.selectedSelfServicePlayerId = fallbackPlayer?.id ?? "";
   elements.selfServicePlayer.innerHTML = sortedPlayers
-    .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
+    .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerSelectLabel(player))}</option>`)
     .join("");
   elements.selfServicePlayer.value = state.selectedSelfServicePlayerId;
   renderSelfServiceMonthOptions(selectedMonth);
@@ -1071,6 +1077,7 @@ function renderSelfService() {
     elements.selfPaymentInstructions.hidden = true;
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
+    elements.selfBirthdayNotice.hidden = true;
     updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, 0);
     updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, 0);
     return;
@@ -1093,6 +1100,7 @@ function renderSelfService() {
     elements.selfPaymentInstructions.hidden = true;
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
+    elements.selfBirthdayNotice.hidden = true;
     elements.selfTrainingCard.hidden = true;
     elements.selfVoteGate.hidden = true;
     elements.selfTrainingVoteCard.hidden = true;
@@ -1109,6 +1117,7 @@ function renderSelfService() {
   if (state.isAdminMode) {
     elements.selfAccessMessage.textContent = "Vista habilitada por modo admin.";
   }
+  renderSelfBirthdayNotice(fallbackPlayer);
 
   const currentMonth = selectedMonth;
   const currentFee = getSelectedSelfServiceFee();
@@ -1389,7 +1398,7 @@ function renderPlayersTable(debts) {
 
       return `
         <tr>
-          <td><strong>${escapeHtml(getPlayerName(debt.player))}</strong></td>
+          <td><strong>${renderPlayerNameWithBirthday(debt.player)}</strong></td>
           <td>${escapeHtml(debt.player.phone || "-")}</td>
           <td>
             <select class="table-select" data-player-type="${debt.player.id}">
@@ -1417,6 +1426,15 @@ function renderPlayersTable(debts) {
               data-access-code-player="${debt.player.id}"
               value="${escapeHtml(debt.player.accessCode ?? "")}"
               placeholder="Sin codigo"
+            />
+          </td>
+          <td>
+            <input
+              class="table-input"
+              data-player-birth-date="${debt.player.id}"
+              type="date"
+              value="${escapeHtml(debt.player.birthDate ?? "")}"
+              title="Fecha de nacimiento"
             />
           </td>
           <td>
@@ -1462,6 +1480,12 @@ function renderPlayersTable(debts) {
   document.querySelectorAll("[data-access-code-player]").forEach((input) => {
     input.addEventListener("change", () => {
       updatePlayerAccessCode(input.dataset.accessCodePlayer, input.value);
+    });
+  });
+
+  document.querySelectorAll("[data-player-birth-date]").forEach((input) => {
+    input.addEventListener("change", () => {
+      updatePlayerBirthDate(input.dataset.playerBirthDate, input.value);
     });
   });
 }
@@ -3372,12 +3396,14 @@ function applyPersistentState(nextState) {
   const previousPlayerFilter = state.playerFilter;
   state.players = nextState.players.map((player) => ({
     ...player,
+    birthDate: normalizeBirthDate(player.birthDate),
     accessCode: player.accessCode ?? "",
     hasAccessCode:
       player.hasAccessCode === null || player.hasAccessCode === undefined
         ? Boolean(player.accessCode?.trim())
         : Boolean(player.hasAccessCode),
     hasPrivateAccessCode: Boolean(player.hasPrivateAccessCode),
+    hasBirthDateColumn: Boolean(player.hasBirthDateColumn),
   }));
   state.fees = nextState.fees.map((fee) => ({ ...fee }));
   state.payments = nextState.payments.map((payment) => ({ ...payment }));
@@ -3609,6 +3635,10 @@ function renderSelfTrainingSignup(player) {
   elements.selfTrainingMainTitle.textContent = `Listado (${visibleAttendances.length})`;
   elements.selfTrainingDinnerTitle.textContent = `Cena (${dinnerAttendances.length})`;
   elements.selfTrainingDinnerPanel.hidden = !isDinnerDay;
+  if (elements.selfTrainingGuestMode) {
+    elements.selfTrainingGuestMode.value = isDinnerDay ? elements.selfTrainingGuestMode.value : "training";
+    elements.selfTrainingGuestMode.querySelector('[value="dinner_only"]').disabled = !isDinnerDay;
+  }
   elements.selfTrainingMainList.innerHTML = renderTrainingListItems(
     visibleAttendances.map((attendance) => ({
       id: attendance.id,
@@ -3803,6 +3833,8 @@ async function addTrainingGuest() {
 
   const session = getOpenTrainingSession();
   const guestName = normalizeGuestName(elements.selfTrainingGuestName.value);
+  const guestMode = elements.selfTrainingGuestMode?.value ?? "training";
+  const isDinnerOnly = guestMode === "dinner_only";
 
   if (!session) {
     elements.selfTrainingMessage.textContent = "No hay listado abierto para agregar invitados.";
@@ -3814,6 +3846,11 @@ async function addTrainingGuest() {
     return;
   }
 
+  if (isDinnerOnly && !isDinnerTrainingDate(session.date)) {
+    elements.selfTrainingMessage.textContent = "Solo cena se usa en entrenamientos de jueves.";
+    return;
+  }
+
   const guestPlayerId = createGuestPlayerId(session.date, guestName);
   const existingAttendance = getAttendanceForPlayerDate(guestPlayerId, session.date);
   const attendance = {
@@ -3821,8 +3858,8 @@ async function addTrainingGuest() {
     date: session.date,
     eventType: "entrenamiento",
     playerId: guestPlayerId,
-    status: "voy",
-    source: serializeGuestAttendanceSource(guestName),
+    status: isDinnerOnly ? "no_voy" : "voy",
+    source: serializeGuestAttendanceSource(guestName, isDinnerOnly ? ["meat"] : []),
     participantType: "guest",
     guestName,
     createdAt: new Date().toISOString(),
@@ -3838,7 +3875,9 @@ async function addTrainingGuest() {
 
   if (saved) {
     elements.selfTrainingGuestName.value = "";
-    elements.selfTrainingMessage.textContent = `${guestName} agregado como invitado.`;
+    elements.selfTrainingGuestMode.value = "training";
+    elements.selfTrainingMessage.textContent =
+      `${guestName} agregado como invitado${isDinnerOnly ? " solo cena" : ""}.`;
   } else {
     elements.selfTrainingMessage.textContent = state.syncStatus;
   }
@@ -4041,6 +4080,7 @@ function importBulkPlayers(rawValue) {
     const responsibilityScore = parsedRecord.responsibilityScore;
     const accessCode = parsedRecord.accessCode;
     const billingStartMonth = parsedRecord.billingStartMonth || getCurrentMonth();
+    const birthDate = parsedRecord.birthDate;
 
     if (!type || !status || internalEnabled === null) {
       result.errors += 1;
@@ -4058,9 +4098,11 @@ function importBulkPlayers(rawValue) {
       internalEnabled,
       responsibilityScore,
       billingStartMonth,
+      birthDate,
       accessCode,
       hasAccessCode: Boolean(accessCode),
       hasPrivateAccessCode: true,
+      hasBirthDateColumn: Boolean(birthDate),
     });
     result.imported += 1;
   });
@@ -4142,6 +4184,7 @@ function parseBulkPlayerRecord(record) {
       responsibilityScore: Number(columns[5]) || 0,
       accessCode: columns[6]?.trim() ?? "",
       billingStartMonth: normalizeBillingStartMonth(columns[7]) || getCurrentMonth(),
+      birthDate: normalizeBirthDate(columns[8]),
     };
   }
 
@@ -4174,6 +4217,7 @@ function parseLooseBulkPlayerRecord(record) {
       responsibilityScore: 0,
       accessCode: "",
       billingStartMonth: getCurrentMonth(),
+      birthDate: "",
     };
   }
 
@@ -4189,6 +4233,7 @@ function parseLooseBulkPlayerRecord(record) {
     responsibilityScore: 0,
     accessCode: "",
     billingStartMonth: getCurrentMonth(),
+    birthDate: "",
   };
 }
 
@@ -4703,6 +4748,31 @@ async function updatePlayerAccessCode(playerId, value) {
   );
 }
 
+async function updatePlayerBirthDate(playerId, value) {
+  if (!requireAdmin()) return;
+
+  const birthDate = normalizeBirthDate(value);
+  const previousPlayers = state.players;
+  let updatedPlayer = null;
+  state.players = state.players.map((player) =>
+    player.id === playerId
+      ? (updatedPlayer = {
+          ...player,
+          birthDate,
+          hasBirthDateColumn: true,
+        })
+      : player,
+  );
+
+  if (!updatedPlayer) return;
+  await persistAdminPlayers(
+    [updatedPlayer],
+    previousPlayers,
+    "Nacimiento actualizado",
+    "Error al actualizar nacimiento",
+  );
+}
+
 async function persistFee(fee, previousFees, successMessage, errorMessage) {
   state.fees = [...previousFees.filter((item) => item.id !== fee.id), fee].sort((a, b) =>
     a.month.localeCompare(b.month),
@@ -4943,12 +5013,31 @@ function serializeAttendanceSource(baseSource, tags = []) {
   return normalizedTags.length ? `${source}|tags=${normalizedTags.join(",")}` : source;
 }
 
-function serializeGuestAttendanceSource(guestName) {
-  return `admin|guest=${encodeURIComponent(guestName)}`;
+function serializeGuestAttendanceSource(guestName, tags = []) {
+  const guestSource = `admin|guest=${encodeURIComponent(guestName)}`;
+  const normalizedTags = normalizeAttendanceTags(tags);
+  return normalizedTags.length ? `${guestSource}|tags=${normalizedTags.join(",")}` : guestSource;
 }
 
 function normalizeGuestName(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeBirthDate(value) {
+  const date = String(value ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+
+  const [year, month, day] = date.split("-").map(Number);
+  const parsedDate = new Date(year, month - 1, day);
+  if (
+    parsedDate.getFullYear() !== year ||
+    parsedDate.getMonth() !== month - 1 ||
+    parsedDate.getDate() !== day
+  ) {
+    return "";
+  }
+
+  return date;
 }
 
 function createGuestPlayerId(date, guestName) {
@@ -5010,6 +5099,72 @@ function getCombinedMutationResult(results) {
 
 function getSortedPlayers(players = state.players) {
   return [...players].sort(comparePlayersByName);
+}
+
+function getPlayerSelectLabel(player) {
+  const birthdaySuffix = isBirthdayToday(player) ? ` ${BIRTHDAY_SYMBOL_TEXT}` : "";
+  return `${getPlayerName(player)}${birthdaySuffix}`;
+}
+
+function renderPlayerNameWithBirthday(player) {
+  const birthdaySuffix = isBirthdayToday(player)
+    ? ` <span class="birthday-symbol" title="Cumpleanos hoy">${BIRTHDAY_SYMBOL_HTML}</span>`
+    : "";
+  return `${escapeHtml(getPlayerName(player))}${birthdaySuffix}`;
+}
+
+function renderSelfBirthdayNotice(player) {
+  const birthdayInfo = getBirthdayInfo(player);
+
+  if (!birthdayInfo) {
+    elements.selfBirthdayNotice.hidden = true;
+    elements.selfBirthdayNotice.innerHTML = "";
+    return;
+  }
+
+  elements.selfBirthdayNotice.hidden = false;
+  elements.selfBirthdayNotice.className =
+    `birthday-notice ${birthdayInfo.isToday ? "birthday-today" : ""}`;
+
+  if (birthdayInfo.isToday) {
+    elements.selfBirthdayNotice.innerHTML = `
+      <strong>${BIRTHDAY_SYMBOL_HTML} Feliz cumple, ${escapeHtml(player.firstName || getPlayerName(player))}!</strong>
+      <span>Que tengas un gran dia. El simbolo queda visible durante todo el cumpleanos.</span>
+    `;
+    return;
+  }
+
+  const daysText = birthdayInfo.daysUntil === 1 ? "falta 1 dia" : `faltan ${birthdayInfo.daysUntil} dias`;
+  elements.selfBirthdayNotice.innerHTML = `
+    <strong>Proximo cumpleanos: ${escapeHtml(birthdayInfo.label)}</strong>
+    <span>${escapeHtml(daysText)} para ${escapeHtml(getPlayerName(player))}.</span>
+  `;
+}
+
+function getBirthdayInfo(player, today = new Date()) {
+  const birthDate = normalizeBirthDate(player?.birthDate);
+  if (!birthDate) return null;
+
+  const [, monthPart, dayPart] = birthDate.split("-");
+  const month = Number(monthPart);
+  const day = Number(dayPart);
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let nextBirthday = new Date(todayStart.getFullYear(), month - 1, day);
+
+  if (nextBirthday < todayStart) {
+    nextBirthday = new Date(todayStart.getFullYear() + 1, month - 1, day);
+  }
+
+  const daysUntil = Math.round((nextBirthday - todayStart) / 86400000);
+  return {
+    isToday: daysUntil === 0,
+    daysUntil,
+    label: `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`,
+  };
+}
+
+function isBirthdayToday(player, today = new Date()) {
+  return Boolean(getBirthdayInfo(player, today)?.isToday);
 }
 
 function canParticipateInTraining(player) {

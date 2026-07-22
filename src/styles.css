@@ -572,6 +572,31 @@ h1 {
   opacity: 0.45;
 }
 
+.birthday-notice {
+  display: grid;
+  gap: 2px;
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #d8d1c5;
+  border-radius: 8px;
+  background: #fffefa;
+  color: var(--muted);
+}
+
+.birthday-notice strong {
+  color: var(--ink);
+}
+
+.birthday-today {
+  border-color: #edc66a;
+  background: #fff4cf;
+}
+
+.birthday-symbol {
+  display: inline-block;
+  margin-left: 4px;
+}
+
 .guest-training-form {
   display: grid;
   gap: 6px;
@@ -582,9 +607,9 @@ h1 {
   background: #fffefa;
 }
 
-.guest-training-form div {
+.guest-training-form .guest-training-controls {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(120px, auto) auto;
   gap: 8px;
 }
 
@@ -1299,7 +1324,7 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
-  .guest-training-form div {
+  .guest-training-form .guest-training-controls {
     grid-template-columns: 1fr;
   }
 

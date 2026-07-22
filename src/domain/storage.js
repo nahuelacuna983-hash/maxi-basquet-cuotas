@@ -115,18 +115,25 @@ function normalizePlayer(player) {
   return {
     ...player,
     billingStartMonth: normalizeBillingStartMonth(player.billingStartMonth),
+    birthDate: normalizeBirthDate(player.birthDate),
     accessCode: player.accessCode ?? "",
     hasAccessCode:
       player.hasAccessCode === null || player.hasAccessCode === undefined
         ? Boolean(player.accessCode?.trim())
         : Boolean(player.hasAccessCode),
     hasPrivateAccessCode: Boolean(player.hasPrivateAccessCode),
+    hasBirthDateColumn: Boolean(player.hasBirthDateColumn),
   };
 }
 
 function normalizeBillingStartMonth(value) {
   const month = String(value ?? "").trim();
   return /^\d{4}-\d{2}$/.test(month) ? month : "";
+}
+
+function normalizeBirthDate(value) {
+  const date = String(value ?? "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
 }
 
 function dedupeFeesByMonth(fees) {

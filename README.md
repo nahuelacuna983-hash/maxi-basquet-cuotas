@@ -58,6 +58,7 @@ El jugador puede:
 - ver alias e instrucciones de pago
 - informar pago
 - ver una tarjeta clara cuando el pago ya fue informado, aprobado o rechazado
+- ver aviso de proximo cumpleanos o saludo si cumple hoy
 - responder al listado temporal de entrenamiento cuando esta abierto
 - marcar `Solo cena` los jueves y sumar emoticones opcionales como cena, cocinero, vino, pan o bebida
 - ver el listado de entrenamiento separado de la cuota
@@ -80,6 +81,7 @@ Permite:
 - cargar jugadores
 - importar jugadores masivamente
 - asignar codigo de acceso
+- cargar fecha de nacimiento
 - modificar habilitado interno
 - cargar cuotas
 - ajustar bases de cobro
@@ -142,6 +144,12 @@ SQL adicional para invitados en listado temporal:
 ```txt
 supabase/attendance-guests-v1.sql
 supabase/attendance-delete-guest-v1.sql
+```
+
+SQL adicional para cumpleanos de jugadores:
+
+```txt
+supabase/player-birthdays-v1.sql
 ```
 
 ## Seguridad MVP
@@ -235,6 +243,7 @@ Reglas de la primera version:
 - Si un martes o jueves ya cerro y nadie respondio, la fecha cuenta igual para estadisticas: todos los jugadores activos quedan como ausentes inferidos.
 - En responsabilidad: no responder resta 10, `No voy` resta 2 y acumular 3 o mas `No voy/Falto` en un mes suma 5 puntos extra de descuento.
 - En modo admin se puede agregar o quitar un invitado del listado temporal. El invitado aparece como `Nombre (invitado)`, no se crea como jugador y no afecta cuotas, deuda ni responsabilidad.
+- Los jueves, el admin puede agregar invitados como `Entrena` o `Solo cena`. `Solo cena` aparece en la lista secundaria de cena y no suma al contador de entrenamiento.
 - En jueves se pueden agregar emoticones opcionales, incluida esponja `🧽` para lavado/platos.
 
 - En celular, el listado muestra contadores por bloque, evita que se corten los numeros y deja la lista larga de `No me interesa` con scroll interno para no tapar toda la pantalla.
@@ -271,6 +280,7 @@ El `Historial detallado` muestra pagos, asistencia/no respuestas y votaciones gu
 ## Altas nuevas y deuda historica
 
 Cada jugador puede tener `Inicio cobro`, con formato `AAAA-MM`.
+Tambien puede tener `Nacimiento`, con formato `AAAA-MM-DD`, para avisos de cumpleanos.
 
 - Si esta vacio, el jugador cuenta como antes para todas las cuotas cargadas.
 - Si tiene un mes, por ejemplo `2026-06`, no se le calcula deuda de cuotas anteriores.

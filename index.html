@@ -51,6 +51,8 @@
           </div>
 
           <div id="selfServiceProtectedContent" hidden>
+            <div class="birthday-notice" id="selfBirthdayNotice" hidden></div>
+
             <nav class="self-tabs" id="playerTabs" aria-label="Secciones del jugador">
               <button class="self-tab-button active" type="button" data-player-tab="quota" aria-controls="selfQuotaTab">
                 Mi cuota
@@ -181,8 +183,12 @@
                 </div>
                 <form class="guest-training-form" id="selfTrainingGuestForm" hidden>
                   <label for="selfTrainingGuestName">Invitado</label>
-                  <div>
+                  <div class="guest-training-controls">
                     <input id="selfTrainingGuestName" type="text" placeholder="Nombre del invitado" />
+                    <select id="selfTrainingGuestMode" aria-label="Destino del invitado">
+                      <option value="training">Entrena</option>
+                      <option value="dinner_only">Solo cena</option>
+                    </select>
                     <button class="secondary-button" type="submit">Agregar invitado</button>
                   </div>
                   <p class="muted-detail">Accion admin: aparece solo en esta lista como invitado.</p>
@@ -332,6 +338,10 @@
               <label>
                 Codigo de acceso
                 <input id="playerAccessCode" placeholder="Ej: 1234" />
+              </label>
+              <label>
+                Nacimiento
+                <input id="playerBirthDate" type="date" />
               </label>
               <label>
                 Tipo
@@ -680,6 +690,7 @@
                     <th>Inicio cobro</th>
                     <th>Resp. pts</th>
                     <th>Codigo acceso</th>
+                    <th>Nacimiento</th>
                     <th>Habilitado interno</th>
                     <th>Pagado acumulado</th>
                     <th>Cuota esperada</th>
@@ -857,7 +868,7 @@
       </section>
     </main>
     <script src="./src/vendor/supabase.umd.js?v=local-supabase-1"></script>
-    <script type="module" src="./src/app.js?v=sporadic-training-1"></script>
+    <script type="module" src="./src/app.js?v=guest-dinner-birthday-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-13"></script>
   </body>
 </html>

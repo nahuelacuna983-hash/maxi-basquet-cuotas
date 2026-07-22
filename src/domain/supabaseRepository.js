@@ -97,7 +97,11 @@ export async function adminUpsertPlayer(adminPin, player) {
     throwSupabaseError(rpcResult, "admin_upsert_player");
   }
 
-  const fallbackResult = await client.from("players").upsert(payload, { onConflict: "id" });
+  let fallbackResult = await client.from("players").upsert(payload, { onConflict: "id" });
+  if (fallbackResult.error && isMissingBirthDateColumnError(fallbackResult.error)) {
+    const { birth_date: _birthDate, ...fallbackPayload } = payload;
+    fallbackResult = await client.from("players").upsert(fallbackPayload, { onConflict: "id" });
+  }
   assertSupabaseResult(fallbackResult, "players");
   return logMutationMode("fallback");
 }
@@ -422,6 +426,11 @@ function isMissingRelationError(error) {
   );
 }
 
+function isMissingBirthDateColumnError(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return message.includes("birth_date") && message.includes("column");
+}
+
 function logMutationMode(mode) {
   const detail = mode === "rpc" ? "RPC OK" : "Fallback temporal usado: RPC no disponible";
   console.info(detail);
@@ -431,12 +440,14 @@ function logMutationMode(mode) {
 function fromSupabasePlayer(row) {
   const hasAccessCodeColumn = Object.prototype.hasOwnProperty.call(row, "access_code");
   const accessCode = hasAccessCodeColumn ? row.access_code ?? "" : "";
+  const hasBirthDateColumn = Object.prototype.hasOwnProperty.call(row, "birth_date");
 
   return {
     id: row.id,
     firstName: row.first_name,
     lastName: row.last_name ?? "",
     phone: row.phone ?? "",
+    birthDate: hasBirthDateColumn ? row.birth_date ?? "" : "",
     type: row.type,
     status: row.status,
     internalEnabled: Boolean(row.internal_enabled),
@@ -448,6 +459,7 @@ function fromSupabasePlayer(row) {
         ? Boolean(accessCode.trim())
         : Boolean(row.has_access_code),
     hasPrivateAccessCode: hasAccessCodeColumn,
+    hasBirthDateColumn,
   };
 }
 
@@ -465,11 +477,20 @@ function toSupabasePlayer(player) {
     updated_at: new Date().toISOString(),
   };
 
+  if (player.hasBirthDateColumn || player.birthDate) {
+    row.birth_date = normalizeBirthDate(player.birthDate) || null;
+  }
+
   if (player.hasPrivateAccessCode || player.accessCode?.trim()) {
     row.access_code = player.accessCode ?? "";
   }
 
   return row;
+}
+
+function normalizeBirthDate(value) {
+  const date = String(value ?? "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
 }
 
 function fromSupabaseFee(row) {

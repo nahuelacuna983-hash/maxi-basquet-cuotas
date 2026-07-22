@@ -70,10 +70,13 @@ La cuota se calcula sobre los jugadores cargados y su tipo. Si faltan jugadores 
    - `Lesionado`, `Lista de espera` o `Baja`: no cuentan para cuota mensual ni pueden anotarse desde la vista jugador.
 5. Asignar codigo de acceso.
 6. Revisar `Inicio cobro`.
-7. Revisar `Habilitado interno`.
-8. Para cambiar un jugador ya cargado, usar la tabla de jugadores: las columnas `Tipo`, `Estado` e `Inicio cobro` son editables.
+7. Cargar `Nacimiento` si se quiere mostrar aviso de cumpleanos.
+8. Revisar `Habilitado interno`.
+9. Para cambiar un jugador ya cargado, usar la tabla de jugadores: las columnas `Tipo`, `Estado`, `Inicio cobro`, `Codigo acceso` y `Nacimiento` son editables.
 
 `Inicio cobro` define desde que mes el jugador participa del calculo de cuotas. Si un jugador entra en junio, cargar `2026-06` evita que aparezca como deudor de abril o mayo y tambien evita que modifique el divisor de esos meses anteriores. Los jugadores antiguos pueden quedar sin inicio de cobro si ya venian contando desde el primer mes cargado.
+
+`Nacimiento` es opcional. Si esta cargado, la vista jugador muestra un aviso de proximo cumpleanos; durante el dia del cumpleanos muestra un saludo y un simbolo al lado del nombre.
 
 **Que no hacer**
 
@@ -326,7 +329,9 @@ En celular, cada bloque muestra contador: `Listado`, `Cena` y `No me interesa`. 
 
 **Invitados**
 
-En modo admin, dentro del listado temporal abierto, se puede escribir el nombre de un invitado y tocar `Agregar invitado`. La app lo muestra como `Nombre (invitado)` en la lista de ese entrenamiento.
+En modo admin, dentro del listado temporal abierto, se puede escribir el nombre de un invitado, elegir `Entrena` o `Solo cena` y tocar `Agregar invitado`. La app lo muestra como `Nombre (invitado)` en la lista correspondiente de ese entrenamiento.
+
+Si se elige `Entrena`, el invitado aparece en el listado principal y suma para llegar al minimo sugerido. Si se elige `Solo cena`, aparece en la lista secundaria de cena y no suma al contador de entrenamiento.
 
 El invitado no se crea como jugador, no tiene codigo, no genera cuota, no entra en deuda, no entra en morosos y no modifica responsabilidad. Sirve solo para completar la lista temporal del dia.
 

@@ -2,7 +2,7 @@
 
 Guia tecnica de Supabase para la MVP de cuotas.
 
-SQL incremental de asistencia:
+SQL incremental:
 
 ```txt
 supabase/attendance-v1.sql
@@ -11,6 +11,7 @@ supabase/attendance-guests-v1.sql
 supabase/attendance-delete-guest-v1.sql
 supabase/training-votes-v1.sql
 supabase/player-billing-start-v1.sql
+supabase/player-birthdays-v1.sql
 ```
 
 ## Tablas principales
@@ -57,6 +58,7 @@ Estado:
 
 - `access_code`: codigo simple del jugador. No debe salir en el listado publico.
 - `billing_start_month`: mes desde el que el jugador empieza a participar del cobro. Si esta vacio, conserva el comportamiento historico y cuenta desde las cuotas cargadas.
+- `birth_date`: fecha de nacimiento opcional para avisos de cumpleanos.
 
 `fees`:
 
@@ -78,7 +80,7 @@ Estado:
 - `player_id`: jugador real; queda vacio para invitados.
 - `guest_name`: nombre libre para invitados del listado temporal.
 - `status`: `voy`, `no_voy`, `avisa_mas_tarde`, `llega_sobre_la_hora`, `baja_sobre_la_hora`, `asistio`, `falto` o `aviso_tarde`.
-- `source`: `jugador` o `admin`. Para emoticones puede incluir tags, por ejemplo `jugador|tags=meat,cook`.
+- `source`: `jugador` o `admin`. Para emoticones puede incluir tags, por ejemplo `jugador|tags=meat,cook` o `admin|guest=Nombre|tags=meat` para invitado solo cena.
 
 `training_votes`:
 

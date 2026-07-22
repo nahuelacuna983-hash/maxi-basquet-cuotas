@@ -3,6 +3,7 @@ create table if not exists public.players (
   first_name text not null,
   last_name text default '',
   phone text default '',
+  birth_date date,
   type text not null check (type in ('competidor', 'solo_entrenamientos')),
   status text not null check (status in ('activo', 'lesionado', 'lista_espera', 'esporadico', 'baja')),
   internal_enabled boolean not null default false,
@@ -18,6 +19,9 @@ add column if not exists access_code text default '';
 
 alter table public.players
 add column if not exists billing_start_month text;
+
+alter table public.players
+add column if not exists birth_date date;
 
 create table if not exists public.fees (
   id text primary key,
