@@ -1599,10 +1599,19 @@ function renderFeesList() {
             <strong>Vence ${getFeeDueDate(fee)}</strong>
             <span>Cobrado ${formatMoney(collected)} de ${formatMoney(expected)}</span>
             <span>Jugadores reales: ${breakdown.totalPlayers} / Competidores reales: ${breakdown.competitors}</span>
+            <span>Valores: entrenamiento ${formatMoney(breakdown.trainingSessionCost)} / domingo ${formatMoney(breakdown.sundayCost)} / interes ${Number(fee.interestPercent ?? 0)}%</span>
             <span>Base de cobro: ${breakdown.trainingBillingBase} entrenamientos / ${breakdown.sundayBillingBase} domingos</span>
             <span>Solo entrenamientos ${formatMoney(expectedTrainingOnly)} / Competidor ${formatMoney(expectedCompetitor)}</span>
             ${fixedAmountLabel}
             <div class="fee-base-controls">
+              <label>
+                Turno entrenamiento
+                <input class="score-input" data-fee-base-field="trainingSessionCost" data-fee-base-id="${fee.id}" type="number" min="1" value="${fee.trainingSessionCost ?? ""}" />
+              </label>
+              <label>
+                Domingo
+                <input class="score-input" data-fee-base-field="sundayCost" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.sundayCost ?? ""}" />
+              </label>
               <label>
                 Base entrenamientos
                 <input class="score-input" data-fee-base-field="trainingBillingBase" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.trainingBillingBase ?? ""}" placeholder="Auto" />
@@ -1618,6 +1627,14 @@ function renderFeesList() {
               <label>
                 Fijo competidor
                 <input class="score-input" data-fee-base-field="fixedCompetitorAmount" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.fixedCompetitorAmount ?? ""}" placeholder="Formula" />
+              </label>
+              <label>
+                Interes %
+                <input class="score-input" data-fee-base-field="interestPercent" data-fee-base-id="${fee.id}" type="number" min="0" step="0.1" value="${fee.interestPercent ?? 0}" />
+              </label>
+              <label>
+                Vence dia
+                <input class="score-input" data-fee-base-field="dueDay" data-fee-base-id="${fee.id}" type="number" min="1" max="31" value="${fee.dueDay ?? 10}" />
               </label>
             </div>
           </div>
@@ -4829,7 +4846,13 @@ function updateResponsibilityAdjustment(playerId, field, value) {
 async function updateFeeBillingBase(feeId, field, value) {
   if (!requireAdmin()) return;
 
-  const nextValue = Number(value) > 0 ? Number(value) : null;
+  const nextValue = normalizeEditableFeeValue(field, value);
+  if (nextValue === undefined) {
+    state.syncStatus = "Valor de cuota invalido.";
+    renderRoleVisibility();
+    return;
+  }
+
   const previousFees = state.fees;
   let updatedFee = null;
   state.fees = state.fees.map((fee) =>
@@ -4867,6 +4890,33 @@ async function updateFeeBillingBase(feeId, field, value) {
 
   suppressNextSupabaseSync = true;
   render();
+}
+
+function normalizeEditableFeeValue(field, value) {
+  const rawValue = String(value ?? "").trim();
+
+  if (["trainingBillingBase", "sundayBillingBase", "fixedTrainingOnlyAmount", "fixedCompetitorAmount"].includes(field)) {
+    if (!rawValue) return null;
+    const amount = Number(rawValue);
+    return Number.isFinite(amount) && amount > 0 ? amount : null;
+  }
+
+  if (field === "trainingSessionCost") {
+    const amount = Number(rawValue);
+    return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+  }
+
+  if (field === "sundayCost" || field === "interestPercent") {
+    const amount = Number(rawValue);
+    return Number.isFinite(amount) && amount >= 0 ? amount : undefined;
+  }
+
+  if (field === "dueDay") {
+    const day = Number(rawValue);
+    return Number.isInteger(day) && day >= 1 && day <= 31 ? day : undefined;
+  }
+
+  return undefined;
 }
 
 function formatPlayerType(type) {

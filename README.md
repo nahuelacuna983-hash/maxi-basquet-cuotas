@@ -203,15 +203,20 @@ Costos actuales:
 
 Cada cuota puede definir:
 
+- costo de turno de entrenamiento
+- costo de domingo
 - base de cobro entrenamientos
 - base de cobro domingos
 - monto fijo historico para solo entrenamientos
 - monto fijo historico para competidor
 - porcentaje de interes desde el dia 11
+- dia de vencimiento
 
 La app redondea hacia arriba al multiplo de `$5.000`.
 
 Si una cuota tiene montos fijos historicos, esos montos reemplazan la formula normal solo para ese mes.
+
+Las cuotas ya cargadas se corrigen desde la lista de `Cuotas`: no hace falta duplicar el mes para cambiar domingo, base, interes o vencimiento.
 
 Desde admin se puede crear la cuota del mes siguiente a partir de la ultima cuota cargada. Esa cuota queda como mes real para registrar pagos anticipados. No copia montos fijos historicos.
 

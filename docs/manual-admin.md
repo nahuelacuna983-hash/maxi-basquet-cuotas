@@ -115,9 +115,11 @@ Para pagos anticipados del mes siguiente, usar `Crear cuota del mes siguiente`. 
 
 Cuando se crea la cuota siguiente, los formularios de pago quedan apuntando a ese nuevo mes. Los selectores muestran `mes anterior`, `mes actual` o `cuota futura` para que sea mas dificil registrar un pago en el periodo equivocado.
 
+Para corregir una cuota ya cargada, ir a la lista de `Cuotas` y editar los campos de esa fila: `Turno entrenamiento`, `Domingo`, `Base entrenamientos`, `Base domingos`, montos fijos, `Interes %` o `Vence dia`. Al guardar el cambio, la app recalcula deuda, morosos y vista jugador con los nuevos valores.
+
 **Que no hacer**
 
-No cargar dos cuotas para el mismo mes. Si el mes ya existe, editar la base en la lista de cuotas. No tocar abril 2026 sin recordar que tiene monto historico fijo.
+No cargar dos cuotas para el mismo mes. Si el mes ya existe, editar la fila de la lista de cuotas. No tocar abril 2026 sin recordar que tiene monto historico fijo.
 
 **Ejemplo**
 

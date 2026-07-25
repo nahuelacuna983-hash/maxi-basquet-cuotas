@@ -285,6 +285,11 @@ Al 2026-07-22:
 - La vista jugador muestra aviso de proximo cumpleanos; si el jugador cumple hoy, muestra saludo y simbolo de cumpleanos durante el dia.
 - Se agrego SQL incremental `supabase/player-birthdays-v1.sql` para persistir `birth_date` y actualizar las RPC de jugadores.
 
+Al 2026-07-25:
+
+- La lista de cuotas permite corregir cuotas existentes editando `Turno entrenamiento`, `Domingo`, bases, montos fijos, `Interes %` y `Vence dia`.
+- Esto permite arreglar meses ya cargados, como agosto/septiembre, sin crear cuotas duplicadas ni tocar la formula.
+
 Al 2026-05-24:
 
 - Las estadisticas de asistencia y responsabilidad pasan a considerar todos los martes y jueves cerrados desde `attendanceStartDate`, aunque no exista ningun registro de esa fecha.
