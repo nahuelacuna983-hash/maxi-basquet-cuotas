@@ -37,6 +37,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Listado temporal de entrenamientos martes/jueves.
 - Informes MVP por jugador, pagos general, asistencia general, responsabilidad general, historial detallado, resumen de equipo y graficos simples.
 - Escrituras principales protegidas con RPC en Supabase.
+- Correccion mobile: formularios admin ocultos respetan `hidden` y, si el codigo guardado del jugador queda invalido, la app pide ingresarlo nuevamente.
 
 ## Criterio de cambios
 

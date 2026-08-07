@@ -103,6 +103,7 @@ const state = {
   selectedSelfTrainingVoteFirst: "",
   selectedSelfTrainingVoteAward: "pelota",
   selectedSelfTrainingVoteSecond: "",
+  selfAccessNotice: "",
   activePlayerTab: "quota",
   activeAdminTab: "resumen",
   activeAdminCards: {},
@@ -335,6 +336,7 @@ elements.resetSampleDataButton.addEventListener("click", () => {
 
 elements.selfServicePlayer.addEventListener("change", () => {
   state.selectedSelfServicePlayerId = elements.selfServicePlayer.value;
+  state.selfAccessNotice = "";
   elements.selfAccessCode.value = "";
   elements.selfAccessMessage.textContent = "";
   clearSelfPaymentDraft();
@@ -1106,9 +1108,10 @@ function renderSelfService() {
     elements.selfTrainingVoteCard.hidden = true;
     elements.selfPaymentStatus.textContent = "";
     elements.selfAccessMessage.textContent =
-      playerHasAccessCode(fallbackPlayer)
+      state.selfAccessNotice ||
+      (playerHasAccessCode(fallbackPlayer)
         ? "Ingresa tu codigo para ver tu cuota."
-        : "Este jugador todavia no tiene codigo asignado.";
+        : "Este jugador todavia no tiene codigo asignado.");
     updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, 0);
     updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, 0);
     return;
@@ -2269,6 +2272,10 @@ async function persistTrainingVote(vote) {
     } catch (error) {
       state.trainingVotes = previousVotes;
       state.syncStatus = `Error al guardar votacion: ${error.message}`;
+      if (isInvalidPlayerCodeError(error)) {
+        clearSelfServiceAccess(vote.voterPlayerId);
+        state.syncStatus = "El codigo guardado no coincide. Ingresalo de nuevo.";
+      }
       supabaseSyncInProgress = false;
       suppressNextSupabaseSync = true;
       render();
@@ -4007,6 +4014,10 @@ async function persistAttendance(attendance, successMessage, errorMessage, optio
     } catch (error) {
       state.attendances = previousAttendances;
       state.syncStatus = `${errorMessage}: ${error.message}`;
+      if (!options.admin && isInvalidPlayerCodeError(error)) {
+        clearSelfServiceAccess(attendance.playerId);
+        state.syncStatus = "El codigo guardado no coincide. Ingresalo de nuevo.";
+      }
       supabaseSyncInProgress = false;
       suppressNextSupabaseSync = true;
       render();
@@ -4402,6 +4413,21 @@ function saveSelfServiceSession(playerId, accessCode) {
   );
 }
 
+function isInvalidPlayerCodeError(error) {
+  const message = normalizePlayerName(error?.message ?? error ?? "");
+  return message.includes("codigo de jugador invalido");
+}
+
+function clearSelfServiceAccess(playerId = state.selectedSelfServicePlayerId) {
+  if (playerId) {
+    authorizedSelfServicePlayerIds.delete(playerId);
+    selfServiceAccessCodesByPlayerId.delete(playerId);
+  }
+  localStorage.removeItem(SELF_SERVICE_SESSION_KEY);
+  elements.selfAccessCode.value = "";
+  state.selfAccessNotice = "El codigo guardado no coincide. Ingresalo de nuevo.";
+}
+
 function restoreSelfServiceSession() {
   if (!persistedSelfServiceSession?.playerId || !persistedSelfServiceSession?.accessCode) return;
 
@@ -4457,6 +4483,7 @@ async function authorizeSelfServicePlayer() {
   authorizedSelfServicePlayerIds.add(player.id);
   selfServiceAccessCodesByPlayerId.set(player.id, accessCode);
   saveSelfServiceSession(player.id, accessCode);
+  state.selfAccessNotice = "";
   elements.selfAccessCode.value = "";
   elements.selfAccessMessage.textContent = "Acceso habilitado.";
   renderSelfService();
