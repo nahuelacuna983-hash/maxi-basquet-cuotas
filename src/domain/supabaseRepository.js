@@ -8,7 +8,15 @@ export function isSupabaseEnabled() {
 
 export async function loadSupabaseState(fallbackState, options = {}) {
   const client = await getSupabaseClient();
-  const [playersResult, feesResult, paymentsResult, treasuryResult, attendancesResult, votesResult] = await Promise.all([
+  const [
+    playersResult,
+    feesResult,
+    paymentsResult,
+    treasuryResult,
+    attendancesResult,
+    votesResult,
+    documentsResult,
+  ] = await Promise.all([
     loadPlayers(client, options),
     client.from("fees").select("*").order("month", { ascending: true }),
     client
@@ -19,6 +27,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     client.from("treasury_config").select("*").eq("id", "main").maybeSingle(),
     loadAttendances(client),
     loadTrainingVotes(client),
+    loadPlayerDocuments(client, options),
   ]);
 
   assertSupabaseResult(playersResult, "players");
@@ -27,6 +36,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
   assertSupabaseResult(treasuryResult, "treasury_config");
   assertSupabaseResult(attendancesResult, "attendances");
   assertSupabaseResult(votesResult, "training_votes");
+  assertSupabaseResult(documentsResult, "player_documents");
 
   const players = playersResult.data.map(fromSupabasePlayer);
   const fees = feesResult.data.map(fromSupabaseFee);
@@ -35,6 +45,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     .map(fromSupabaseAttendance)
     .filter((attendance) => !isRemovedGuestAttendance(attendance));
   const trainingVotes = votesResult.data.map(fromSupabaseTrainingVote);
+  const playerDocuments = documentsResult.data.map(fromSupabasePlayerDocument);
   const treasuryConfig = treasuryResult.data
     ? fromSupabaseTreasuryConfig(treasuryResult.data)
     : fallbackState.treasuryConfig;
@@ -46,8 +57,10 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     payments,
     attendances,
     trainingVotes,
+    playerDocuments,
     attendanceSyncReady: !attendancesResult.disabled,
     voteSyncReady: !votesResult.disabled,
+    documentSyncReady: !documentsResult.disabled,
     treasuryConfig,
   };
 }
@@ -397,6 +410,22 @@ async function loadTrainingVotes(client) {
   return result;
 }
 
+async function loadPlayerDocuments(client, options = {}) {
+  if (!options.adminPin) {
+    return { data: [], error: null, disabled: true };
+  }
+
+  const result = await client.rpc("admin_list_player_documents", {
+    p_admin_pin: options.adminPin,
+  });
+
+  if (result.error && isRpcUnavailableError(result.error)) {
+    return { data: [], error: null, disabled: true };
+  }
+
+  return result;
+}
+
 function assertSupabaseResult(result, tableName) {
   if (result.error) {
     throw new Error(`${tableName}: ${result.error.message}`);
@@ -575,6 +604,23 @@ function fromSupabaseTrainingVote(row) {
     featuredPlayerId: row.featured_player_id,
     award: row.award,
     spongePlayerId: row.sponge_player_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function fromSupabasePlayerDocument(row) {
+  return {
+    id: row.id,
+    playerId: row.player_id ?? "",
+    playerName: row.player_name ?? "",
+    documentType: row.document_type ?? "",
+    title: row.title ?? "",
+    driveFileId: row.drive_file_id ?? "",
+    driveUrl: row.drive_url ?? "",
+    mimeType: row.mime_type ?? "",
+    status: row.status ?? "cargado",
+    observation: row.observation ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

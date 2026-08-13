@@ -294,6 +294,8 @@ Al 2026-08-13:
 
 - Se agrego control de privacidad en `Reportes` para ocultar/mostrar montos en pantalla y en el texto copiado.
 - Se actualizo la version de PWA para que la app instalada tome el cambio publicado.
+- Se agrego primera version admin de `Documentacion` para controlar estudios medicos, DJDR, pase, seguro y lista de buena fe.
+- Se preparo SQL incremental `supabase/player-documents-v1.sql` y seed local privado `private/player-documents-seed.local.sql` para no publicar links sensibles en GitHub.
 
 Al 2026-05-24:
 

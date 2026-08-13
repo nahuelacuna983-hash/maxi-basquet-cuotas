@@ -271,6 +271,7 @@
         <button class="admin-tab-button" type="button" data-admin-tab="votaciones">Votaciones beta</button>
         <button class="admin-tab-button" type="button" data-admin-tab="estadisticas">Estadisticas</button>
         <button class="admin-tab-button" type="button" data-admin-tab="convocatorias">Convocatorias</button>
+        <button class="admin-tab-button" type="button" data-admin-tab="documentacion">Documentacion</button>
         <button class="admin-tab-button" type="button" data-admin-tab="reportes">Reportes</button>
         <button class="admin-tab-button" type="button" data-admin-tab="vip">VIP</button>
         <button class="admin-tab-button" type="button" data-admin-tab="configuracion">Configuracion</button>
@@ -819,6 +820,17 @@
             <div id="adminCallupsPanel"></div>
           </section>
 
+          <section class="panel" data-admin-panel="documentacion">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">D</div>
+              <div>
+                <h2>Documentacion</h2>
+                <p>Control admin de estudios, DJDR, seguro, pase y lista de buena fe</p>
+              </div>
+            </div>
+            <div id="playerDocumentsPanel"></div>
+          </section>
+
           <section class="panel" data-admin-panel="reportes">
             <div class="panel-heading">
               <div class="panel-icon" aria-hidden="true">I</div>
@@ -871,7 +883,7 @@
       </section>
     </main>
     <script src="./src/vendor/supabase.umd.js?v=local-supabase-1"></script>
-    <script type="module" src="./src/app.js?v=report-privacy-1"></script>
+    <script type="module" src="./src/app.js?v=player-documents-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-13"></script>
   </body>
 </html>

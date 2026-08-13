@@ -123,6 +123,8 @@ export const initialAttendanceConfig = {
 
 export const initialResponsibilityAdjustments = [];
 
+export const initialPlayerDocuments = [];
+
 export const adminConfig = {
   pin: "1234",
 };
@@ -135,6 +137,7 @@ export function createInitialAppState() {
     payments: initialPayments.map((payment) => ({ ...payment })),
     attendances: initialAttendances.map((attendance) => ({ ...attendance })),
     trainingVotes: initialTrainingVotes.map((vote) => ({ ...vote })),
+    playerDocuments: initialPlayerDocuments.map((document) => ({ ...document })),
     responsibilityAdjustments: initialResponsibilityAdjustments.map((adjustment) => ({
       ...adjustment,
     })),

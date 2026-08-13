@@ -9,6 +9,7 @@ export function createPersistedState(source) {
     payments: source.payments,
     attendances: source.attendances,
     trainingVotes: source.trainingVotes,
+    playerDocuments: source.playerDocuments,
     responsibilityAdjustments: source.responsibilityAdjustments,
     responsibilityConfig: source.responsibilityConfig,
     attendanceConfig: source.attendanceConfig,
@@ -60,6 +61,9 @@ export function normalizePersistedState(parsedState, fallbackState) {
     trainingVotes: Array.isArray(parsedState.trainingVotes)
       ? parsedState.trainingVotes
       : fallbackState.trainingVotes ?? [],
+    playerDocuments: Array.isArray(parsedState.playerDocuments)
+      ? parsedState.playerDocuments.map(normalizePlayerDocument)
+      : fallbackState.playerDocuments ?? [],
     responsibilityAdjustments: Array.isArray(parsedState.responsibilityAdjustments)
       ? parsedState.responsibilityAdjustments
       : fallbackState.responsibilityAdjustments,
@@ -78,6 +82,23 @@ export function normalizePersistedState(parsedState, fallbackState) {
       parsedState.treasuryConfig && typeof parsedState.treasuryConfig === "object"
         ? { ...fallbackState.treasuryConfig, ...parsedState.treasuryConfig }
         : fallbackState.treasuryConfig,
+  };
+}
+
+function normalizePlayerDocument(document) {
+  return {
+    id: String(document.id ?? ""),
+    playerId: document.playerId ? String(document.playerId) : "",
+    playerName: String(document.playerName ?? ""),
+    documentType: String(document.documentType ?? ""),
+    title: String(document.title ?? ""),
+    driveFileId: String(document.driveFileId ?? ""),
+    driveUrl: String(document.driveUrl ?? ""),
+    mimeType: String(document.mimeType ?? ""),
+    status: String(document.status ?? "cargado"),
+    observation: String(document.observation ?? ""),
+    createdAt: document.createdAt,
+    updatedAt: document.updatedAt,
   };
 }
 

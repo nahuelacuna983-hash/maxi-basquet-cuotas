@@ -37,6 +37,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Listado temporal de entrenamientos martes/jueves.
 - Informes MVP por jugador, pagos general, asistencia general, responsabilidad general, historial detallado, resumen de equipo y graficos simples.
 - Los informes permiten ocultar/mostrar montos antes de compartir pantalla o copiar el texto.
+- Panel admin de documentacion para controlar estudios medicos, DJDR, pase, seguro y lista de buena fe sin mostrarlo a jugadores.
 - Escrituras principales protegidas con RPC en Supabase.
 - Correccion mobile: formularios admin ocultos respetan `hidden` y, si el codigo guardado del jugador queda invalido, la app pide ingresarlo nuevamente.
 
@@ -117,6 +118,7 @@ Tablas principales:
 - `payments`
 - `attendances`
 - `training_votes`
+- `player_documents`
 - `treasury_config`
 
 Funciones RPC usadas por la app:
@@ -129,6 +131,7 @@ Funciones RPC usadas por la app:
 - `submit_payment`
 - `submit_training_attendance`
 - `submit_training_vote`
+- `admin_list_player_documents`
 - `admin_upsert_attendance`
 - `admin_delete_guest_attendance`
 - `admin_review_payment`
@@ -154,6 +157,18 @@ SQL adicional para cumpleanos de jugadores:
 supabase/player-birthdays-v1.sql
 ```
 
+SQL adicional para documentacion de jugadores:
+
+```txt
+supabase/player-documents-v1.sql
+```
+
+La carga inicial de links de Drive queda en un archivo local privado, no versionado:
+
+```txt
+private/player-documents-seed.local.sql
+```
+
 ## Seguridad MVP
 
 Estado actual:
@@ -162,6 +177,7 @@ Estado actual:
 - `treasury_config`: lectura permitida; escritura directa bloqueada; cambios por RPC admin.
 - `fees`: lectura permitida; escritura directa bloqueada; cambios por RPC admin.
 - `players`: lectura directa bloqueada; listado publico por RPC sin `access_code`; validacion de codigo por RPC; cambios admin por RPC.
+- `player_documents`: lectura solo por RPC admin; no se expone a la vista jugador.
 
 Importante:
 
@@ -284,6 +300,27 @@ La pestana `Reportes` permite generar:
 
 El `Historial detallado` muestra pagos, asistencia/no respuestas y votaciones guardadas en el periodo elegido. No modifica datos y no genera PDF todavia.
 El boton `Ocultar montos` enmascara importes en pantalla y tambien en el texto copiado.
+
+## Documentacion
+
+La pestana admin `Documentacion` muestra los documentos asociados a jugadores y documentos generales del equipo.
+
+Tipos:
+
+- `Estudios medicos`
+- `DJDR`
+- `Pase`
+- `Seguro`
+- `Lista buena fe`
+
+Estados:
+
+- `Cargado`
+- `Pendiente`
+- `Revisar`
+- `Vencido`
+
+Los links de Drive no se guardan en el codigo fuente publico. La carga inicial se ejecuta desde `private/player-documents-seed.local.sql` despues de crear la tabla/RPC con `supabase/player-documents-v1.sql`.
 
 ## Altas nuevas y deuda historica
 

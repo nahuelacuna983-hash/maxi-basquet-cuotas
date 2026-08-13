@@ -80,6 +80,14 @@ const trainingVoteCandidateStatuses = new Set([
   "llega_sobre_la_hora",
   "asistio",
 ]);
+const playerDocumentTypes = [
+  { id: "estudios_medicos", label: "Estudios medicos" },
+  { id: "djdr", label: "DJDR" },
+  { id: "pase", label: "Pase" },
+  { id: "seguro", label: "Seguro" },
+  { id: "lista_buena_fe", label: "Lista buena fe" },
+];
+const requiredCompetitorDocumentTypes = new Set(["estudios_medicos", "djdr", "pase"]);
 const state = {
   ...persistedAppState,
   playerFilter: "todos",
@@ -113,6 +121,7 @@ const state = {
   isAdminLoginVisible: false,
   attendanceSyncReady: !isSupabaseEnabled(),
   voteSyncReady: !isSupabaseEnabled(),
+  documentSyncReady: !isSupabaseEnabled(),
   syncStatus: isSupabaseEnabled() ? "Conectando con Supabase..." : "Modo local",
 };
 
@@ -252,6 +261,7 @@ const elements = {
   attendanceList: document.querySelector("#attendanceList"),
   adminStatsPanel: document.querySelector("#adminStatsPanel"),
   adminCallupsPanel: document.querySelector("#adminCallupsPanel"),
+  playerDocumentsPanel: document.querySelector("#playerDocumentsPanel"),
   reportType: document.querySelector("#reportType"),
   reportPlayer: document.querySelector("#reportPlayer"),
   reportPlayerField: document.querySelector("#reportPlayerField"),
@@ -1051,6 +1061,7 @@ function render() {
   renderWhatsappReport(debts);
   renderAdminStats(debts);
   renderAdminCallups(debts);
+  renderPlayerDocuments();
   savePersistedState(state);
   syncSupabaseState();
 }
@@ -1229,6 +1240,7 @@ function renderAdminTabs() {
     "votaciones",
     "estadisticas",
     "convocatorias",
+    "documentacion",
     "reportes",
     "vip",
     "configuracion",
@@ -1825,6 +1837,199 @@ function renderPaymentsHistory() {
       deletePayment(button.dataset.deletePayment);
     });
   });
+}
+
+function renderPlayerDocuments() {
+  if (!state.documentSyncReady) {
+    elements.playerDocumentsPanel.innerHTML = `
+      <p class="empty-state">
+        Falta activar documentacion en Supabase. Ejecuta el SQL
+        <strong>supabase/player-documents-v1.sql</strong> y despues la carga privada de Drive.
+      </p>
+    `;
+    return;
+  }
+
+  const documents = (state.playerDocuments ?? []).slice().sort(comparePlayerDocuments);
+  const pendingRows = getPendingPlayerDocumentRows(documents);
+  const reviewRows = documents.filter((document) => document.status === "revisar" || !document.playerId);
+  const teamRows = documents.filter((document) => !document.playerId && document.playerName === "Equipo");
+
+  elements.playerDocumentsPanel.innerHTML = `
+    <div class="document-summary-grid">
+      ${renderDocumentSummaryCard("Documentos", documents.length)}
+      ${renderDocumentSummaryCard("Jugadores con docs", countDocumentedPlayers(documents))}
+      ${renderDocumentSummaryCard("Para revisar", reviewRows.length)}
+      ${renderDocumentSummaryCard("Pendientes sugeridos", pendingRows.length)}
+    </div>
+    ${
+      documents.length
+        ? renderDocumentTable(documents)
+        : '<p class="empty-state">Todavia no hay documentacion cargada.</p>'
+    }
+    ${renderPendingPlayerDocuments(pendingRows)}
+    ${renderTeamDocuments(teamRows)}
+  `;
+}
+
+function renderDocumentSummaryCard(label, value) {
+  return `
+    <article class="document-summary-card">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </article>
+  `;
+}
+
+function renderDocumentTable(documents) {
+  return `
+    <div class="table-wrap document-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Jugador</th>
+            <th>Documento</th>
+            <th>Archivo</th>
+            <th>Estado</th>
+            <th>Observacion</th>
+            <th>Accion</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${documents
+            .map((document) => {
+              const player = state.players.find((item) => item.id === document.playerId);
+              const playerName = player ? getPlayerName(player) : document.playerName || "Sin asociar";
+              const safeUrl = getSafeDriveUrl(document.driveUrl);
+              return `
+                <tr>
+                  <td><strong>${escapeHtml(playerName)}</strong></td>
+                  <td>${formatDocumentType(document.documentType)}</td>
+                  <td>${escapeHtml(document.title || "-")}</td>
+                  <td><span class="payment-status ${getDocumentStatusClass(document.status)}">${formatDocumentStatus(document.status)}</span></td>
+                  <td>${escapeHtml(document.observation || "-")}</td>
+                  <td>
+                    ${
+                      safeUrl
+                        ? `<a class="secondary-button document-link" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">Abrir</a>`
+                        : '<span class="muted-detail">Sin link</span>'
+                    }
+                  </td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderPendingPlayerDocuments(rows) {
+  if (!rows.length) {
+    return '<p class="empty-state">Competidores activos: sin pendientes sugeridos.</p>';
+  }
+
+  return `
+    <section class="document-subsection">
+      <h3>Pendientes sugeridos</h3>
+      <p class="muted-detail">Control rapido para competidores activos. Revisalo antes de exigir un documento.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Jugador</th>
+              <th>Falta</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map(
+                (row) => `
+                  <tr>
+                    <td><strong>${escapeHtml(row.playerName)}</strong></td>
+                    <td>${row.missingTypes.map(formatDocumentType).join(", ")}</td>
+                  </tr>
+                `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderTeamDocuments(rows) {
+  if (!rows.length) return "";
+
+  return `
+    <section class="document-subsection">
+      <h3>Documentos del equipo</h3>
+      <p class="muted-detail">
+        ${rows.map((document) => `${formatDocumentType(document.documentType)}: ${escapeHtml(document.title)}`).join(" - ")}
+      </p>
+    </section>
+  `;
+}
+
+function getPendingPlayerDocumentRows(documents) {
+  return getSortedPlayers()
+    .filter((player) => player.status === "activo" && player.type === "competidor")
+    .map((player) => {
+      const loadedTypes = new Set(
+        documents
+          .filter((document) => document.playerId === player.id && document.status !== "revisar")
+          .map((document) => document.documentType),
+      );
+      return {
+        playerName: getPlayerName(player),
+        missingTypes: Array.from(requiredCompetitorDocumentTypes).filter(
+          (type) => !loadedTypes.has(type),
+        ),
+      };
+    })
+    .filter((row) => row.missingTypes.length > 0);
+}
+
+function comparePlayerDocuments(a, b) {
+  const playerCompare = (a.playerName || "").localeCompare(b.playerName || "", "es");
+  if (playerCompare !== 0) return playerCompare;
+  const typeCompare = formatDocumentType(a.documentType).localeCompare(formatDocumentType(b.documentType), "es");
+  if (typeCompare !== 0) return typeCompare;
+  return (a.title || "").localeCompare(b.title || "", "es");
+}
+
+function countDocumentedPlayers(documents) {
+  return new Set(documents.filter((document) => document.playerId).map((document) => document.playerId)).size;
+}
+
+function formatDocumentType(type) {
+  return playerDocumentTypes.find((item) => item.id === type)?.label ?? escapeHtml(type || "Documento");
+}
+
+function formatDocumentStatus(status) {
+  const labels = {
+    cargado: "Cargado",
+    pendiente: "Pendiente",
+    revisar: "Revisar",
+    vencido: "Vencido",
+  };
+  return labels[status] ?? "Revisar";
+}
+
+function getDocumentStatusClass(status) {
+  if (status === "cargado") return "status-aprobado";
+  if (status === "pendiente") return "status-pendiente";
+  return "status-rechazado";
+}
+
+function getSafeDriveUrl(url) {
+  const value = String(url ?? "").trim();
+  if (value.startsWith("https://drive.google.com/") || value.startsWith("https://docs.google.com/")) {
+    return value;
+  }
+  return "";
 }
 
 function renderAttendances() {

@@ -19,7 +19,7 @@ Al 2026-05-31 la app queda cerrada para uso controlado. El objetivo del admin no
 
 El modo admin muestra las herramientas internas de gestion.
 
-En la pantalla admin, las herramientas estan ordenadas por pestanas: `Resumen`, `Jugadores`, `Cuotas`, `Pagos`, `Entrenamientos`, `Votaciones beta`, `Estadisticas`, `Convocatorias`, `Reportes`, `VIP`, `Configuracion` y `Backups`.
+En la pantalla admin, las herramientas estan ordenadas por pestanas: `Resumen`, `Jugadores`, `Cuotas`, `Pagos`, `Entrenamientos`, `Votaciones beta`, `Estadisticas`, `Convocatorias`, `Documentacion`, `Reportes`, `VIP`, `Configuracion` y `Backups`.
 
 Cuando una pestana tiene varias herramientas, aparece una segunda fila de botones internos. Eso permite ver una sola tarjeta por vez y evita que el admin quede como una sabana larga.
 
@@ -497,6 +497,36 @@ El `Historial detallado` sirve cuando necesitas revisar todo lo ocurrido en un p
 **Que no hacer**
 
 No usar el informe como comprobante definitivo sin revisar pagos pendientes. No confundir `pagos pendientes` con dinero aprobado: solo los pagos aprobados descuentan deuda.
+
+## Documentacion
+
+**Que es**
+
+Es el control admin de documentacion del equipo: estudios medicos, DJDR, pase, seguro y lista de buena fe.
+
+**Para que sirve**
+
+Sirve para saber rapido que archivo esta cargado por jugador, que falta revisar y que documentos faltarian para competidores activos.
+
+**Por que se usa asi**
+
+Los documentos pueden contener datos sensibles. Por eso no aparecen en la vista jugador y los links de Drive no quedan escritos en el codigo publico de la app.
+
+**Como se usa**
+
+1. Entrar en modo admin.
+2. Ir a `Documentacion`.
+3. Revisar los totales: documentos cargados, jugadores con documentacion, casos para revisar y pendientes sugeridos.
+4. Abrir el archivo desde el boton `Abrir` si hace falta controlar el contenido.
+5. Revisar manualmente los casos `Sin asociar` o con estado `Revisar`.
+
+**Que mirar**
+
+Mirar especialmente `Pendientes sugeridos` para competidores activos. La app toma como referencia estudios medicos, DJDR y pase, pero la exigencia final la define el administrador.
+
+**Que no hacer**
+
+No compartir capturas donde se vean links o datos medicos. No publicar el archivo privado de carga de Drive.
 
 ## Backups
 

@@ -12,6 +12,7 @@ supabase/attendance-delete-guest-v1.sql
 supabase/training-votes-v1.sql
 supabase/player-billing-start-v1.sql
 supabase/player-birthdays-v1.sql
+supabase/player-documents-v1.sql
 ```
 
 ## Tablas principales
@@ -21,6 +22,7 @@ supabase/player-birthdays-v1.sql
 - `payments`
 - `attendances`
 - `training_votes`
+- `player_documents`
 - `treasury_config`
 
 ## Seguridad actual
@@ -34,6 +36,7 @@ Estado:
 - `payments`: lectura de pagos activos; insercion de pagos pendientes; aprobacion/rechazo/eliminacion por RPC.
 - `attendances`: lectura de listados; respuestas de jugador por RPC con codigo; correcciones admin por RPC; eliminacion de invitados por RPC.
 - `training_votes`: lectura permitida; escritura de votos por RPC con codigo de jugador y ventana horaria.
+- `player_documents`: lectura solo por RPC admin; sin policies directas de lectura/escritura.
 - `treasury_config`: lectura permitida; escritura admin por RPC.
 
 ## RPC usadas
@@ -51,6 +54,7 @@ Estado:
 - `admin_upsert_attendance`
 - `admin_delete_guest_attendance`
 - `submit_training_vote`
+- `admin_list_player_documents`
 
 ## Campos relevantes
 
@@ -89,6 +93,20 @@ Estado:
 - `featured_player_id`: jugador elegido como destacado.
 - `award`: `pelota` o `copa`.
 - `sponge_player_id`: jugador elegido como esponja.
+
+`player_documents`:
+
+- `player_id`: jugador asociado. Puede quedar vacio si falta revisar.
+- `player_name`: nombre de respaldo o texto libre para documentos sin asociar.
+- `document_type`: `estudios_medicos`, `djdr`, `pase`, `seguro` o `lista_buena_fe`.
+- `drive_url`: link del archivo en Drive.
+- `status`: `cargado`, `pendiente`, `revisar` o `vencido`.
+
+La carga inicial de links de Drive no se versiona en GitHub. Usar el archivo local privado:
+
+```txt
+private/player-documents-seed.local.sql
+```
 
 ## Nota de seguridad
 
