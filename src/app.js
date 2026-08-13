@@ -95,6 +95,8 @@ const state = {
   selectedReportPlayerId: "",
   selectedReportMonth: getCurrentMonth(),
   currentReportText: "",
+  currentReportHtml: "",
+  reportAmountsHidden: false,
   selectedTrainingVoteDate: "",
   selectedTrainingVoteFirst: "",
   selectedTrainingVoteAward: "pelota",
@@ -256,6 +258,7 @@ const elements = {
   reportMonth: document.querySelector("#reportMonth"),
   generateReportButton: document.querySelector("#generateReportButton"),
   copyReportButton: document.querySelector("#copyReportButton"),
+  toggleReportAmountsButton: document.querySelector("#toggleReportAmountsButton"),
   reportMessage: document.querySelector("#reportMessage"),
   reportVisualOutput: document.querySelector("#reportVisualOutput"),
   detailedReportText: document.querySelector("#detailedReportText"),
@@ -389,6 +392,11 @@ elements.generateReportButton.addEventListener("click", () => {
 
 elements.copyReportButton.addEventListener("click", async () => {
   await copyDetailedReport();
+});
+
+elements.toggleReportAmountsButton.addEventListener("click", () => {
+  state.reportAmountsHidden = !state.reportAmountsHidden;
+  renderCurrentReport();
 });
 
 elements.trainingVoteDate.addEventListener("change", () => {
@@ -2515,6 +2523,7 @@ function renderReportOptions() {
     ...feeMonths.map((month) => `<option value="${month}">${formatMonthLabel(month)}</option>`),
   ].join("");
   elements.reportMonth.value = state.selectedReportMonth;
+  updateReportAmountsButton();
 }
 
 function generateDetailedReport() {
@@ -2524,13 +2533,13 @@ function generateDetailedReport() {
 
   const report = buildDetailedReport();
   state.currentReportText = report.text;
-  elements.detailedReportText.value = report.text;
-  elements.reportVisualOutput.innerHTML = report.html;
+  state.currentReportHtml = report.html;
+  renderCurrentReport();
   elements.reportMessage.textContent = report.message || "Informe generado.";
 }
 
 async function copyDetailedReport() {
-  const text = state.currentReportText || elements.detailedReportText.value;
+  const text = getReportDisplayText(state.currentReportText || elements.detailedReportText.value);
   if (!text.trim()) {
     elements.reportMessage.textContent = "Primero genera un informe.";
     return;
@@ -2538,10 +2547,43 @@ async function copyDetailedReport() {
 
   try {
     await navigator.clipboard.writeText(text);
-    elements.reportMessage.textContent = "Informe copiado.";
+    elements.reportMessage.textContent = state.reportAmountsHidden
+      ? "Informe copiado con montos ocultos."
+      : "Informe copiado.";
   } catch {
     elements.reportMessage.textContent = "No se pudo copiar el informe.";
   }
+}
+
+function renderCurrentReport() {
+  elements.detailedReportText.value = getReportDisplayText(state.currentReportText);
+  elements.reportVisualOutput.innerHTML = getReportDisplayHtml(state.currentReportHtml);
+  updateReportAmountsButton();
+}
+
+function getReportDisplayText(text) {
+  return state.reportAmountsHidden ? maskMoneyAmounts(text) : text;
+}
+
+function getReportDisplayHtml(html) {
+  return state.reportAmountsHidden ? maskMoneyAmounts(html) : html;
+}
+
+function maskMoneyAmounts(value) {
+  return String(value ?? "").replace(/\$\s*-?\d[\d.,]*/g, "$ oculto");
+}
+
+function updateReportAmountsButton() {
+  elements.toggleReportAmountsButton.setAttribute(
+    "aria-pressed",
+    String(state.reportAmountsHidden),
+  );
+  elements.toggleReportAmountsButton.title = state.reportAmountsHidden
+    ? "Mostrar montos del informe"
+    : "Ocultar montos del informe";
+  elements.toggleReportAmountsButton.innerHTML = state.reportAmountsHidden
+    ? "&#128065; Mostrar montos"
+    : "&#128065; Ocultar montos";
 }
 
 function buildDetailedReport() {

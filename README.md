@@ -36,6 +36,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Instalable en celular como PWA simple.
 - Listado temporal de entrenamientos martes/jueves.
 - Informes MVP por jugador, pagos general, asistencia general, responsabilidad general, historial detallado, resumen de equipo y graficos simples.
+- Los informes permiten ocultar/mostrar montos antes de compartir pantalla o copiar el texto.
 - Escrituras principales protegidas con RPC en Supabase.
 - Correccion mobile: formularios admin ocultos respetan `hidden` y, si el codigo guardado del jugador queda invalido, la app pide ingresarlo nuevamente.
 
@@ -282,6 +283,7 @@ La pestana `Reportes` permite generar:
 - graficos simples
 
 El `Historial detallado` muestra pagos, asistencia/no respuestas y votaciones guardadas en el periodo elegido. No modifica datos y no genera PDF todavia.
+El boton `Ocultar montos` enmascara importes en pantalla y tambien en el texto copiado.
 
 ## Altas nuevas y deuda historica
 

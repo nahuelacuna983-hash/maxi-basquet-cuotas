@@ -851,6 +851,9 @@
               <div class="field report-actions">
                 <button class="primary" id="generateReportButton" type="button">Generar informe</button>
                 <button class="secondary-button" id="copyReportButton" type="button">Copiar informe</button>
+                <button class="secondary-button report-privacy-button" id="toggleReportAmountsButton" type="button" aria-pressed="false">
+                  &#128065; Ocultar montos
+                </button>
               </div>
               <p class="form-message wide-field" id="reportMessage"></p>
             </div>
@@ -868,7 +871,7 @@
       </section>
     </main>
     <script src="./src/vendor/supabase.umd.js?v=local-supabase-1"></script>
-    <script type="module" src="./src/app.js?v=hidden-access-fix-1"></script>
+    <script type="module" src="./src/app.js?v=report-privacy-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-13"></script>
   </body>
 </html>

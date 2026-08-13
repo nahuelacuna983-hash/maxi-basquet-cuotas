@@ -486,6 +486,8 @@ Los informes no modifican nada. Solo leen lo que ya esta cargado en jugadores, c
 6. Tocar `Generar informe`.
 7. Revisar el resultado en pantalla o tocar `Copiar informe`.
 
+Si necesitas compartir pantalla o copiar un informe sin exponer importes, usar `Ocultar montos`. Mientras este activo, los valores con `$` aparecen enmascarados y el texto copiado tambien sale con montos ocultos.
+
 **Que mirar**
 
 En pagos, revisar deuda, interes y pagos pendientes. En asistencia, revisar no respuestas y bajas sobre la hora. En responsabilidad, revisar descuentos y motivo principal.

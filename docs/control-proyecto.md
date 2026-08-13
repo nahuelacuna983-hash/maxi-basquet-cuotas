@@ -290,6 +290,11 @@ Al 2026-07-25:
 - La lista de cuotas permite corregir cuotas existentes editando `Turno entrenamiento`, `Domingo`, bases, montos fijos, `Interes %` y `Vence dia`.
 - Esto permite arreglar meses ya cargados, como agosto/septiembre, sin crear cuotas duplicadas ni tocar la formula.
 
+Al 2026-08-13:
+
+- Se agrego control de privacidad en `Reportes` para ocultar/mostrar montos en pantalla y en el texto copiado.
+- Se actualizo la version de PWA para que la app instalada tome el cambio publicado.
+
 Al 2026-05-24:
 
 - Las estadisticas de asistencia y responsabilidad pasan a considerar todos los martes y jueves cerrados desde `attendanceStartDate`, aunque no exista ningun registro de esa fecha.

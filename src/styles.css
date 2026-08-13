@@ -1144,6 +1144,12 @@ tbody tr:last-child td {
   flex: 1 1 140px;
 }
 
+.report-privacy-button[aria-pressed="true"] {
+  border-color: #285a8f;
+  color: #285a8f;
+  background: #e4eef8;
+}
+
 .report-output {
   display: grid;
   gap: 14px;
