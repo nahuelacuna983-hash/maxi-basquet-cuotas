@@ -2770,13 +2770,25 @@ function renderResponsibilityAdjustments() {
 }
 
 function renderAdminStats(debts) {
-  const totalExpected = debts.reduce((sum, debt) => sum + debt.expectedMonthly, 0);
-  const totalPaid = debts.reduce((sum, debt) => sum + debt.totalPaid, 0);
-  const totalDebt = debts.reduce((sum, debt) => sum + debt.balance, 0);
+  const currentFee = getStatsCurrentFee();
+  const totalExpected = currentFee
+    ? state.players.reduce(
+        (sum, player) => sum + getExpectedFeeForPlayer(player, currentFee, state.players),
+        0,
+      )
+    : 0;
+  const totalPaid = currentFee
+    ? state.players.reduce(
+        (sum, player) => sum + getPaidAmount(state.payments, player.id, currentFee.id),
+        0,
+      )
+    : 0;
+  const totalDebt = debts.reduce((sum, debt) => sum + (debt.overdueBalance ?? 0), 0);
   const defaulterCount = debts.filter(
-    (debt) => debt.balance > 0 && debt.overdueFees.length > 0,
+    (debt) => (debt.overdueBalance ?? 0) > 0,
   ).length;
   const paymentPercent = getPaymentPercent(totalPaid, totalExpected);
+  const statsMonthLabel = currentFee ? formatMonthLabel(currentFee.month) : "mes actual";
   const activePlayers = state.players.filter((player) => player.status === "activo").length;
   const completedTrainingDates = getCompletedTrainingDates();
   const completedTrainingDateSet = new Set(completedTrainingDates);
@@ -2806,14 +2818,14 @@ function renderAdminStats(debts) {
   elements.adminStatsPanel.innerHTML = `
     <div class="stats-grid">
       <article class="metric-card compact-stat">
-        <span>Cobranza mensual</span>
+        <span>Cobranza ${statsMonthLabel}</span>
         <strong>${paymentPercent}%</strong>
         <p>${formatMoney(totalPaid)} cobrados de ${formatMoney(totalExpected)}</p>
       </article>
       <article class="metric-card compact-stat">
-        <span>Deuda actual</span>
+        <span>Deuda vencida</span>
         <strong>${formatMoney(totalDebt)}</strong>
-        <p>${defaulterCount} morosos detectados.</p>
+        <p>${defaulterCount} morosos con cuota vencida.</p>
       </article>
       <article class="metric-card compact-stat">
         <span>Jugadores activos</span>
@@ -3284,6 +3296,7 @@ function buildTeamGeneralReport(context) {
       ${renderReportMetric("Asistencia promedio", averageAttendance)}
       ${renderReportMetric("Jornadas cerradas", totalClosed)}
     </div>
+    ${renderReportCharts(context, totals)}
     ${renderReportTable(
       ["Mas comprometidos", "Puntaje"],
       committed.map((row) => [getPlayerName(row.player), row.details.score]),
@@ -3295,6 +3308,23 @@ function buildTeamGeneralReport(context) {
 
 function buildChartsReport(context) {
   const totals = getPaymentTotalsForReport(context.fees);
+  const lines = [
+    "Graficos basicos",
+    `Periodo: ${context.scopeLabel}`,
+    "",
+    `Cobro del periodo: ${totals.percent}%`,
+    `Aprobado: ${formatMoney(totals.approved)}`,
+    `Pendiente de validacion: ${formatMoney(totals.pending)}`,
+    `Deuda: ${formatMoney(totals.debt)}`,
+  ];
+
+  return {
+    text: lines.join("\n"),
+    html: renderReportCharts(context, totals),
+  };
+}
+
+function renderReportCharts(context, totals) {
   const responsibilityRows = context.players
     .filter((player) => player.status === "activo")
     .map((player) => ({
@@ -3316,17 +3346,7 @@ function buildChartsReport(context) {
   const pendingPercent = totals.totalFlow > 0 ? Math.round((totals.pending / totals.totalFlow) * 100) : 0;
   const debtPercent = Math.max(100 - approvedPercent - pendingPercent, 0);
 
-  const lines = [
-    "Graficos basicos",
-    `Periodo: ${context.scopeLabel}`,
-    "",
-    `Cobro del periodo: ${totals.percent}%`,
-    `Aprobado: ${formatMoney(totals.approved)}`,
-    `Pendiente de validacion: ${formatMoney(totals.pending)}`,
-    `Deuda: ${formatMoney(totals.debt)}`,
-  ];
-
-  const html = `
+  return `
     <div class="report-chart-card">
       <h3>Porcentaje de cobro del periodo</h3>
       ${renderReportProgressBar(totals.percent, `${totals.percent}% cobrado`)}
@@ -3349,8 +3369,6 @@ function buildChartsReport(context) {
       ${renderHorizontalBars(attendanceRows)}
     </div>
   `;
-
-  return { text: lines.join("\n"), html };
 }
 
 function buildDetailedHistoryReport(context) {
@@ -3571,7 +3589,7 @@ function getReportFeeMonths() {
 
 function getReportFees() {
   const fees = state.selectedReportMonth === "all"
-    ? state.fees
+    ? state.fees.filter((fee) => fee.month <= getCurrentMonth())
     : state.fees.filter((fee) => fee.month === state.selectedReportMonth);
   return fees.slice().sort((a, b) => a.month.localeCompare(b.month));
 }
@@ -3584,7 +3602,7 @@ function getReportCompletedTrainingDates() {
 
 function getReportScopeLabel() {
   return state.selectedReportMonth === "all"
-    ? "Todos los meses cargados"
+    ? `Meses cargados hasta ${formatMonthLabel(getCurrentMonth())}`
     : formatMonthLabel(state.selectedReportMonth);
 }
 
@@ -6181,6 +6199,18 @@ function getCurrentMonth() {
 
 function getCurrentFee() {
   return state.fees.find((fee) => fee.month === getCurrentMonth());
+}
+
+function getStatsCurrentFee() {
+  const currentMonth = getCurrentMonth();
+  return (
+    getCurrentFee() ??
+    state.fees
+      .filter((fee) => fee.month <= currentMonth)
+      .slice()
+      .sort((a, b) => b.month.localeCompare(a.month))[0] ??
+    null
+  );
 }
 
 function getSelectedSelfServiceMonth() {
