@@ -16,6 +16,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     attendancesResult,
     votesResult,
     documentsResult,
+    feeAdjustmentsResult,
   ] = await Promise.all([
     loadPlayers(client, options),
     client.from("fees").select("*").order("month", { ascending: true }),
@@ -28,6 +29,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     loadAttendances(client),
     loadTrainingVotes(client),
     loadPlayerDocuments(client, options),
+    loadFeeAdjustments(client),
   ]);
 
   assertSupabaseResult(playersResult, "players");
@@ -37,6 +39,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
   assertSupabaseResult(attendancesResult, "attendances");
   assertSupabaseResult(votesResult, "training_votes");
   assertSupabaseResult(documentsResult, "player_documents");
+  assertSupabaseResult(feeAdjustmentsResult, "fee_adjustments");
 
   const players = playersResult.data.map(fromSupabasePlayer);
   const fees = feesResult.data.map(fromSupabaseFee);
@@ -46,6 +49,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     .filter((attendance) => !isRemovedGuestAttendance(attendance));
   const trainingVotes = votesResult.data.map(fromSupabaseTrainingVote);
   const playerDocuments = documentsResult.data.map(fromSupabasePlayerDocument);
+  const feeAdjustments = feeAdjustmentsResult.data.map(fromSupabaseFeeAdjustment);
   const treasuryConfig = treasuryResult.data
     ? fromSupabaseTreasuryConfig(treasuryResult.data)
     : fallbackState.treasuryConfig;
@@ -58,9 +62,11 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     attendances,
     trainingVotes,
     playerDocuments,
+    feeAdjustments,
     attendanceSyncReady: !attendancesResult.disabled,
     voteSyncReady: !votesResult.disabled,
     documentSyncReady: !documentsResult.disabled,
+    feeAdjustmentSyncReady: !feeAdjustmentsResult.disabled,
     treasuryConfig,
   };
 }
@@ -137,6 +143,52 @@ export async function adminUpsertFee(adminPin, fee) {
 
   const fallbackResult = await client.from("fees").upsert(payload, { onConflict: "id" });
   assertSupabaseResult(fallbackResult, "fees");
+  return logMutationMode("fallback");
+}
+
+export async function adminUpsertFeeAdjustment(adminPin, adjustment) {
+  const client = await getSupabaseClient();
+  const payload = toSupabaseFeeAdjustment(adjustment);
+  const rpcResult = await client.rpc("admin_upsert_fee_adjustment", {
+    p_admin_pin: adminPin,
+    p_adjustment: payload,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_upsert_fee_adjustment");
+  }
+
+  const fallbackResult = await client
+    .from("fee_adjustments")
+    .upsert(payload, { onConflict: "id" });
+  assertSupabaseResult(fallbackResult, "fee_adjustments");
+  return logMutationMode("fallback");
+}
+
+export async function adminDeleteFeeAdjustment(adminPin, adjustmentId) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("admin_delete_fee_adjustment", {
+    p_admin_pin: adminPin,
+    p_adjustment_id: adjustmentId,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_delete_fee_adjustment");
+  }
+
+  const fallbackResult = await client
+    .from("fee_adjustments")
+    .update({ active: false, updated_at: new Date().toISOString() })
+    .eq("id", adjustmentId);
+  assertSupabaseResult(fallbackResult, "fee_adjustments");
   return logMutationMode("fallback");
 }
 
@@ -426,6 +478,20 @@ async function loadPlayerDocuments(client, options = {}) {
   return result;
 }
 
+async function loadFeeAdjustments(client) {
+  const result = await client
+    .from("fee_adjustments")
+    .select("*")
+    .eq("active", true)
+    .order("updated_at", { ascending: false });
+
+  if (result.error && isMissingRelationError(result.error)) {
+    return { data: [], error: null, disabled: true };
+  }
+
+  return result;
+}
+
 function assertSupabaseResult(result, tableName) {
   if (result.error) {
     throw new Error(`${tableName}: ${result.error.message}`);
@@ -543,6 +609,21 @@ function fromSupabaseFee(row) {
   };
 }
 
+function fromSupabaseFeeAdjustment(row) {
+  return {
+    id: row.id,
+    playerId: row.player_id,
+    feeId: row.fee_id,
+    adjustmentType: row.adjustment_type ?? "monto_final",
+    finalAmount: Number(row.final_amount) || 0,
+    reason: row.reason ?? "otro",
+    observation: row.observation ?? "",
+    active: row.active !== false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function toSupabaseFee(fee) {
   return {
     id: fee.id,
@@ -556,6 +637,21 @@ function toSupabaseFee(fee) {
     interest_percent: Number(fee.interestPercent) || 0,
     due_day: Number(fee.dueDay) || 10,
     updated_at: new Date().toISOString(),
+  };
+}
+
+function toSupabaseFeeAdjustment(adjustment) {
+  return {
+    id: adjustment.id,
+    player_id: adjustment.playerId,
+    fee_id: adjustment.feeId,
+    adjustment_type: adjustment.adjustmentType ?? "monto_final",
+    final_amount: Number(adjustment.finalAmount) || 0,
+    reason: adjustment.reason ?? "otro",
+    observation: adjustment.observation ?? "",
+    active: adjustment.active !== false,
+    created_at: adjustment.createdAt ?? new Date().toISOString(),
+    updated_at: adjustment.updatedAt ?? new Date().toISOString(),
   };
 }
 

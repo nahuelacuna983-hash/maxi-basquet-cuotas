@@ -135,7 +135,7 @@ export function getFeeBreakdown(fee, players) {
   };
 }
 
-export function getExpectedFeeForPlayer(player, fee, players) {
+export function getBaseExpectedFeeForPlayer(player, fee, players) {
   if (!isPlayerBillableForFee(player, fee)) return 0;
 
   const breakdown = getFeeBreakdown(fee, players);
@@ -150,6 +150,26 @@ export function getExpectedFeeForPlayer(player, fee, players) {
       ? breakdown.expectedPerCompetitor
       : breakdown.expectedPerTrainingOnly;
   return roundUpToBillingStep(Number.isFinite(expected) ? expected : 0);
+}
+
+export function getExpectedFeeForPlayer(player, fee, players, feeAdjustments = []) {
+  const adjustment = getActiveFeeAdjustmentForPlayerFee(feeAdjustments, player.id, fee.id);
+  if (adjustment?.adjustmentType === "monto_final") {
+    return Math.max(Number(adjustment.finalAmount) || 0, 0);
+  }
+
+  return getBaseExpectedFeeForPlayer(player, fee, players);
+}
+
+export function getActiveFeeAdjustmentForPlayerFee(feeAdjustments, playerId, feeId) {
+  return (
+    feeAdjustments.find(
+      (adjustment) =>
+        adjustment.playerId === playerId &&
+        adjustment.feeId === feeId &&
+        adjustment.active !== false,
+    ) ?? null
+  );
 }
 
 function getPositiveAmountOrNull(value) {
@@ -174,10 +194,17 @@ export function getInterestAmount(balance, fee) {
   return Math.round(balance * (interestPercent / 100));
 }
 
-export function calculatePlayerDebt(player, fees, payments, players = [], today = new Date()) {
+export function calculatePlayerDebt(
+  player,
+  fees,
+  payments,
+  players = [],
+  feeAdjustments = [],
+  today = new Date(),
+) {
   let interestTotal = 0;
   const totalDue = fees.reduce(
-    (sum, fee) => sum + getExpectedFeeForPlayer(player, fee, players),
+    (sum, fee) => sum + getExpectedFeeForPlayer(player, fee, players, feeAdjustments),
     0,
   );
   const totalPaid = payments
@@ -186,7 +213,7 @@ export function calculatePlayerDebt(player, fees, payments, players = [], today 
 
   const overdueFees = fees.filter((fee) => {
     const paidAmount = getPaidAmount(payments, player.id, fee.id);
-    const expected = getExpectedFeeForPlayer(player, fee, players);
+    const expected = getExpectedFeeForPlayer(player, fee, players, feeAdjustments);
     const balance = Math.max(expected - paidAmount, 0);
     if (isFeeOverdue(fee, today) && balance > 0) {
       interestTotal += getInterestAmount(balance, fee);
@@ -205,7 +232,12 @@ export function calculatePlayerDebt(player, fees, payments, players = [], today 
   };
 }
 
-export function calculateDebts(players, fees, payments, today = new Date()) {
+export function calculateDebts(players, fees, payments, feeAdjustments = [], today = new Date()) {
+  if (!Array.isArray(feeAdjustments)) {
+    today = feeAdjustments ?? new Date();
+    feeAdjustments = [];
+  }
+
   return players.map((player) => {
     let totalDue = 0;
     let totalPaid = 0;
@@ -225,10 +257,11 @@ export function calculateDebts(players, fees, payments, today = new Date()) {
       fees
         .slice()
         .sort((a, b) => b.month.localeCompare(a.month))
-        .find((fee) => getExpectedFeeForPlayer(player, fee, players) > 0) ?? fees[0];
+        .find((fee) => getExpectedFeeForPlayer(player, fee, players, feeAdjustments) > 0) ??
+      fees[0];
 
     fees.forEach((fee) => {
-      const expected = getExpectedFeeForPlayer(player, fee, players);
+      const expected = getExpectedFeeForPlayer(player, fee, players, feeAdjustments);
       const paidAmount = getPaidAmount(payments, player.id, fee.id);
       const balanceBeforeInterest = Math.max(expected - paidAmount, 0);
       const overdue = isFeeOverdue(fee, today) && balanceBeforeInterest > 0;
@@ -254,7 +287,9 @@ export function calculateDebts(players, fees, payments, today = new Date()) {
       totalDue,
       totalPaid,
       interestTotal,
-      expectedMonthly: currentFee ? getExpectedFeeForPlayer(player, currentFee, players) : 0,
+      expectedMonthly: currentFee
+        ? getExpectedFeeForPlayer(player, currentFee, players, feeAdjustments)
+        : 0,
       balance: Math.max(totalDue + interestTotal - totalPaid, 0),
       isDefaulter: overdueFees.length > 0,
       nextDueDate: nextFee ? getFeeDueDate(nextFee) : "-",
@@ -264,8 +299,13 @@ export function calculateDebts(players, fees, payments, today = new Date()) {
   });
 }
 
-export function getDefaulters(players, fees, payments, today = new Date()) {
-  return calculateDebts(players, fees, payments, today).filter(
+export function getDefaulters(players, fees, payments, feeAdjustments = [], today = new Date()) {
+  if (!Array.isArray(feeAdjustments)) {
+    today = feeAdjustments ?? new Date();
+    feeAdjustments = [];
+  }
+
+  return calculateDebts(players, fees, payments, feeAdjustments, today).filter(
     (debt) => debt.balance > 0 && debt.overdueFees.length > 0,
   );
 }

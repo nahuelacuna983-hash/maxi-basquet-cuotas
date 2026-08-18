@@ -5,8 +5,10 @@ import {
 import {
   calculateDebts,
   formatMoney,
+  getActiveFeeAdjustmentForPlayerFee as getFinanceFeeAdjustmentForPlayerFee,
+  getBaseExpectedFeeForPlayer as calculateBaseExpectedFeeForPlayer,
   getDefaulters,
-  getExpectedFeeForPlayer,
+  getExpectedFeeForPlayer as calculateExpectedFeeForPlayer,
   getFeeBreakdown,
   getFeeDueDate,
   getInterestAmount,
@@ -33,10 +35,12 @@ import {
   savePersistedState,
 } from "./domain/storage.js";
 import {
+  adminDeleteFeeAdjustment,
   adminReviewPayment,
   adminDeleteGuestAttendance,
   adminSoftDeletePayment,
   adminUpdateTreasuryConfig,
+  adminUpsertFeeAdjustment,
   adminUpsertAttendance,
   adminUpsertFee,
   adminUpsertPlayer,
@@ -93,6 +97,8 @@ const state = {
   playerFilter: "todos",
   selectedAdminPaymentFeeId: "",
   selectedPlayerPaymentFeeId: "",
+  selectedFeeAdjustmentPlayerId: "",
+  selectedFeeAdjustmentFeeId: "",
   selectedSelfServicePlayerId:
     persistedAppState.players.find((player) => player.id === initialUrlPlayerId)?.id ??
     persistedAppState.players.find((player) => player.id === persistedSelfServiceSession?.playerId)?.id ??
@@ -122,6 +128,7 @@ const state = {
   attendanceSyncReady: !isSupabaseEnabled(),
   voteSyncReady: !isSupabaseEnabled(),
   documentSyncReady: !isSupabaseEnabled(),
+  feeAdjustmentSyncReady: !isSupabaseEnabled(),
   syncStatus: isSupabaseEnabled() ? "Conectando con Supabase..." : "Modo local",
 };
 
@@ -158,6 +165,15 @@ const elements = {
   feeForm: document.querySelector("#feeForm"),
   createNextFeeButton: document.querySelector("#createNextFeeButton"),
   feeMessage: document.querySelector("#feeMessage"),
+  feeAdjustmentForm: document.querySelector("#feeAdjustmentForm"),
+  feeAdjustmentPlayer: document.querySelector("#feeAdjustmentPlayer"),
+  feeAdjustmentFee: document.querySelector("#feeAdjustmentFee"),
+  feeAdjustmentBase: document.querySelector("#feeAdjustmentBase"),
+  feeAdjustmentFinalAmount: document.querySelector("#feeAdjustmentFinalAmount"),
+  feeAdjustmentReason: document.querySelector("#feeAdjustmentReason"),
+  feeAdjustmentObservation: document.querySelector("#feeAdjustmentObservation"),
+  feeAdjustmentMessage: document.querySelector("#feeAdjustmentMessage"),
+  feeAdjustmentsList: document.querySelector("#feeAdjustmentsList"),
   paymentForm: document.querySelector("#paymentForm"),
   treasuryForm: document.querySelector("#treasuryForm"),
   treasuryAlias: document.querySelector("#treasuryAlias"),
@@ -176,6 +192,10 @@ const elements = {
   playerTabButtons: document.querySelectorAll("[data-player-tab]"),
   playerTabPanels: document.querySelectorAll("[data-player-panel]"),
   selfCurrentExpected: document.querySelector("#selfCurrentExpected"),
+  selfAdjustmentBaseRow: document.querySelector("#selfAdjustmentBaseRow"),
+  selfAdjustmentBase: document.querySelector("#selfAdjustmentBase"),
+  selfAdjustmentReasonRow: document.querySelector("#selfAdjustmentReasonRow"),
+  selfAdjustmentReason: document.querySelector("#selfAdjustmentReason"),
   selfCurrentInterest: document.querySelector("#selfCurrentInterest"),
   selfCurrentPaid: document.querySelector("#selfCurrentPaid"),
   selfCurrentBalance: document.querySelector("#selfCurrentBalance"),
@@ -712,6 +732,21 @@ elements.createNextFeeButton.addEventListener("click", async () => {
   await createNextFeeFromLatest();
 });
 
+elements.feeAdjustmentPlayer.addEventListener("change", () => {
+  state.selectedFeeAdjustmentPlayerId = elements.feeAdjustmentPlayer.value;
+  renderFeeAdjustmentSummary({ preserveDraft: false });
+});
+
+elements.feeAdjustmentFee.addEventListener("change", () => {
+  state.selectedFeeAdjustmentFeeId = elements.feeAdjustmentFee.value;
+  renderFeeAdjustmentSummary({ preserveDraft: false });
+});
+
+elements.feeAdjustmentForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await saveFeeAdjustmentFromForm();
+});
+
 elements.paymentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requireAdmin()) return;
@@ -1029,8 +1064,8 @@ elements.attendanceNoveltyForm.addEventListener("submit", async (event) => {
 });
 
 function render() {
-  const debts = calculateDebts(state.players, state.fees, state.payments);
-  const defaulters = getDefaulters(state.players, state.fees, state.payments);
+  const debts = calculateDebts(state.players, state.fees, state.payments, state.feeAdjustments);
+  const defaulters = getDefaulters(state.players, state.fees, state.payments, state.feeAdjustments);
   const totalCollected = state.payments.reduce(
     (sum, payment) => sum + (isApprovedPayment(payment) ? Number(payment.amount) || 0 : 0),
     0,
@@ -1046,6 +1081,8 @@ function render() {
   renderSelfService();
   renderPaymentOptions();
   renderPlayerPaymentOptions();
+  renderFeeAdjustmentOptions();
+  renderFeeAdjustments();
   renderAttendanceOptions();
   renderAttendanceNoveltyOptions();
   renderPlayerPaymentSummary();
@@ -1093,6 +1130,8 @@ function renderSelfService() {
     elements.selfCurrentBalance.textContent = formatMoney(0);
     elements.selfCurrentDue.textContent = "-";
     elements.selfCurrentStatus.textContent = "Sin jugador";
+    elements.selfAdjustmentBaseRow.hidden = true;
+    elements.selfAdjustmentReasonRow.hidden = true;
     elements.selfLateDebt.textContent = formatMoney(0);
     elements.selfNextEstimate.textContent = formatMoney(0);
     elements.selfPaymentInstructions.hidden = true;
@@ -1116,6 +1155,8 @@ function renderSelfService() {
     elements.selfCurrentDue.textContent = "-";
     elements.selfCurrentStatus.textContent = "Codigo requerido";
     elements.selfCurrentStatus.className = "payment-status status-pendiente";
+    elements.selfAdjustmentBaseRow.hidden = true;
+    elements.selfAdjustmentReasonRow.hidden = true;
     elements.selfLateDebt.textContent = formatMoney(0);
     elements.selfNextEstimate.textContent = formatMoney(0);
     elements.selfPaymentInstructions.hidden = true;
@@ -1143,6 +1184,12 @@ function renderSelfService() {
 
   const currentMonth = selectedMonth;
   const currentFee = getSelectedSelfServiceFee();
+  const currentAdjustment = currentFee
+    ? getActiveFeeAdjustment(fallbackPlayer.id, currentFee.id)
+    : null;
+  const currentBaseExpected = currentFee
+    ? getBaseExpectedFeeForPlayer(fallbackPlayer, currentFee, state.players)
+    : 0;
   const currentExpected = currentFee
     ? getExpectedFeeForPlayer(fallbackPlayer, currentFee, state.players)
     : 0;
@@ -1163,6 +1210,12 @@ function renderSelfService() {
   const hasBlockingPayment = ["pendiente", "aprobado"].includes(latestPayment?.status);
 
   elements.selfCurrentExpected.textContent = formatMoney(currentExpected);
+  elements.selfAdjustmentBaseRow.hidden = !currentAdjustment;
+  elements.selfAdjustmentReasonRow.hidden = !currentAdjustment;
+  elements.selfAdjustmentBase.textContent = formatMoney(currentBaseExpected);
+  elements.selfAdjustmentReason.textContent = currentAdjustment
+    ? `${formatFeeAdjustmentReason(currentAdjustment.reason)} - ${formatMoney(Number(currentAdjustment.finalAmount) || 0)}`
+    : "-";
   elements.selfCurrentInterest.textContent = formatMoney(currentInterest);
   elements.selfCurrentPaid.textContent = formatMoney(currentPaid);
   elements.selfCurrentBalance.textContent = getMainPaymentText(
@@ -1405,6 +1458,130 @@ function renderPlayerPaymentSummary() {
   elements.playerPaymentInstructions.textContent = state.treasuryConfig.paymentInstructions;
 }
 
+function renderFeeAdjustmentOptions() {
+  const isEditingAdjustment = elements.feeAdjustmentForm.contains(document.activeElement);
+  if (
+    isEditingAdjustment &&
+    elements.feeAdjustmentPlayer.options.length > 0 &&
+    elements.feeAdjustmentFee.options.length > 0
+  ) {
+    renderFeeAdjustmentSummary({ preserveDraft: true });
+    return;
+  }
+
+  const selectedPlayer = state.selectedFeeAdjustmentPlayerId || elements.feeAdjustmentPlayer.value;
+  const selectedFee = state.selectedFeeAdjustmentFeeId || elements.feeAdjustmentFee.value;
+  const sortedPlayers = getSortedPlayers();
+  const sortedFees = getSortedFees();
+
+  elements.feeAdjustmentPlayer.innerHTML = sortedPlayers
+    .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerName(player))}</option>`)
+    .join("");
+  elements.feeAdjustmentFee.innerHTML = sortedFees
+    .map((fee) => `<option value="${fee.id}">${escapeHtml(formatFeeOptionLabel(fee))}</option>`)
+    .join("");
+
+  state.selectedFeeAdjustmentPlayerId =
+    sortedPlayers.find((player) => player.id === selectedPlayer)?.id ?? sortedPlayers[0]?.id ?? "";
+  state.selectedFeeAdjustmentFeeId =
+    sortedFees.find((fee) => fee.id === selectedFee)?.id ?? getDefaultPaymentFeeId();
+  elements.feeAdjustmentPlayer.value = state.selectedFeeAdjustmentPlayerId;
+  elements.feeAdjustmentFee.value = state.selectedFeeAdjustmentFeeId;
+  renderFeeAdjustmentSummary();
+}
+
+function renderFeeAdjustmentSummary({ preserveDraft = false } = {}) {
+  const player = state.players.find((item) => item.id === elements.feeAdjustmentPlayer.value);
+  const fee = state.fees.find((item) => item.id === elements.feeAdjustmentFee.value);
+
+  if (!player || !fee) {
+    elements.feeAdjustmentBase.textContent = "Cuota base: $0";
+    return;
+  }
+
+  const baseExpected = getBaseExpectedFeeForPlayer(player, fee, state.players);
+  const existingAdjustment = getActiveFeeAdjustment(player.id, fee.id);
+
+  elements.feeAdjustmentBase.textContent = `Cuota base: ${formatMoney(baseExpected)}`;
+  if (preserveDraft) return;
+
+  if (existingAdjustment) {
+    elements.feeAdjustmentFinalAmount.value = String(existingAdjustment.finalAmount);
+    elements.feeAdjustmentReason.value = existingAdjustment.reason || "otro";
+    elements.feeAdjustmentObservation.value = existingAdjustment.observation || "";
+  } else {
+    elements.feeAdjustmentFinalAmount.value = "";
+    elements.feeAdjustmentReason.value = "viaje";
+    elements.feeAdjustmentObservation.value = "";
+  }
+}
+
+function renderFeeAdjustments() {
+  const activeAdjustments = getActiveFeeAdjustments();
+
+  if (!state.feeAdjustmentSyncReady && isSupabaseEnabled()) {
+    elements.feeAdjustmentMessage.textContent =
+      "Falta ejecutar el SQL de ajustes de cuota en Supabase.";
+  }
+
+  if (!activeAdjustments.length) {
+    elements.feeAdjustmentsList.innerHTML =
+      '<p class="empty-state">Todavia no hay ajustes de cuota activos.</p>';
+    return;
+  }
+
+  elements.feeAdjustmentsList.innerHTML = `
+    <div class="table-wrap">
+      <table class="compact-table">
+        <thead>
+          <tr>
+            <th>Jugador</th>
+            <th>Cuota</th>
+            <th>Base</th>
+            <th>Final</th>
+            <th>Motivo</th>
+            <th>Observacion</th>
+            <th>Admin</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${activeAdjustments
+            .map((adjustment) => {
+              const player = state.players.find((item) => item.id === adjustment.playerId);
+              const fee = state.fees.find((item) => item.id === adjustment.feeId);
+              const baseExpected = player && fee
+                ? getBaseExpectedFeeForPlayer(player, fee, state.players)
+                : 0;
+
+              return `
+                <tr>
+                  <td><strong>${escapeHtml(player ? getPlayerName(player) : "Jugador")}</strong></td>
+                  <td>${fee ? formatMonthLabel(fee.month) : "-"}</td>
+                  <td>${formatMoney(baseExpected)}</td>
+                  <td>${formatMoney(Number(adjustment.finalAmount) || 0)}</td>
+                  <td>${escapeHtml(formatFeeAdjustmentReason(adjustment.reason))}</td>
+                  <td>${escapeHtml(adjustment.observation || "-")}</td>
+                  <td>
+                    <button class="secondary-button danger-button" type="button" data-delete-fee-adjustment="${adjustment.id}">
+                      Quitar
+                    </button>
+                  </td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.querySelectorAll("[data-delete-fee-adjustment]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteFeeAdjustment(button.dataset.deleteFeeAdjustment);
+    });
+  });
+}
+
 function renderPlayersTable(debts) {
   updateFilterButtons();
 
@@ -1611,6 +1788,12 @@ function renderFeesList() {
       const fixedAmountLabel = breakdown.usesFixedAmounts
         ? `<span>Monto fijo historico: solo entrenamientos ${formatMoney(breakdown.fixedTrainingOnlyAmount ?? 0)} / competidor ${formatMoney(breakdown.fixedCompetitorAmount ?? 0)}</span>`
         : "";
+      const activeAdjustments = getActiveFeeAdjustments().filter(
+        (adjustment) => adjustment.feeId === fee.id,
+      );
+      const adjustmentLabel = activeAdjustments.length
+        ? `<span>Ajustes individuales activos: ${activeAdjustments.length}</span>`
+        : "";
 
       return `
         <article class="fee-row">
@@ -1626,6 +1809,7 @@ function renderFeesList() {
             <span>Base de cobro: ${breakdown.trainingBillingBase} entrenamientos / ${breakdown.sundayBillingBase} domingos</span>
             <span>Solo entrenamientos ${formatMoney(expectedTrainingOnly)} / Competidor ${formatMoney(expectedCompetitor)}</span>
             ${fixedAmountLabel}
+            ${adjustmentLabel}
             <div class="fee-base-controls">
               <label>
                 Turno entrenamiento
@@ -2829,6 +3013,7 @@ function buildIndividualReport(context) {
   const paymentRows = getReportPaymentDetailRows(context, player.id);
   const attendanceRows = getReportAttendanceDetailRows(context, player.id);
   const voteRows = getReportVoteDetailRows(context, player.id);
+  const adjustmentRows = getReportFeeAdjustmentRows(context, player.id);
 
   const lines = [
     `Informe individual - ${getPlayerName(player)}`,
@@ -2836,7 +3021,9 @@ function buildIndividualReport(context) {
     "",
     "Pagos",
     `- Estado: ${paymentSummary.status}`,
+    `- Cuota base: ${formatMoney(paymentSummary.baseExpected)}`,
     `- Cuota esperada: ${formatMoney(paymentSummary.expected)}`,
+    `- Ajustes: ${formatMoney(paymentSummary.adjustmentDelta)}`,
     `- Pagado aprobado: ${formatMoney(paymentSummary.approved)}`,
     `- Pagos pendientes: ${formatMoney(paymentSummary.pending)} (${paymentSummary.pendingCount})`,
     `- Interes: ${formatMoney(paymentSummary.interest)}`,
@@ -2859,6 +3046,12 @@ function buildIndividualReport(context) {
     `- Penalidad mensual por acumulacion: ${responsibility.monthlyNoShowDiscount ?? 0}`,
     `- Puntaje actual: ${responsibility.score}`,
   ];
+  appendReportTextTable(
+    lines,
+    "Ajustes de cuota",
+    ["Cuota", "Base", "Monto final", "Motivo", "Observacion"],
+    adjustmentRows,
+  );
   appendReportTextTable(
     lines,
     "Detalle de pagos",
@@ -2900,6 +3093,10 @@ function buildIndividualReport(context) {
         paymentSummary.status,
       ]],
     )}
+    ${renderReportSection(
+      "Ajustes de cuota",
+      renderReportTable(["Cuota", "Base", "Monto final", "Motivo", "Observacion"], adjustmentRows),
+    )}
     ${renderReportTable(
       ["Cerradas", "Voy", "No voy", "No respondio", "Llega sobre hora", "Baja sobre hora", "Cena"],
       [[
@@ -2937,7 +3134,9 @@ function buildGeneralPaymentsReport(context) {
       summary,
       text: [
         getPlayerName(player),
+        formatMoney(summary.baseExpected),
         formatMoney(summary.expected),
+        formatMoney(summary.adjustmentDelta),
         formatMoney(summary.approved),
         formatMoney(summary.pending),
         formatMoney(summary.interest),
@@ -2951,14 +3150,14 @@ function buildGeneralPaymentsReport(context) {
     "Informe de pagos general",
     `Periodo: ${context.scopeLabel}`,
     "",
-    "Jugador | Esperado | Aprobado | Pendiente | Interes | Deuda | Estado",
+    "Jugador | Base | Esperado | Ajuste | Aprobado | Pendiente | Interes | Deuda | Estado",
     ...rows.map((row) => row.text.join(" | ")),
   ];
 
   return {
     text: lines.join("\n"),
     html: renderReportTable(
-      ["Jugador", "Esperado", "Aprobado", "Pendiente", "Interes", "Deuda", "Estado"],
+      ["Jugador", "Base", "Esperado", "Ajuste", "Aprobado", "Pendiente", "Interes", "Deuda", "Estado"],
       rows.map((row) => row.text),
     ),
   };
@@ -3234,6 +3433,36 @@ function getReportPaymentDetailRows(context, playerId = null) {
     });
 }
 
+function getReportFeeAdjustmentRows(context, playerId = null) {
+  const feesById = new Map(context.fees.map((fee) => [fee.id, fee]));
+
+  return getActiveFeeAdjustments()
+    .filter((adjustment) => feesById.has(adjustment.feeId))
+    .filter((adjustment) => !playerId || adjustment.playerId === playerId)
+    .sort((a, b) => {
+      const feeA = feesById.get(a.feeId);
+      const feeB = feesById.get(b.feeId);
+      return `${feeA?.month ?? ""}${getPlayerNameById(a.playerId)}`.localeCompare(
+        `${feeB?.month ?? ""}${getPlayerNameById(b.playerId)}`,
+      );
+    })
+    .map((adjustment) => {
+      const fee = feesById.get(adjustment.feeId);
+      const player = state.players.find((item) => item.id === adjustment.playerId);
+      const baseExpected = player && fee
+        ? getBaseExpectedFeeForPlayer(player, fee, state.players)
+        : 0;
+
+      return [
+        fee ? formatMonthLabel(fee.month) : adjustment.feeId,
+        formatMoney(baseExpected),
+        formatMoney(Number(adjustment.finalAmount) || 0),
+        formatFeeAdjustmentReason(adjustment.reason),
+        adjustment.observation || "-",
+      ];
+    });
+}
+
 function getReportAttendanceDetailRows(context, playerId = null) {
   const selectedPlayer = playerId ? state.players.find((player) => player.id === playerId) : null;
   const targetPlayers = selectedPlayer
@@ -3360,6 +3589,10 @@ function getReportScopeLabel() {
 }
 
 function getPlayerPaymentReport(player, fees) {
+  const baseExpected = fees.reduce(
+    (sum, fee) => sum + getBaseExpectedFeeForPlayer(player, fee, state.players),
+    0,
+  );
   const expected = fees.reduce(
     (sum, fee) => sum + getExpectedFeeForPlayer(player, fee, state.players),
     0,
@@ -3385,7 +3618,9 @@ function getPlayerPaymentReport(player, fees) {
   const status = expected <= 0 ? "sin cuota" : debt <= 0 ? "al dia" : hasOverdue ? "moroso" : "pendiente";
 
   return {
+    baseExpected,
     expected,
+    adjustmentDelta: expected - baseExpected,
     approved,
     pending,
     pendingCount: pendingPayments.length,
@@ -3680,6 +3915,11 @@ function applyPersistentState(nextState) {
   state.payments = nextState.payments.map((payment) => ({ ...payment }));
   state.attendances = nextState.attendances.map((attendance) => ({ ...attendance }));
   state.trainingVotes = (nextState.trainingVotes ?? []).map((vote) => ({ ...vote }));
+  state.playerDocuments = (nextState.playerDocuments ?? []).map((document) => ({ ...document }));
+  state.feeAdjustments = (nextState.feeAdjustments ?? []).map((adjustment) => ({
+    ...adjustment,
+    active: adjustment.active !== false,
+  }));
   state.responsibilityAdjustments = nextState.responsibilityAdjustments.map((adjustment) => ({
     ...adjustment,
   }));
@@ -3697,6 +3937,12 @@ function applyPersistentState(nextState) {
   }
   if (typeof nextState.voteSyncReady === "boolean") {
     state.voteSyncReady = nextState.voteSyncReady;
+  }
+  if (typeof nextState.documentSyncReady === "boolean") {
+    state.documentSyncReady = nextState.documentSyncReady;
+  }
+  if (typeof nextState.feeAdjustmentSyncReady === "boolean") {
+    state.feeAdjustmentSyncReady = nextState.feeAdjustmentSyncReady;
   }
   state.treasuryConfig = { ...nextState.treasuryConfig };
   state.playerFilter = previousPlayerFilter || "todos";
@@ -5096,6 +5342,121 @@ async function persistFee(fee, previousFees, successMessage, errorMessage) {
   return true;
 }
 
+async function saveFeeAdjustmentFromForm() {
+  if (!requireAdmin()) return;
+
+  const playerId = elements.feeAdjustmentPlayer.value;
+  const feeId = elements.feeAdjustmentFee.value;
+  const finalAmount = Number(elements.feeAdjustmentFinalAmount.value);
+  const reason = elements.feeAdjustmentReason.value;
+  const observation = elements.feeAdjustmentObservation.value.trim();
+
+  if (!playerId || !feeId || !Number.isFinite(finalAmount) || finalAmount < 0) {
+    elements.feeAdjustmentMessage.textContent =
+      "Revisa jugador, cuota y monto final autorizado.";
+    return;
+  }
+
+  const previousAdjustments = state.feeAdjustments;
+  const existingAdjustment = getActiveFeeAdjustment(playerId, feeId);
+  const now = new Date().toISOString();
+  const adjustment = {
+    id: existingAdjustment?.id ?? createId("fee-adjustment"),
+    playerId,
+    feeId,
+    adjustmentType: "monto_final",
+    finalAmount,
+    reason,
+    observation,
+    active: true,
+    createdAt: existingAdjustment?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  state.feeAdjustments = upsertFeeAdjustment(previousAdjustments, adjustment);
+  const saved = await persistFeeAdjustment(
+    adjustment,
+    previousAdjustments,
+    "Ajuste de cuota guardado",
+    "Error al guardar ajuste de cuota",
+  );
+  if (!saved) return;
+
+  elements.feeAdjustmentFinalAmount.value = "";
+  elements.feeAdjustmentObservation.value = "";
+  elements.feeAdjustmentMessage.textContent =
+    "Ajuste guardado. Ya impacta en deuda, morosos e informes.";
+}
+
+async function persistFeeAdjustment(adjustment, previousAdjustments, successMessage, errorMessage) {
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = `${successMessage}...`;
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminUpsertFeeAdjustment(adminConfig.pin, adjustment);
+      state.syncStatus = getPaymentMutationMessage(successMessage, mutationResult);
+      state.feeAdjustmentSyncReady = true;
+    } catch (error) {
+      state.feeAdjustments = previousAdjustments;
+      state.syncStatus = `${errorMessage}: ${error.message}`;
+      elements.feeAdjustmentMessage.textContent = state.syncStatus;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return false;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = `${successMessage} localmente`;
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+  return true;
+}
+
+async function deleteFeeAdjustment(adjustmentId) {
+  if (!requireAdmin()) return;
+  if (!confirm("Quitar este ajuste de cuota? La deuda volvera a calcularse con la cuota normal.")) {
+    return;
+  }
+
+  const previousAdjustments = state.feeAdjustments;
+  state.feeAdjustments = state.feeAdjustments.filter(
+    (adjustment) => adjustment.id !== adjustmentId,
+  );
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Quitando ajuste de cuota...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminDeleteFeeAdjustment(adminConfig.pin, adjustmentId);
+      state.syncStatus = getPaymentMutationMessage("Ajuste de cuota quitado", mutationResult);
+      state.feeAdjustmentSyncReady = true;
+    } catch (error) {
+      state.feeAdjustments = previousAdjustments;
+      state.syncStatus = `Error al quitar ajuste de cuota: ${error.message}`;
+      elements.feeAdjustmentMessage.textContent = state.syncStatus;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = "Ajuste de cuota quitado localmente";
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+}
+
 function updateResponsibilityAdjustment(playerId, field, value) {
   if (!requireAdmin()) return;
 
@@ -5419,6 +5780,49 @@ function getCombinedMutationResult(results) {
   return results.every((result) => result.mode === "rpc")
     ? { mode: "rpc" }
     : { mode: "fallback" };
+}
+
+function getExpectedFeeForPlayer(player, fee, players = state.players) {
+  return calculateExpectedFeeForPlayer(player, fee, players, state.feeAdjustments ?? []);
+}
+
+function getBaseExpectedFeeForPlayer(player, fee, players = state.players) {
+  return calculateBaseExpectedFeeForPlayer(player, fee, players);
+}
+
+function getActiveFeeAdjustment(playerId, feeId) {
+  return getFinanceFeeAdjustmentForPlayerFee(state.feeAdjustments ?? [], playerId, feeId);
+}
+
+function getActiveFeeAdjustments() {
+  return (state.feeAdjustments ?? []).filter((adjustment) => adjustment.active !== false);
+}
+
+function upsertFeeAdjustment(adjustments, nextAdjustment) {
+  return [
+    ...adjustments.filter(
+      (adjustment) =>
+        adjustment.id !== nextAdjustment.id &&
+        !(
+          adjustment.playerId === nextAdjustment.playerId &&
+          adjustment.feeId === nextAdjustment.feeId &&
+          adjustment.active !== false
+        ),
+    ),
+    nextAdjustment,
+  ];
+}
+
+function formatFeeAdjustmentReason(reason) {
+  const labels = {
+    viaje: "Viaje",
+    lesion: "Lesion",
+    permiso: "Permiso",
+    ingreso_tarde: "Ingreso tarde",
+    otro: "Otro",
+  };
+
+  return labels[reason] ?? reason ?? "Otro";
 }
 
 function getSortedPlayers(players = state.players) {

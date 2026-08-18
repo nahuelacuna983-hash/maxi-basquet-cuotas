@@ -10,6 +10,7 @@ export function createPersistedState(source) {
     attendances: source.attendances,
     trainingVotes: source.trainingVotes,
     playerDocuments: source.playerDocuments,
+    feeAdjustments: source.feeAdjustments,
     responsibilityAdjustments: source.responsibilityAdjustments,
     responsibilityConfig: source.responsibilityConfig,
     attendanceConfig: source.attendanceConfig,
@@ -64,6 +65,9 @@ export function normalizePersistedState(parsedState, fallbackState) {
     playerDocuments: Array.isArray(parsedState.playerDocuments)
       ? parsedState.playerDocuments.map(normalizePlayerDocument)
       : fallbackState.playerDocuments ?? [],
+    feeAdjustments: Array.isArray(parsedState.feeAdjustments)
+      ? parsedState.feeAdjustments.map(normalizeFeeAdjustment)
+      : fallbackState.feeAdjustments ?? [],
     responsibilityAdjustments: Array.isArray(parsedState.responsibilityAdjustments)
       ? parsedState.responsibilityAdjustments
       : fallbackState.responsibilityAdjustments,
@@ -82,6 +86,21 @@ export function normalizePersistedState(parsedState, fallbackState) {
       parsedState.treasuryConfig && typeof parsedState.treasuryConfig === "object"
         ? { ...fallbackState.treasuryConfig, ...parsedState.treasuryConfig }
         : fallbackState.treasuryConfig,
+  };
+}
+
+function normalizeFeeAdjustment(adjustment) {
+  return {
+    id: String(adjustment.id ?? ""),
+    playerId: String(adjustment.playerId ?? ""),
+    feeId: String(adjustment.feeId ?? ""),
+    adjustmentType: String(adjustment.adjustmentType ?? "monto_final"),
+    finalAmount: Math.max(Number(adjustment.finalAmount) || 0, 0),
+    reason: String(adjustment.reason ?? "otro"),
+    observation: String(adjustment.observation ?? ""),
+    active: adjustment.active === undefined ? true : Boolean(adjustment.active),
+    createdAt: adjustment.createdAt,
+    updatedAt: adjustment.updatedAt,
   };
 }
 

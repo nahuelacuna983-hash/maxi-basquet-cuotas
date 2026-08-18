@@ -123,6 +123,8 @@ export const initialAttendanceConfig = {
 
 export const initialResponsibilityAdjustments = [];
 
+export const initialFeeAdjustments = [];
+
 export const initialPlayerDocuments = [];
 
 export const adminConfig = {
@@ -138,6 +140,7 @@ export function createInitialAppState() {
     attendances: initialAttendances.map((attendance) => ({ ...attendance })),
     trainingVotes: initialTrainingVotes.map((vote) => ({ ...vote })),
     playerDocuments: initialPlayerDocuments.map((document) => ({ ...document })),
+    feeAdjustments: initialFeeAdjustments.map((adjustment) => ({ ...adjustment })),
     responsibilityAdjustments: initialResponsibilityAdjustments.map((adjustment) => ({
       ...adjustment,
     })),

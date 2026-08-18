@@ -11,7 +11,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <link rel="stylesheet" href="./src/styles.css?v=player-billing-start-1" />
+    <link rel="stylesheet" href="./src/styles.css?v=fee-adjustments-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -76,6 +76,14 @@
                     <div>
                       <dt>Cuota esperada</dt>
                       <dd id="selfCurrentExpected">$0</dd>
+                    </div>
+                    <div id="selfAdjustmentBaseRow" hidden>
+                      <dt>Cuota base</dt>
+                      <dd id="selfAdjustmentBase">$0</dd>
+                    </div>
+                    <div id="selfAdjustmentReasonRow" hidden>
+                      <dt>Ajuste autorizado</dt>
+                      <dd id="selfAdjustmentReason">-</dd>
                     </div>
                     <div>
                       <dt>Interes por vencimiento</dt>
@@ -435,6 +443,51 @@
               <button class="secondary-button wide-field" id="createNextFeeButton" type="button">Crear cuota del mes siguiente</button>
               <p class="form-message wide-field" id="feeMessage"></p>
             </form>
+          </section>
+
+          <section class="panel" data-admin-panel="cuotas">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">A</div>
+              <div>
+                <h2>Ajustes de cuota</h2>
+                <p>Excepciones por viaje, lesion o acuerdo puntual</p>
+              </div>
+            </div>
+            <form class="form-grid" id="feeAdjustmentForm">
+              <label>
+                Jugador
+                <select id="feeAdjustmentPlayer" required></select>
+              </label>
+              <label>
+                Cuota
+                <select id="feeAdjustmentFee" required></select>
+              </label>
+              <div class="payment-summary wide-field">
+                <strong id="feeAdjustmentBase">Cuota base: $0</strong>
+                <span>El ajuste no cambia la cuota general del equipo.</span>
+              </div>
+              <label>
+                Monto final autorizado
+                <input id="feeAdjustmentFinalAmount" type="number" min="0" required />
+              </label>
+              <label>
+                Motivo
+                <select id="feeAdjustmentReason">
+                  <option value="viaje">Viaje</option>
+                  <option value="lesion">Lesion</option>
+                  <option value="permiso">Permiso</option>
+                  <option value="ingreso_tarde">Ingreso tarde</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </label>
+              <label class="wide-field">
+                Observacion
+                <input id="feeAdjustmentObservation" placeholder="Ej: viaja medio mes, paga proporcional" />
+              </label>
+              <button class="primary-button" type="submit">Guardar ajuste</button>
+              <p class="form-message wide-field" id="feeAdjustmentMessage"></p>
+            </form>
+            <div id="feeAdjustmentsList" class="fee-adjustments-list"></div>
           </section>
 
           <section class="panel" data-admin-panel="pagos">
@@ -883,7 +936,7 @@
       </section>
     </main>
     <script src="./src/vendor/supabase.umd.js?v=local-supabase-1"></script>
-    <script type="module" src="./src/app.js?v=player-documents-1"></script>
+    <script type="module" src="./src/app.js?v=fee-adjustments-1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-13"></script>
   </body>
 </html>

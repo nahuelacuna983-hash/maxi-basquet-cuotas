@@ -856,6 +856,14 @@ select:focus {
   font-size: 0.9rem;
 }
 
+.fee-adjustments-list {
+  margin-top: 14px;
+}
+
+.compact-table {
+  min-width: 820px;
+}
+
 .vote-beta-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

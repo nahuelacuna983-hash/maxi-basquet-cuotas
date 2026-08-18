@@ -30,6 +30,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Pagos con estado `pendiente`, `aprobado` o `rechazado`.
 - Solo pagos aprobados descuentan deuda.
 - Proteccion para no duplicar pagos por jugador y cuota.
+- Ajustes de cuota por jugador/mes para viajes, lesion, permiso o acuerdos puntuales.
 - Borrado logico de pagos con `deleted_at`.
 - Modo prueba de pago configurable.
 - Metodo de pago real por alias Mercado Pago `maxisuda`.
@@ -115,6 +116,7 @@ Tablas principales:
 
 - `players`
 - `fees`
+- `fee_adjustments`
 - `payments`
 - `attendances`
 - `training_votes`
@@ -128,6 +130,8 @@ Funciones RPC usadas por la app:
 - `validate_player_access`
 - `admin_upsert_player`
 - `admin_upsert_fee`
+- `admin_upsert_fee_adjustment`
+- `admin_delete_fee_adjustment`
 - `submit_payment`
 - `submit_training_attendance`
 - `submit_training_vote`
@@ -169,6 +173,12 @@ La carga inicial de links de Drive queda en un archivo local privado, no version
 private/player-documents-seed.local.sql
 ```
 
+SQL adicional para ajustes individuales de cuota:
+
+```txt
+supabase/fee-adjustments-v1.sql
+```
+
 ## Seguridad MVP
 
 Estado actual:
@@ -176,6 +186,7 @@ Estado actual:
 - `payments`: lectura permitida de pagos activos; insercion de pagos pendientes; update/delete directo bloqueado.
 - `treasury_config`: lectura permitida; escritura directa bloqueada; cambios por RPC admin.
 - `fees`: lectura permitida; escritura directa bloqueada; cambios por RPC admin.
+- `fee_adjustments`: lectura de ajustes activos; escritura admin por RPC.
 - `players`: lectura directa bloqueada; listado publico por RPC sin `access_code`; validacion de codigo por RPC; cambios admin por RPC.
 - `player_documents`: lectura solo por RPC admin; no se expone a la vista jugador.
 
@@ -233,6 +244,8 @@ Cada cuota puede definir:
 La app redondea hacia arriba al multiplo de `$5.000`.
 
 Si una cuota tiene montos fijos historicos, esos montos reemplazan la formula normal solo para ese mes.
+
+Los ajustes individuales no modifican la formula general. Solo cambian el monto final esperado de un jugador para una cuota puntual. Ejemplo: cuota base `$60.000`, ajuste por viaje con monto final `$30.000`; la deuda y el interes se calculan sobre esos `$30.000`.
 
 Las cuotas ya cargadas se corrigen desde la lista de `Cuotas`: no hace falta duplicar el mes para cambiar domingo, base, interes o vencimiento.
 
