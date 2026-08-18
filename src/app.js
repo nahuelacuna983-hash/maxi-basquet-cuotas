@@ -77,6 +77,7 @@ const attendanceTagOptions = [
 const TRAINING_VOTE_OPEN_AT = "22:01";
 const TRAINING_VOTE_CLOSE_DAYS_AFTER = 1;
 const TRAINING_VOTE_CLOSE_AT = "23:59";
+const AUTO_TREASURY_SOURCE = "auto";
 const dinnerAttendanceTags = new Set(attendanceTagOptions.map((tag) => tag.id));
 const BIRTHDAY_SYMBOL_HTML = "&#127874;";
 const BIRTHDAY_SYMBOL_TEXT = String.fromCodePoint(0x1f382);
@@ -187,6 +188,7 @@ const elements = {
   treasuryMovementMessage: document.querySelector("#treasuryMovementMessage"),
   treasuryCashSummary: document.querySelector("#treasuryCashSummary"),
   treasuryMovementsList: document.querySelector("#treasuryMovementsList"),
+  autoTreasuryMovementsButton: document.querySelector("#autoTreasuryMovementsButton"),
   applyCashBalanceButton: document.querySelector("#applyCashBalanceButton"),
   paymentForm: document.querySelector("#paymentForm"),
   treasuryForm: document.querySelector("#treasuryForm"),
@@ -771,6 +773,10 @@ elements.treasuryMovementFee.addEventListener("change", () => {
 elements.treasuryMovementForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await saveTreasuryMovementFromForm();
+});
+
+elements.autoTreasuryMovementsButton.addEventListener("click", async () => {
+  await syncAutomaticTreasuryMovementsForSelectedFee();
 });
 
 elements.applyCashBalanceButton.addEventListener("click", async () => {
@@ -5584,13 +5590,19 @@ function renderTreasuryCashControl() {
     elements.treasuryCashSummary.innerHTML =
       '<p class="empty-state">Carga una cuota para controlar caja mensual.</p>';
     elements.treasuryMovementsList.innerHTML = "";
+    elements.autoTreasuryMovementsButton.disabled = true;
     elements.applyCashBalanceButton.disabled = true;
     return;
   }
 
   const summary = getTreasuryCashSummary(fee);
+  const missingAutomaticMovements = getMissingAutomaticTreasuryMovements(fee);
   const nextFee = getNextFeeForFee(fee);
   const nextAdjustment = -summary.balance;
+  elements.autoTreasuryMovementsButton.disabled = missingAutomaticMovements.length === 0;
+  elements.autoTreasuryMovementsButton.textContent = missingAutomaticMovements.length
+    ? `Actualizar automatico (${missingAutomaticMovements.length})`
+    : "Automatico al dia";
   elements.applyCashBalanceButton.disabled = !nextFee;
   elements.applyCashBalanceButton.textContent = nextFee
     ? `Aplicar saldo a ${formatMonthLabel(nextFee.month)}`
@@ -5611,7 +5623,7 @@ function renderTreasuryCashControl() {
       <article class="metric-card compact-stat">
         <span>Egresos registrados</span>
         <strong>${formatMoney(summary.expenses)}</strong>
-        <p>Entrenamientos, domingos u otros pagos.</p>
+        <p>${missingAutomaticMovements.length ? `${missingAutomaticMovements.length} automaticos pendientes.` : "Automatico al dia."}</p>
       </article>
       <article class="metric-card compact-stat">
         <span>Saldo de caja</span>
@@ -5650,7 +5662,7 @@ function renderTreasuryMovementsList(movements) {
                 <tr>
                   <td>${escapeHtml(movement.occurredAt || "-")}</td>
                   <td>${escapeHtml(formatTreasuryMovementCategory(movement.category))}</td>
-                  <td>${escapeHtml(movement.description || "-")}</td>
+                  <td>${escapeHtml(movement.description || "-")} <span class="muted-detail">(${movement.source === AUTO_TREASURY_SOURCE ? "auto" : "manual"})</span></td>
                   <td class="debt-value">${formatMoney(Number(movement.amount) || 0)}</td>
                   <td>
                     <button class="secondary-button danger-button" type="button" data-delete-treasury-movement="${movement.id}">
@@ -5698,6 +5710,7 @@ async function saveTreasuryMovementFromForm() {
     amount,
     occurredAt,
     description,
+    source: "manual",
     active: true,
     createdAt: now,
     updatedAt: now,
@@ -5718,6 +5731,37 @@ async function saveTreasuryMovementFromForm() {
     "Egreso registrado. Ya descuenta del saldo de caja del mes.";
 }
 
+async function syncAutomaticTreasuryMovementsForSelectedFee() {
+  if (!requireAdmin()) return;
+
+  const fee = state.fees.find((item) => item.id === elements.treasuryMovementFee.value);
+  if (!fee) {
+    elements.treasuryMovementMessage.textContent = "Selecciona una cuota para actualizar caja.";
+    return;
+  }
+
+  const movements = getMissingAutomaticTreasuryMovements(fee);
+  if (!movements.length) {
+    elements.treasuryMovementMessage.textContent =
+      `La caja automatica de ${formatMonthLabel(fee.month)} ya esta al dia.`;
+    renderTreasuryCashControl();
+    return;
+  }
+
+  const previousMovements = state.treasuryMovements ?? [];
+  state.treasuryMovements = [...movements, ...previousMovements];
+  const saved = await persistTreasuryMovements(
+    movements,
+    previousMovements,
+    `Caja automatica actualizada (${movements.length} egresos)`,
+    "Error al actualizar caja automatica",
+  );
+  if (!saved) return;
+
+  elements.treasuryMovementMessage.textContent =
+    `Se registraron ${movements.length} egresos automaticos de ${formatMonthLabel(fee.month)}.`;
+}
+
 async function persistTreasuryMovement(movement, previousMovements, successMessage, errorMessage) {
   if (isSupabaseEnabled() && supabaseHydrated) {
     supabaseSyncInProgress = true;
@@ -5727,6 +5771,42 @@ async function persistTreasuryMovement(movement, previousMovements, successMessa
     try {
       const mutationResult = await adminUpsertTreasuryMovement(adminConfig.pin, movement);
       state.syncStatus = getPaymentMutationMessage(successMessage, mutationResult);
+      state.treasuryMovementSyncReady = true;
+    } catch (error) {
+      state.treasuryMovements = previousMovements;
+      state.syncStatus = `${errorMessage}: ${error.message}`;
+      elements.treasuryMovementMessage.textContent = state.syncStatus;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return false;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = `${successMessage} localmente`;
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+  return true;
+}
+
+async function persistTreasuryMovements(movements, previousMovements, successMessage, errorMessage) {
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = `${successMessage}...`;
+    renderRoleVisibility();
+
+    try {
+      const mutationResults = [];
+      for (const movement of movements) {
+        mutationResults.push(await adminUpsertTreasuryMovement(adminConfig.pin, movement));
+      }
+      state.syncStatus = getPaymentMutationMessage(
+        successMessage,
+        getCombinedMutationResult(mutationResults),
+      );
       state.treasuryMovementSyncReady = true;
     } catch (error) {
       state.treasuryMovements = previousMovements;
@@ -5954,6 +6034,130 @@ function getActiveTreasuryMovements(feeId = null) {
     .filter((movement) => !feeId || movement.feeId === feeId)
     .slice()
     .sort((a, b) => `${b.occurredAt ?? ""}${b.createdAt ?? ""}`.localeCompare(`${a.occurredAt ?? ""}${a.createdAt ?? ""}`));
+}
+
+function getMissingAutomaticTreasuryMovements(fee, cutoffDate = new Date()) {
+  return getAutomaticTreasuryMovementsForFee(fee, cutoffDate).filter(
+    (movement) => !hasExistingTreasuryMovementForAutomatic(movement),
+  );
+}
+
+function getAutomaticTreasuryMovementsForFee(fee, cutoffDate = new Date()) {
+  if (!fee?.month) return [];
+
+  const now = new Date(cutoffDate);
+  now.setHours(23, 59, 59, 999);
+  const trainingCost = Number(fee.trainingSessionCost) || 0;
+  const sundayCost = Number(fee.sundayCost) || 0;
+  const createdAt = new Date().toISOString();
+  const movements = [];
+
+  if (trainingCost > 0) {
+    getDatesForWeekdaysInMonth(fee.month, [2, 4]).forEach((trainingDate) => {
+      const occurredAt = formatDateInputValue(trainingDate);
+      if (trainingDate > now) return;
+
+      movements.push(createAutomaticTreasuryMovement({
+        fee,
+        category: "entrenamiento",
+        amount: trainingCost,
+        eventDate: occurredAt,
+        occurredAt,
+        description: `Auto: entrenamiento ${formatShortDate(trainingDate)}`,
+        createdAt,
+      }));
+    });
+  }
+
+  if (sundayCost > 0) {
+    getDatesForWeekdaysInMonth(fee.month, [0]).forEach((sundayDate) => {
+      const paymentDate = addDays(sundayDate, 1);
+      if (paymentDate > now) return;
+
+      movements.push(createAutomaticTreasuryMovement({
+        fee,
+        category: "domingo",
+        amount: sundayCost,
+        eventDate: formatDateInputValue(sundayDate),
+        occurredAt: formatDateInputValue(paymentDate),
+        description: `Auto: domingo ${formatShortDate(sundayDate)} pagado ${formatShortDate(paymentDate)}`,
+        createdAt,
+      }));
+    });
+  }
+
+  return movements.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+}
+
+function createAutomaticTreasuryMovement({
+  fee,
+  category,
+  amount,
+  eventDate,
+  occurredAt,
+  description,
+  createdAt,
+}) {
+  return {
+    id: getAutomaticTreasuryMovementId(fee.id, category, eventDate),
+    feeId: fee.id,
+    month: fee.month,
+    movementType: "egreso",
+    category,
+    amount,
+    occurredAt,
+    description,
+    source: AUTO_TREASURY_SOURCE,
+    active: true,
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
+function getAutomaticTreasuryMovementId(feeId, category, eventDate) {
+  return `treasury-auto-${feeId}-${category}-${eventDate}`;
+}
+
+function hasExistingTreasuryMovementForAutomatic(automaticMovement) {
+  return (state.treasuryMovements ?? []).some((movement) => {
+    if (movement.id === automaticMovement.id) return true;
+    if (movement.active === false) return false;
+
+    return (
+      movement.feeId === automaticMovement.feeId &&
+      movement.category === automaticMovement.category &&
+      movement.occurredAt === automaticMovement.occurredAt &&
+      Number(movement.amount) === Number(automaticMovement.amount)
+    );
+  });
+}
+
+function getDatesForWeekdaysInMonth(month, weekdays) {
+  const [year, monthNumber] = String(month).split("-").map(Number);
+  if (!year || !monthNumber) return [];
+
+  const requestedWeekdays = new Set(weekdays);
+  const date = new Date(year, monthNumber - 1, 1);
+  const dates = [];
+
+  while (date.getMonth() === monthNumber - 1) {
+    if (requestedWeekdays.has(date.getDay())) {
+      dates.push(new Date(date));
+    }
+    date.setDate(date.getDate() + 1);
+  }
+
+  return dates;
+}
+
+function addDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function formatShortDate(date) {
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function getNextFeeForFee(fee) {

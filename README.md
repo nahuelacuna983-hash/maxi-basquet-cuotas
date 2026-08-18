@@ -31,7 +31,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Solo pagos aprobados descuentan deuda.
 - Proteccion para no duplicar pagos por jugador y cuota.
 - Ajustes de cuota por jugador/mes para viajes, lesion, permiso o acuerdos puntuales.
-- Caja mensual admin para registrar egresos reales, ver saldo de caja y trasladarlo a la cuota siguiente.
+- Caja mensual admin para registrar egresos reales, generar historico automatico de entrenamientos/domingos, ver saldo de caja y trasladarlo a la cuota siguiente.
 - Borrado logico de pagos con `deleted_at`.
 - Modo prueba de pago configurable.
 - Metodo de pago real por alias Mercado Pago `maxisuda`.
@@ -99,6 +99,7 @@ Permite:
 - exportar/importar backup JSON
 - editar configuracion de tesoreria
 - registrar egresos de caja por entrenamiento, domingo u otros gastos
+- generar egresos automaticos vencidos del mes seleccionado sin duplicarlos
 - aplicar saldo de caja al mes siguiente como ajuste automatico editable
 
 ## Supabase

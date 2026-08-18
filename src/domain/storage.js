@@ -118,6 +118,7 @@ function normalizeTreasuryMovement(movement) {
     amount: Math.max(Number(movement.amount) || 0, 0),
     occurredAt: normalizeDate(movement.occurredAt),
     description: String(movement.description ?? ""),
+    source: String(movement.source ?? "manual"),
     active: movement.active === undefined ? true : Boolean(movement.active),
     createdAt: movement.createdAt,
     updatedAt: movement.updatedAt,

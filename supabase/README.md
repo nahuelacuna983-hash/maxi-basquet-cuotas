@@ -14,6 +14,7 @@ supabase/player-billing-start-v1.sql
 supabase/player-birthdays-v1.sql
 supabase/player-documents-v1.sql
 supabase/treasury-cash-v1.sql
+supabase/treasury-cash-auto-v1.sql
 ```
 
 ## Tablas principales
@@ -40,6 +41,7 @@ Estado:
 - `training_votes`: lectura permitida; escritura de votos por RPC con codigo de jugador y ventana horaria.
 - `player_documents`: lectura solo por RPC admin; sin policies directas de lectura/escritura.
 - `treasury_movements`: lectura y escritura solo por RPC admin.
+- `treasury_movements.source`: permite distinguir egresos `manual` y `auto`.
 - `treasury_config`: lectura permitida; escritura admin por RPC.
 
 ## RPC usadas
@@ -117,6 +119,7 @@ Estado:
 - `amount`: monto pagado.
 - `occurred_at`: fecha del gasto.
 - `description`: detalle libre.
+- `source`: `manual` o `auto`. Los automaticos se generan desde la cuota del mes sin duplicar fecha/concepto/monto.
 - `active`: borrado logico.
 
 La carga inicial de links de Drive no se versiona en GitHub. Usar el archivo local privado:
