@@ -775,7 +775,9 @@ elements.treasuryMovementForm.addEventListener("submit", async (event) => {
   await saveTreasuryMovementFromForm();
 });
 
-elements.autoTreasuryMovementsButton.addEventListener("click", async () => {
+elements.autoTreasuryMovementsButton.addEventListener("click", async (event) => {
+  event.preventDefault();
+  elements.treasuryMovementMessage.textContent = "Revisando caja automatica...";
   await syncAutomaticTreasuryMovementsForSelectedFee();
 });
 
@@ -5599,10 +5601,10 @@ function renderTreasuryCashControl() {
   const missingAutomaticMovements = getMissingAutomaticTreasuryMovements(fee);
   const nextFee = getNextFeeForFee(fee);
   const nextAdjustment = -summary.balance;
-  elements.autoTreasuryMovementsButton.disabled = missingAutomaticMovements.length === 0;
+  elements.autoTreasuryMovementsButton.disabled = false;
   elements.autoTreasuryMovementsButton.textContent = missingAutomaticMovements.length
     ? `Actualizar automatico (${missingAutomaticMovements.length})`
-    : "Automatico al dia";
+    : "Revisar automatico";
   elements.applyCashBalanceButton.disabled = !nextFee;
   elements.applyCashBalanceButton.textContent = nextFee
     ? `Aplicar saldo a ${formatMonthLabel(nextFee.month)}`
@@ -5743,7 +5745,7 @@ async function syncAutomaticTreasuryMovementsForSelectedFee() {
   const movements = getMissingAutomaticTreasuryMovements(fee);
   if (!movements.length) {
     elements.treasuryMovementMessage.textContent =
-      `La caja automatica de ${formatMonthLabel(fee.month)} ya esta al dia.`;
+      `Caja automatica revisada: no hay egresos vencidos pendientes para ${formatMonthLabel(fee.month)}.`;
     renderTreasuryCashControl();
     return;
   }
