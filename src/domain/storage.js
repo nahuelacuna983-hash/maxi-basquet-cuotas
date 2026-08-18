@@ -11,6 +11,7 @@ export function createPersistedState(source) {
     trainingVotes: source.trainingVotes,
     playerDocuments: source.playerDocuments,
     feeAdjustments: source.feeAdjustments,
+    treasuryMovements: source.treasuryMovements,
     responsibilityAdjustments: source.responsibilityAdjustments,
     responsibilityConfig: source.responsibilityConfig,
     attendanceConfig: source.attendanceConfig,
@@ -68,6 +69,9 @@ export function normalizePersistedState(parsedState, fallbackState) {
     feeAdjustments: Array.isArray(parsedState.feeAdjustments)
       ? parsedState.feeAdjustments.map(normalizeFeeAdjustment)
       : fallbackState.feeAdjustments ?? [],
+    treasuryMovements: Array.isArray(parsedState.treasuryMovements)
+      ? parsedState.treasuryMovements.map(normalizeTreasuryMovement)
+      : fallbackState.treasuryMovements ?? [],
     responsibilityAdjustments: Array.isArray(parsedState.responsibilityAdjustments)
       ? parsedState.responsibilityAdjustments
       : fallbackState.responsibilityAdjustments,
@@ -101,6 +105,22 @@ function normalizeFeeAdjustment(adjustment) {
     active: adjustment.active === undefined ? true : Boolean(adjustment.active),
     createdAt: adjustment.createdAt,
     updatedAt: adjustment.updatedAt,
+  };
+}
+
+function normalizeTreasuryMovement(movement) {
+  return {
+    id: String(movement.id ?? ""),
+    feeId: String(movement.feeId ?? ""),
+    month: normalizeBillingStartMonth(movement.month),
+    movementType: String(movement.movementType ?? "egreso"),
+    category: String(movement.category ?? "otro"),
+    amount: Math.max(Number(movement.amount) || 0, 0),
+    occurredAt: normalizeDate(movement.occurredAt),
+    description: String(movement.description ?? ""),
+    active: movement.active === undefined ? true : Boolean(movement.active),
+    createdAt: movement.createdAt,
+    updatedAt: movement.updatedAt,
   };
 }
 
@@ -172,6 +192,10 @@ function normalizeBillingStartMonth(value) {
 }
 
 function normalizeBirthDate(value) {
+  return normalizeDate(value);
+}
+
+function normalizeDate(value) {
   const date = String(value ?? "").trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
 }
@@ -196,6 +220,7 @@ function dedupeFeesByMonth(fees) {
       sundayBillingBase: fee.sundayBillingBase ?? existingFee.sundayBillingBase,
       fixedTrainingOnlyAmount: fee.fixedTrainingOnlyAmount ?? existingFee.fixedTrainingOnlyAmount,
       fixedCompetitorAmount: fee.fixedCompetitorAmount ?? existingFee.fixedCompetitorAmount,
+      cashAdjustmentAmount: fee.cashAdjustmentAmount ?? existingFee.cashAdjustmentAmount,
       interestPercent: fee.interestPercent ?? existingFee.interestPercent,
       dueDay: fee.dueDay ?? existingFee.dueDay,
     });

@@ -46,6 +46,7 @@ export const initialFees = [
     month: "2026-04",
     trainingSessionCost: 55000,
     sundayCost: 90000,
+    cashAdjustmentAmount: 0,
     interestPercent: 5,
     dueDay: 10,
   },
@@ -54,6 +55,7 @@ export const initialFees = [
     month: "2026-05",
     trainingSessionCost: 55000,
     sundayCost: 90000,
+    cashAdjustmentAmount: 0,
     interestPercent: 5,
     dueDay: 10,
   },
@@ -125,6 +127,8 @@ export const initialResponsibilityAdjustments = [];
 
 export const initialFeeAdjustments = [];
 
+export const initialTreasuryMovements = [];
+
 export const initialPlayerDocuments = [];
 
 export const adminConfig = {
@@ -141,6 +145,7 @@ export function createInitialAppState() {
     trainingVotes: initialTrainingVotes.map((vote) => ({ ...vote })),
     playerDocuments: initialPlayerDocuments.map((document) => ({ ...document })),
     feeAdjustments: initialFeeAdjustments.map((adjustment) => ({ ...adjustment })),
+    treasuryMovements: initialTreasuryMovements.map((movement) => ({ ...movement })),
     responsibilityAdjustments: initialResponsibilityAdjustments.map((adjustment) => ({
       ...adjustment,
     })),

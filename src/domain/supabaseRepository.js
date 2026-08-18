@@ -17,6 +17,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     votesResult,
     documentsResult,
     feeAdjustmentsResult,
+    treasuryMovementsResult,
   ] = await Promise.all([
     loadPlayers(client, options),
     client.from("fees").select("*").order("month", { ascending: true }),
@@ -30,6 +31,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     loadTrainingVotes(client),
     loadPlayerDocuments(client, options),
     loadFeeAdjustments(client),
+    loadTreasuryMovements(client, options),
   ]);
 
   assertSupabaseResult(playersResult, "players");
@@ -40,6 +42,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
   assertSupabaseResult(votesResult, "training_votes");
   assertSupabaseResult(documentsResult, "player_documents");
   assertSupabaseResult(feeAdjustmentsResult, "fee_adjustments");
+  assertSupabaseResult(treasuryMovementsResult, "treasury_movements");
 
   const players = playersResult.data.map(fromSupabasePlayer);
   const fees = feesResult.data.map(fromSupabaseFee);
@@ -50,6 +53,9 @@ export async function loadSupabaseState(fallbackState, options = {}) {
   const trainingVotes = votesResult.data.map(fromSupabaseTrainingVote);
   const playerDocuments = documentsResult.data.map(fromSupabasePlayerDocument);
   const feeAdjustments = feeAdjustmentsResult.data.map(fromSupabaseFeeAdjustment);
+  const treasuryMovements = treasuryMovementsResult.disabled
+    ? fallbackState.treasuryMovements ?? []
+    : treasuryMovementsResult.data.map(fromSupabaseTreasuryMovement);
   const treasuryConfig = treasuryResult.data
     ? fromSupabaseTreasuryConfig(treasuryResult.data)
     : fallbackState.treasuryConfig;
@@ -63,10 +69,12 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     trainingVotes,
     playerDocuments,
     feeAdjustments,
+    treasuryMovements,
     attendanceSyncReady: !attendancesResult.disabled,
     voteSyncReady: !votesResult.disabled,
     documentSyncReady: !documentsResult.disabled,
     feeAdjustmentSyncReady: !feeAdjustmentsResult.disabled,
+    treasuryMovementSyncReady: !treasuryMovementsResult.disabled,
     treasuryConfig,
   };
 }
@@ -213,6 +221,52 @@ export async function adminUpdateTreasuryConfig(adminPin, treasuryConfig) {
     .upsert(payload, { onConflict: "id" });
 
   assertSupabaseResult(fallbackResult, "treasury_config");
+  return logMutationMode("fallback");
+}
+
+export async function adminUpsertTreasuryMovement(adminPin, movement) {
+  const client = await getSupabaseClient();
+  const payload = toSupabaseTreasuryMovement(movement);
+  const rpcResult = await client.rpc("admin_upsert_treasury_movement", {
+    p_admin_pin: adminPin,
+    p_movement: payload,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_upsert_treasury_movement");
+  }
+
+  const fallbackResult = await client
+    .from("treasury_movements")
+    .upsert(payload, { onConflict: "id" });
+  assertSupabaseResult(fallbackResult, "treasury_movements");
+  return logMutationMode("fallback");
+}
+
+export async function adminDeleteTreasuryMovement(adminPin, movementId) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("admin_delete_treasury_movement", {
+    p_admin_pin: adminPin,
+    p_movement_id: movementId,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_delete_treasury_movement");
+  }
+
+  const fallbackResult = await client
+    .from("treasury_movements")
+    .update({ active: false, updated_at: new Date().toISOString() })
+    .eq("id", movementId);
+  assertSupabaseResult(fallbackResult, "treasury_movements");
   return logMutationMode("fallback");
 }
 
@@ -492,6 +546,22 @@ async function loadFeeAdjustments(client) {
   return result;
 }
 
+async function loadTreasuryMovements(client, options = {}) {
+  if (!options.adminPin) {
+    return { data: [], error: null, disabled: true };
+  }
+
+  const rpcResult = await client.rpc("admin_list_treasury_movements", {
+    p_admin_pin: options.adminPin,
+  });
+
+  if (rpcResult.error && isRpcUnavailableError(rpcResult.error)) {
+    return { data: [], error: null, disabled: true };
+  }
+
+  return rpcResult;
+}
+
 function assertSupabaseResult(result, tableName) {
   if (result.error) {
     throw new Error(`${tableName}: ${result.error.message}`);
@@ -604,8 +674,25 @@ function fromSupabaseFee(row) {
       row.fixed_competitor_amount === null || row.fixed_competitor_amount === undefined
         ? null
         : Number(row.fixed_competitor_amount),
+    cashAdjustmentAmount: Number(row.cash_adjustment_amount) || 0,
     interestPercent: Number(row.interest_percent) || 0,
     dueDay: Number(row.due_day) || 10,
+  };
+}
+
+function fromSupabaseTreasuryMovement(row) {
+  return {
+    id: row.id,
+    feeId: row.fee_id,
+    month: row.month,
+    movementType: row.movement_type ?? "egreso",
+    category: row.category ?? "otro",
+    amount: Number(row.amount) || 0,
+    occurredAt: row.occurred_at,
+    description: row.description ?? "",
+    active: row.active !== false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -634,6 +721,7 @@ function toSupabaseFee(fee) {
     sunday_billing_base: fee.sundayBillingBase ?? null,
     fixed_training_only_amount: fee.fixedTrainingOnlyAmount ?? null,
     fixed_competitor_amount: fee.fixedCompetitorAmount ?? null,
+    cash_adjustment_amount: Number(fee.cashAdjustmentAmount) || 0,
     interest_percent: Number(fee.interestPercent) || 0,
     due_day: Number(fee.dueDay) || 10,
     updated_at: new Date().toISOString(),
@@ -652,6 +740,22 @@ function toSupabaseFeeAdjustment(adjustment) {
     active: adjustment.active !== false,
     created_at: adjustment.createdAt ?? new Date().toISOString(),
     updated_at: adjustment.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+function toSupabaseTreasuryMovement(movement) {
+  return {
+    id: movement.id,
+    fee_id: movement.feeId,
+    month: movement.month,
+    movement_type: movement.movementType ?? "egreso",
+    category: movement.category ?? "otro",
+    amount: Number(movement.amount) || 0,
+    occurred_at: movement.occurredAt,
+    description: movement.description ?? "",
+    active: movement.active !== false,
+    created_at: movement.createdAt ?? new Date().toISOString(),
+    updated_at: movement.updatedAt ?? new Date().toISOString(),
   };
 }
 

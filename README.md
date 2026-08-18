@@ -31,6 +31,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Solo pagos aprobados descuentan deuda.
 - Proteccion para no duplicar pagos por jugador y cuota.
 - Ajustes de cuota por jugador/mes para viajes, lesion, permiso o acuerdos puntuales.
+- Caja mensual admin para registrar egresos reales, ver saldo de caja y trasladarlo a la cuota siguiente.
 - Borrado logico de pagos con `deleted_at`.
 - Modo prueba de pago configurable.
 - Metodo de pago real por alias Mercado Pago `maxisuda`.
@@ -97,6 +98,8 @@ Permite:
 - anotar o corregir una respuesta de entrenamiento por un jugador que no pudo usar la app
 - exportar/importar backup JSON
 - editar configuracion de tesoreria
+- registrar egresos de caja por entrenamiento, domingo u otros gastos
+- aplicar saldo de caja al mes siguiente como ajuste automatico editable
 
 ## Supabase
 
@@ -117,6 +120,7 @@ Tablas principales:
 - `players`
 - `fees`
 - `fee_adjustments`
+- `treasury_movements`
 - `payments`
 - `attendances`
 - `training_votes`
@@ -132,6 +136,9 @@ Funciones RPC usadas por la app:
 - `admin_upsert_fee`
 - `admin_upsert_fee_adjustment`
 - `admin_delete_fee_adjustment`
+- `admin_list_treasury_movements`
+- `admin_upsert_treasury_movement`
+- `admin_delete_treasury_movement`
 - `submit_payment`
 - `submit_training_attendance`
 - `submit_training_vote`
@@ -179,6 +186,12 @@ SQL adicional para ajustes individuales de cuota:
 supabase/fee-adjustments-v1.sql
 ```
 
+SQL adicional para caja mensual:
+
+```txt
+supabase/treasury-cash-v1.sql
+```
+
 ## Seguridad MVP
 
 Estado actual:
@@ -187,6 +200,7 @@ Estado actual:
 - `treasury_config`: lectura permitida; escritura directa bloqueada; cambios por RPC admin.
 - `fees`: lectura permitida; escritura directa bloqueada; cambios por RPC admin.
 - `fee_adjustments`: lectura de ajustes activos; escritura admin por RPC.
+- `treasury_movements`: lectura y escritura solo por RPC admin.
 - `players`: lectura directa bloqueada; listado publico por RPC sin `access_code`; validacion de codigo por RPC; cambios admin por RPC.
 - `player_documents`: lectura solo por RPC admin; no se expone a la vista jugador.
 
@@ -238,6 +252,7 @@ Cada cuota puede definir:
 - base de cobro domingos
 - monto fijo historico para solo entrenamientos
 - monto fijo historico para competidor
+- ajuste de caja del mes
 - porcentaje de interes desde el dia 11
 - dia de vencimiento
 
@@ -247,9 +262,13 @@ Si una cuota tiene montos fijos historicos, esos montos reemplazan la formula no
 
 Los ajustes individuales no modifican la formula general. Solo cambian el monto final esperado de un jugador para una cuota puntual. Ejemplo: cuota base `$60.000`, ajuste por viaje con monto final `$30.000`; la deuda y el interes se calculan sobre esos `$30.000`.
 
+El ajuste de caja modifica la formula general del mes. Positivo suma al total a dividir entre jugadores; negativo descuenta porque representa saldo a favor arrastrado.
+
 Las cuotas ya cargadas se corrigen desde la lista de `Cuotas`: no hace falta duplicar el mes para cambiar domingo, base, interes o vencimiento.
 
 Desde admin se puede crear la cuota del mes siguiente a partir de la ultima cuota cargada. Esa cuota queda como mes real para registrar pagos anticipados. No copia montos fijos historicos.
+
+La seccion `Caja mensual` permite registrar egresos reales, como turnos de entrenamiento, domingos/partidos u otros gastos. La app calcula: arrastre inicial + cobrado aprobado - egresos. Ese saldo puede aplicarse a la cuota siguiente; si hay saldo a favor, descuenta, y si hay deficit, suma. El valor aplicado queda editable en la lista de cuotas como `Ajuste caja`.
 
 Los selectores de mes muestran si una cuota es `mes anterior`, `mes actual` o `cuota futura`. Al crear una cuota futura, los formularios de carga de pago quedan preseleccionados en ese nuevo mes para reducir errores al registrar pagos anticipados.
 

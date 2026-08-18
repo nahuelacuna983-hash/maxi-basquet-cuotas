@@ -490,6 +490,49 @@
             <div id="feeAdjustmentsList" class="fee-adjustments-list"></div>
           </section>
 
+          <section class="panel" data-admin-panel="cuotas">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">$</div>
+              <div>
+                <h2>Caja mensual</h2>
+                <p>Egresos reales y saldo para trasladar al mes siguiente</p>
+              </div>
+            </div>
+            <form class="form-grid" id="treasuryMovementForm">
+              <label>
+                Cuota
+                <select id="treasuryMovementFee" required></select>
+              </label>
+              <label>
+                Fecha
+                <input id="treasuryMovementDate" type="date" required />
+              </label>
+              <label>
+                Concepto
+                <select id="treasuryMovementCategory">
+                  <option value="entrenamiento">Entrenamiento</option>
+                  <option value="domingo">Domingo / partido</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </label>
+              <label>
+                Monto egreso
+                <input id="treasuryMovementAmount" type="number" min="1" required />
+              </label>
+              <label class="wide-field">
+                Detalle
+                <input id="treasuryMovementDescription" placeholder="Ej: turno 19/08, cancha domingo, pago arbitros..." />
+              </label>
+              <button class="primary-button" type="submit">Registrar egreso</button>
+              <button class="secondary-button wide-field" id="applyCashBalanceButton" type="button">
+                Aplicar saldo al mes siguiente
+              </button>
+              <p class="form-message wide-field" id="treasuryMovementMessage"></p>
+            </form>
+            <div id="treasuryCashSummary" class="treasury-cash-summary"></div>
+            <div id="treasuryMovementsList" class="fee-adjustments-list"></div>
+          </section>
+
           <section class="panel" data-admin-panel="pagos">
             <div class="panel-heading">
               <div class="panel-icon" aria-hidden="true">$</div>
@@ -936,7 +979,7 @@
       </section>
     </main>
     <script src="./src/vendor/supabase.umd.js?v=local-supabase-1"></script>
-    <script type="module" src="./src/app.js?v=stats-informes-v1"></script>
-    <script type="module" src="./src/pwa.js?v=pwa-15"></script>
+    <script type="module" src="./src/app.js?v=treasury-cash-v1"></script>
+    <script type="module" src="./src/pwa.js?v=pwa-16"></script>
   </body>
 </html>

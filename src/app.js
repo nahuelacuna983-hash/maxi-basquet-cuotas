@@ -36,11 +36,13 @@ import {
 } from "./domain/storage.js";
 import {
   adminDeleteFeeAdjustment,
+  adminDeleteTreasuryMovement,
   adminReviewPayment,
   adminDeleteGuestAttendance,
   adminSoftDeletePayment,
   adminUpdateTreasuryConfig,
   adminUpsertFeeAdjustment,
+  adminUpsertTreasuryMovement,
   adminUpsertAttendance,
   adminUpsertFee,
   adminUpsertPlayer,
@@ -99,6 +101,7 @@ const state = {
   selectedPlayerPaymentFeeId: "",
   selectedFeeAdjustmentPlayerId: "",
   selectedFeeAdjustmentFeeId: "",
+  selectedTreasuryMovementFeeId: "",
   selectedSelfServicePlayerId:
     persistedAppState.players.find((player) => player.id === initialUrlPlayerId)?.id ??
     persistedAppState.players.find((player) => player.id === persistedSelfServiceSession?.playerId)?.id ??
@@ -129,6 +132,7 @@ const state = {
   voteSyncReady: !isSupabaseEnabled(),
   documentSyncReady: !isSupabaseEnabled(),
   feeAdjustmentSyncReady: !isSupabaseEnabled(),
+  treasuryMovementSyncReady: !isSupabaseEnabled(),
   syncStatus: isSupabaseEnabled() ? "Conectando con Supabase..." : "Modo local",
 };
 
@@ -174,6 +178,16 @@ const elements = {
   feeAdjustmentObservation: document.querySelector("#feeAdjustmentObservation"),
   feeAdjustmentMessage: document.querySelector("#feeAdjustmentMessage"),
   feeAdjustmentsList: document.querySelector("#feeAdjustmentsList"),
+  treasuryMovementForm: document.querySelector("#treasuryMovementForm"),
+  treasuryMovementFee: document.querySelector("#treasuryMovementFee"),
+  treasuryMovementDate: document.querySelector("#treasuryMovementDate"),
+  treasuryMovementCategory: document.querySelector("#treasuryMovementCategory"),
+  treasuryMovementAmount: document.querySelector("#treasuryMovementAmount"),
+  treasuryMovementDescription: document.querySelector("#treasuryMovementDescription"),
+  treasuryMovementMessage: document.querySelector("#treasuryMovementMessage"),
+  treasuryCashSummary: document.querySelector("#treasuryCashSummary"),
+  treasuryMovementsList: document.querySelector("#treasuryMovementsList"),
+  applyCashBalanceButton: document.querySelector("#applyCashBalanceButton"),
   paymentForm: document.querySelector("#paymentForm"),
   treasuryForm: document.querySelector("#treasuryForm"),
   treasuryAlias: document.querySelector("#treasuryAlias"),
@@ -296,6 +310,7 @@ const elements = {
 };
 
 elements.paymentDate.value = new Date().toISOString().slice(0, 10);
+elements.treasuryMovementDate.value = new Date().toISOString().slice(0, 10);
 elements.selfPaymentDate.value = new Date().toISOString().slice(0, 10);
 elements.playerPaymentDate.value = new Date().toISOString().slice(0, 10);
 document.querySelector("#playerBillingStartMonth").value = getCurrentMonth();
@@ -713,6 +728,7 @@ elements.feeForm.addEventListener("submit", async (event) => {
     sundayCost,
     trainingBillingBase,
     sundayBillingBase,
+    cashAdjustmentAmount: 0,
     interestPercent,
     dueDay: 10,
   };
@@ -745,6 +761,20 @@ elements.feeAdjustmentFee.addEventListener("change", () => {
 elements.feeAdjustmentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await saveFeeAdjustmentFromForm();
+});
+
+elements.treasuryMovementFee.addEventListener("change", () => {
+  state.selectedTreasuryMovementFeeId = elements.treasuryMovementFee.value;
+  renderTreasuryCashControl();
+});
+
+elements.treasuryMovementForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await saveTreasuryMovementFromForm();
+});
+
+elements.applyCashBalanceButton.addEventListener("click", async () => {
+  await applyCashBalanceToNextFee();
 });
 
 elements.paymentForm.addEventListener("submit", async (event) => {
@@ -1083,6 +1113,7 @@ function render() {
   renderPlayerPaymentOptions();
   renderFeeAdjustmentOptions();
   renderFeeAdjustments();
+  renderTreasuryCashControl();
   renderAttendanceOptions();
   renderAttendanceNoveltyOptions();
   renderPlayerPaymentSummary();
@@ -1738,6 +1769,7 @@ async function createNextFeeFromLatest() {
     month: nextMonth,
     fixedTrainingOnlyAmount: null,
     fixedCompetitorAmount: null,
+    cashAdjustmentAmount: 0,
   };
 
   const saved = await persistFee(
@@ -1788,6 +1820,9 @@ function renderFeesList() {
       const fixedAmountLabel = breakdown.usesFixedAmounts
         ? `<span>Monto fijo historico: solo entrenamientos ${formatMoney(breakdown.fixedTrainingOnlyAmount ?? 0)} / competidor ${formatMoney(breakdown.fixedCompetitorAmount ?? 0)}</span>`
         : "";
+      const cashAdjustmentLabel = Number(fee.cashAdjustmentAmount)
+        ? `<span>Ajuste de caja aplicado: ${formatMoney(Number(fee.cashAdjustmentAmount) || 0)}</span>`
+        : "";
       const activeAdjustments = getActiveFeeAdjustments().filter(
         (adjustment) => adjustment.feeId === fee.id,
       );
@@ -1807,8 +1842,10 @@ function renderFeesList() {
             <span>Jugadores reales: ${breakdown.totalPlayers} / Competidores reales: ${breakdown.competitors}</span>
             <span>Valores: entrenamiento ${formatMoney(breakdown.trainingSessionCost)} / domingo ${formatMoney(breakdown.sundayCost)} / interes ${Number(fee.interestPercent ?? 0)}%</span>
             <span>Base de cobro: ${breakdown.trainingBillingBase} entrenamientos / ${breakdown.sundayBillingBase} domingos</span>
+            <span>Total entrenamientos: ${formatMoney(breakdown.trainingTotal)} / ajustado por caja ${formatMoney(breakdown.adjustedTrainingTotal)}</span>
             <span>Solo entrenamientos ${formatMoney(expectedTrainingOnly)} / Competidor ${formatMoney(expectedCompetitor)}</span>
             ${fixedAmountLabel}
+            ${cashAdjustmentLabel}
             ${adjustmentLabel}
             <div class="fee-base-controls">
               <label>
@@ -1834,6 +1871,10 @@ function renderFeesList() {
               <label>
                 Fijo competidor
                 <input class="score-input" data-fee-base-field="fixedCompetitorAmount" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.fixedCompetitorAmount ?? ""}" placeholder="Formula" />
+              </label>
+              <label>
+                Ajuste caja
+                <input class="score-input" data-fee-base-field="cashAdjustmentAmount" data-fee-base-id="${fee.id}" type="number" step="1" value="${fee.cashAdjustmentAmount ?? 0}" />
               </label>
               <label>
                 Interes %
@@ -2789,6 +2830,7 @@ function renderAdminStats(debts) {
   ).length;
   const paymentPercent = getPaymentPercent(totalPaid, totalExpected);
   const statsMonthLabel = currentFee ? formatMonthLabel(currentFee.month) : "mes actual";
+  const cashSummary = currentFee ? getTreasuryCashSummary(currentFee) : null;
   const activePlayers = state.players.filter((player) => player.status === "activo").length;
   const completedTrainingDates = getCompletedTrainingDates();
   const completedTrainingDateSet = new Set(completedTrainingDates);
@@ -2826,6 +2868,11 @@ function renderAdminStats(debts) {
         <span>Deuda vencida</span>
         <strong>${formatMoney(totalDebt)}</strong>
         <p>${defaulterCount} morosos con cuota vencida.</p>
+      </article>
+      <article class="metric-card compact-stat">
+        <span>Caja ${statsMonthLabel}</span>
+        <strong>${formatMoney(cashSummary?.balance ?? 0)}</strong>
+        <p>${formatMoney(cashSummary?.expenses ?? 0)} egresos registrados.</p>
       </article>
       <article class="metric-card compact-stat">
         <span>Jugadores activos</span>
@@ -3243,6 +3290,7 @@ function buildGeneralResponsibilityReport(context) {
 
 function buildTeamGeneralReport(context) {
   const totals = getPaymentTotalsForReport(context.fees);
+  const cashTotals = getTreasuryCashTotalsForReport(context.fees);
   const pendingPayments = getScopedPayments(context.fees).filter((payment) => payment.status === "pendiente");
   const playersWithDebt = context.players
     .map((player) => ({ player, summary: getPlayerPaymentReport(player, context.fees) }))
@@ -3274,6 +3322,8 @@ function buildTeamGeneralReport(context) {
     `Morosos: ${playersWithDebt.length}`,
     `Pagos pendientes de validacion: ${pendingPayments.length}`,
     `Porcentaje de cobro: ${totals.percent}%`,
+    `Egresos de caja: ${formatMoney(cashTotals.expenses)}`,
+    `Saldo de caja: ${formatMoney(cashTotals.balance)}`,
     `Asistencia promedio: ${averageAttendance}`,
     "",
     "Jugadores mas comprometidos:",
@@ -3291,6 +3341,8 @@ function buildTeamGeneralReport(context) {
       ${renderReportMetric("Cobrado", formatMoney(totals.approved))}
       ${renderReportMetric("Pendiente", formatMoney(totals.debt))}
       ${renderReportMetric("Cobro", `${totals.percent}%`)}
+      ${renderReportMetric("Egresos caja", formatMoney(cashTotals.expenses))}
+      ${renderReportMetric("Saldo caja", formatMoney(cashTotals.balance))}
       ${renderReportMetric("Morosos", playersWithDebt.length)}
       ${renderReportMetric("Pagos pendientes", pendingPayments.length)}
       ${renderReportMetric("Asistencia promedio", averageAttendance)}
@@ -3325,6 +3377,7 @@ function buildChartsReport(context) {
 }
 
 function renderReportCharts(context, totals) {
+  const cashTotals = getTreasuryCashTotalsForReport(context.fees);
   const responsibilityRows = context.players
     .filter((player) => player.status === "activo")
     .map((player) => ({
@@ -3359,6 +3412,15 @@ function renderReportCharts(context, totals) {
         <span class="stack-debt" style="width:${debtPercent}%"></span>
       </div>
       <p class="muted-detail">Aprobado ${approvedPercent}% / Pendiente ${pendingPercent}% / Deuda ${debtPercent}%</p>
+    </div>
+    <div class="report-chart-card">
+      <h3>Caja del periodo</h3>
+      <div class="stats-grid">
+        ${renderReportMetric("Arrastre", formatMoney(cashTotals.startingBalance))}
+        ${renderReportMetric("Cobrado", formatMoney(cashTotals.collected))}
+        ${renderReportMetric("Egresos", formatMoney(cashTotals.expenses))}
+        ${renderReportMetric("Saldo", formatMoney(cashTotals.balance))}
+      </div>
     </div>
     <div class="report-chart-card">
       <h3>Ranking de responsabilidad</h3>
@@ -3669,6 +3731,20 @@ function getPaymentTotalsForReport(fees) {
   return { expected, approved, pending, debt, percent, totalFlow };
 }
 
+function getTreasuryCashTotalsForReport(fees) {
+  return fees.reduce(
+    (totals, fee) => {
+      const summary = getTreasuryCashSummary(fee);
+      totals.startingBalance += summary.startingBalance;
+      totals.collected += summary.collected;
+      totals.expenses += summary.expenses;
+      totals.balance += summary.balance;
+      return totals;
+    },
+    { startingBalance: 0, collected: 0, expenses: 0, balance: 0 },
+  );
+}
+
 function getPlayerAttendanceReport(player, completedTrainingDates) {
   const records = completedTrainingDates
     .map((date) => getAttendanceForPlayerDate(player.id, date))
@@ -3929,7 +4005,10 @@ function applyPersistentState(nextState) {
     hasPrivateAccessCode: Boolean(player.hasPrivateAccessCode),
     hasBirthDateColumn: Boolean(player.hasBirthDateColumn),
   }));
-  state.fees = nextState.fees.map((fee) => ({ ...fee }));
+  state.fees = nextState.fees.map((fee) => ({
+    ...fee,
+    cashAdjustmentAmount: Number(fee.cashAdjustmentAmount) || 0,
+  }));
   state.payments = nextState.payments.map((payment) => ({ ...payment }));
   state.attendances = nextState.attendances.map((attendance) => ({ ...attendance }));
   state.trainingVotes = (nextState.trainingVotes ?? []).map((vote) => ({ ...vote }));
@@ -3937,6 +4016,10 @@ function applyPersistentState(nextState) {
   state.feeAdjustments = (nextState.feeAdjustments ?? []).map((adjustment) => ({
     ...adjustment,
     active: adjustment.active !== false,
+  }));
+  state.treasuryMovements = (nextState.treasuryMovements ?? []).map((movement) => ({
+    ...movement,
+    active: movement.active !== false,
   }));
   state.responsibilityAdjustments = nextState.responsibilityAdjustments.map((adjustment) => ({
     ...adjustment,
@@ -3961,6 +4044,9 @@ function applyPersistentState(nextState) {
   }
   if (typeof nextState.feeAdjustmentSyncReady === "boolean") {
     state.feeAdjustmentSyncReady = nextState.feeAdjustmentSyncReady;
+  }
+  if (typeof nextState.treasuryMovementSyncReady === "boolean") {
+    state.treasuryMovementSyncReady = nextState.treasuryMovementSyncReady;
   }
   state.treasuryConfig = { ...nextState.treasuryConfig };
   state.playerFilter = previousPlayerFilter || "todos";
@@ -5475,6 +5561,270 @@ async function deleteFeeAdjustment(adjustmentId) {
   render();
 }
 
+function renderTreasuryCashControl() {
+  const sortedFees = getSortedFees();
+  const selectedFeeId = state.selectedTreasuryMovementFeeId || elements.treasuryMovementFee.value;
+  const fallbackFee = getStatsCurrentFee() ?? sortedFees[sortedFees.length - 1] ?? null;
+
+  elements.treasuryMovementFee.innerHTML = sortedFees
+    .map((fee) => `<option value="${fee.id}">${escapeHtml(formatFeeOptionLabel(fee))}</option>`)
+    .join("");
+
+  state.selectedTreasuryMovementFeeId =
+    sortedFees.find((fee) => fee.id === selectedFeeId)?.id ?? fallbackFee?.id ?? "";
+  elements.treasuryMovementFee.value = state.selectedTreasuryMovementFeeId;
+
+  if (!state.treasuryMovementSyncReady && isSupabaseEnabled()) {
+    elements.treasuryMovementMessage.textContent =
+      "Falta ejecutar el SQL de caja mensual en Supabase.";
+  }
+
+  const fee = state.fees.find((item) => item.id === state.selectedTreasuryMovementFeeId);
+  if (!fee) {
+    elements.treasuryCashSummary.innerHTML =
+      '<p class="empty-state">Carga una cuota para controlar caja mensual.</p>';
+    elements.treasuryMovementsList.innerHTML = "";
+    elements.applyCashBalanceButton.disabled = true;
+    return;
+  }
+
+  const summary = getTreasuryCashSummary(fee);
+  const nextFee = getNextFeeForFee(fee);
+  const nextAdjustment = -summary.balance;
+  elements.applyCashBalanceButton.disabled = !nextFee;
+  elements.applyCashBalanceButton.textContent = nextFee
+    ? `Aplicar saldo a ${formatMonthLabel(nextFee.month)}`
+    : "Crear cuota siguiente para aplicar saldo";
+
+  elements.treasuryCashSummary.innerHTML = `
+    <div class="stats-grid">
+      <article class="metric-card compact-stat">
+        <span>Arrastre inicial</span>
+        <strong>${formatMoney(summary.startingBalance)}</strong>
+        <p>Viene del ajuste de caja de esta cuota.</p>
+      </article>
+      <article class="metric-card compact-stat">
+        <span>Cobrado aprobado</span>
+        <strong>${formatMoney(summary.collected)}</strong>
+        <p>Pagos aprobados del mes seleccionado.</p>
+      </article>
+      <article class="metric-card compact-stat">
+        <span>Egresos registrados</span>
+        <strong>${formatMoney(summary.expenses)}</strong>
+        <p>Entrenamientos, domingos u otros pagos.</p>
+      </article>
+      <article class="metric-card compact-stat">
+        <span>Saldo de caja</span>
+        <strong class="${summary.balance < 0 ? "debt-value" : "paid-value"}">${formatMoney(summary.balance)}</strong>
+        <p>${nextFee ? `Sugerido para ${formatMonthLabel(nextFee.month)}: ${formatMoney(nextAdjustment)}` : "Crea la cuota siguiente para trasladarlo."}</p>
+      </article>
+    </div>
+  `;
+
+  renderTreasuryMovementsList(summary.movements);
+}
+
+function renderTreasuryMovementsList(movements) {
+  if (!movements.length) {
+    elements.treasuryMovementsList.innerHTML =
+      '<p class="empty-state">Todavia no hay egresos registrados para esta cuota.</p>';
+    return;
+  }
+
+  elements.treasuryMovementsList.innerHTML = `
+    <div class="table-wrap">
+      <table class="compact-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Concepto</th>
+            <th>Detalle</th>
+            <th>Monto</th>
+            <th>Admin</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${movements
+            .map(
+              (movement) => `
+                <tr>
+                  <td>${escapeHtml(movement.occurredAt || "-")}</td>
+                  <td>${escapeHtml(formatTreasuryMovementCategory(movement.category))}</td>
+                  <td>${escapeHtml(movement.description || "-")}</td>
+                  <td class="debt-value">${formatMoney(Number(movement.amount) || 0)}</td>
+                  <td>
+                    <button class="secondary-button danger-button" type="button" data-delete-treasury-movement="${movement.id}">
+                      Quitar
+                    </button>
+                  </td>
+                </tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.querySelectorAll("[data-delete-treasury-movement]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteTreasuryMovement(button.dataset.deleteTreasuryMovement);
+    });
+  });
+}
+
+async function saveTreasuryMovementFromForm() {
+  if (!requireAdmin()) return;
+
+  const fee = state.fees.find((item) => item.id === elements.treasuryMovementFee.value);
+  const amount = Number(elements.treasuryMovementAmount.value);
+  const occurredAt = elements.treasuryMovementDate.value;
+  const category = elements.treasuryMovementCategory.value;
+  const description = elements.treasuryMovementDescription.value.trim();
+
+  if (!fee || !occurredAt || !Number.isFinite(amount) || amount <= 0) {
+    elements.treasuryMovementMessage.textContent = "Revisa cuota, fecha y monto del egreso.";
+    return;
+  }
+
+  const previousMovements = state.treasuryMovements ?? [];
+  const now = new Date().toISOString();
+  const movement = {
+    id: createId("treasury-movement"),
+    feeId: fee.id,
+    month: fee.month,
+    movementType: "egreso",
+    category,
+    amount,
+    occurredAt,
+    description,
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  state.treasuryMovements = [movement, ...previousMovements];
+  const saved = await persistTreasuryMovement(
+    movement,
+    previousMovements,
+    "Egreso de caja guardado",
+    "Error al guardar egreso de caja",
+  );
+  if (!saved) return;
+
+  elements.treasuryMovementAmount.value = "";
+  elements.treasuryMovementDescription.value = "";
+  elements.treasuryMovementMessage.textContent =
+    "Egreso registrado. Ya descuenta del saldo de caja del mes.";
+}
+
+async function persistTreasuryMovement(movement, previousMovements, successMessage, errorMessage) {
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = `${successMessage}...`;
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminUpsertTreasuryMovement(adminConfig.pin, movement);
+      state.syncStatus = getPaymentMutationMessage(successMessage, mutationResult);
+      state.treasuryMovementSyncReady = true;
+    } catch (error) {
+      state.treasuryMovements = previousMovements;
+      state.syncStatus = `${errorMessage}: ${error.message}`;
+      elements.treasuryMovementMessage.textContent = state.syncStatus;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return false;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = `${successMessage} localmente`;
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+  return true;
+}
+
+async function deleteTreasuryMovement(movementId) {
+  if (!requireAdmin()) return;
+  if (!confirm("Quitar este egreso de caja? El saldo mensual se recalcula.")) {
+    return;
+  }
+
+  const previousMovements = state.treasuryMovements ?? [];
+  state.treasuryMovements = previousMovements.filter((movement) => movement.id !== movementId);
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Quitando egreso de caja...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminDeleteTreasuryMovement(adminConfig.pin, movementId);
+      state.syncStatus = getPaymentMutationMessage("Egreso de caja quitado", mutationResult);
+      state.treasuryMovementSyncReady = true;
+    } catch (error) {
+      state.treasuryMovements = previousMovements;
+      state.syncStatus = `Error al quitar egreso de caja: ${error.message}`;
+      elements.treasuryMovementMessage.textContent = state.syncStatus;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = "Egreso de caja quitado localmente";
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+}
+
+async function applyCashBalanceToNextFee() {
+  if (!requireAdmin()) return;
+
+  const fee = state.fees.find((item) => item.id === elements.treasuryMovementFee.value);
+  if (!fee) return;
+
+  const nextFee = getNextFeeForFee(fee);
+  if (!nextFee) {
+    elements.treasuryMovementMessage.textContent =
+      "Primero crea la cuota del mes siguiente para aplicar el saldo.";
+    return;
+  }
+
+  const summary = getTreasuryCashSummary(fee);
+  const nextAdjustment = -summary.balance;
+  const shouldApply = confirm(
+    `Saldo de ${formatMonthLabel(fee.month)}: ${formatMoney(summary.balance)}.\n` +
+      `Se cargara ajuste de caja ${formatMoney(nextAdjustment)} en ${formatMonthLabel(nextFee.month)}.\n` +
+      "Positivo suma a la cuota; negativo descuenta. Continuar?",
+  );
+  if (!shouldApply) return;
+
+  const previousFees = state.fees;
+  const updatedNextFee = {
+    ...nextFee,
+    cashAdjustmentAmount: nextAdjustment,
+  };
+
+  const saved = await persistFee(
+    updatedNextFee,
+    previousFees,
+    "Saldo aplicado a cuota siguiente",
+    "Error al aplicar saldo a cuota siguiente",
+  );
+  if (!saved) return;
+
+  elements.treasuryMovementMessage.textContent =
+    `Saldo aplicado en ${formatMonthLabel(nextFee.month)}. Podés editarlo en la lista de cuotas.`;
+}
+
 function updateResponsibilityAdjustment(playerId, field, value) {
   if (!requireAdmin()) return;
 
@@ -5564,12 +5914,62 @@ function normalizeEditableFeeValue(field, value) {
     return Number.isFinite(amount) && amount >= 0 ? amount : undefined;
   }
 
+  if (field === "cashAdjustmentAmount") {
+    if (!rawValue) return 0;
+    const amount = Number(rawValue);
+    return Number.isFinite(amount) ? amount : undefined;
+  }
+
   if (field === "dueDay") {
     const day = Number(rawValue);
     return Number.isInteger(day) && day >= 1 && day <= 31 ? day : undefined;
   }
 
   return undefined;
+}
+
+function getTreasuryCashSummary(fee) {
+  const movements = getActiveTreasuryMovements(fee.id);
+  const collected = state.players.reduce(
+    (sum, player) => sum + getPaidAmount(state.payments, player.id, fee.id),
+    0,
+  );
+  const expenses = movements.reduce((sum, movement) => sum + (Number(movement.amount) || 0), 0);
+  const startingBalance = -(Number(fee.cashAdjustmentAmount) || 0);
+  const balance = startingBalance + collected - expenses;
+
+  return {
+    fee,
+    collected,
+    expenses,
+    startingBalance,
+    balance,
+    movements,
+  };
+}
+
+function getActiveTreasuryMovements(feeId = null) {
+  return (state.treasuryMovements ?? [])
+    .filter((movement) => movement.active !== false)
+    .filter((movement) => !feeId || movement.feeId === feeId)
+    .slice()
+    .sort((a, b) => `${b.occurredAt ?? ""}${b.createdAt ?? ""}`.localeCompare(`${a.occurredAt ?? ""}${a.createdAt ?? ""}`));
+}
+
+function getNextFeeForFee(fee) {
+  if (!fee?.month) return null;
+  const nextMonth = getNextMonth(fee.month);
+  return state.fees.find((item) => item.month === nextMonth) ?? null;
+}
+
+function formatTreasuryMovementCategory(category) {
+  const labels = {
+    entrenamiento: "Entrenamiento",
+    domingo: "Domingo / partido",
+    otro: "Otro",
+  };
+
+  return labels[category] ?? category;
 }
 
 function formatPlayerType(type) {

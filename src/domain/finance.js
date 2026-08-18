@@ -99,9 +99,13 @@ export function getFeeBreakdown(fee, players) {
   const sundayBillingBase = Number(fee.sundayBillingBase) || competitors;
   const trainingSessionCost = Number(fee.trainingSessionCost ?? 55000);
   const sundayCost = Number(fee.sundayCost ?? 90000);
+  const cashAdjustmentAmount = Number(fee.cashAdjustmentAmount) || 0;
   const trainingTotal = trainingSessions * trainingSessionCost;
+  const adjustedTrainingTotal = Math.max(trainingTotal + cashAdjustmentAmount, 0);
   const sundayTotal = sundays * sundayCost;
-  const calculatedTrainingOnly = trainingBillingBase > 0 ? trainingTotal / trainingBillingBase : 0;
+  const calculatedTrainingOnly =
+    trainingBillingBase > 0 ? adjustedTrainingTotal / trainingBillingBase : 0;
+  const cashAdjustmentShare = trainingBillingBase > 0 ? cashAdjustmentAmount / trainingBillingBase : 0;
   const expectedSundayShare = sundayBillingBase > 0 ? sundayTotal / sundayBillingBase : 0;
   const calculatedCompetitor = calculatedTrainingOnly + expectedSundayShare;
   const fixedTrainingOnlyAmount = getPositiveAmountOrNull(fee.fixedTrainingOnlyAmount);
@@ -120,7 +124,10 @@ export function getFeeBreakdown(fee, players) {
     sundayBillingBase,
     trainingSessionCost,
     sundayCost,
+    cashAdjustmentAmount,
     trainingTotal,
+    adjustedTrainingTotal,
+    cashAdjustmentShare,
     sundayTotal,
     fixedTrainingOnlyAmount,
     fixedCompetitorAmount,
@@ -143,7 +150,9 @@ export function getBaseExpectedFeeForPlayer(player, fee, players) {
     player.type === "competidor"
       ? breakdown.fixedCompetitorAmount
       : breakdown.fixedTrainingOnlyAmount;
-  if (fixedExpected) return fixedExpected;
+  if (fixedExpected) {
+    return roundUpToBillingStep(Math.max(fixedExpected + breakdown.cashAdjustmentShare, 0));
+  }
 
   const expected =
     player.type === "competidor"

@@ -860,6 +860,10 @@ select:focus {
   margin-top: 14px;
 }
 
+.treasury-cash-summary {
+  margin-top: 14px;
+}
+
 .compact-table {
   min-width: 820px;
 }

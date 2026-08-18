@@ -13,6 +13,7 @@ supabase/training-votes-v1.sql
 supabase/player-billing-start-v1.sql
 supabase/player-birthdays-v1.sql
 supabase/player-documents-v1.sql
+supabase/treasury-cash-v1.sql
 ```
 
 ## Tablas principales
@@ -23,6 +24,7 @@ supabase/player-documents-v1.sql
 - `attendances`
 - `training_votes`
 - `player_documents`
+- `treasury_movements`
 - `treasury_config`
 
 ## Seguridad actual
@@ -37,6 +39,7 @@ Estado:
 - `attendances`: lectura de listados; respuestas de jugador por RPC con codigo; correcciones admin por RPC; eliminacion de invitados por RPC.
 - `training_votes`: lectura permitida; escritura de votos por RPC con codigo de jugador y ventana horaria.
 - `player_documents`: lectura solo por RPC admin; sin policies directas de lectura/escritura.
+- `treasury_movements`: lectura y escritura solo por RPC admin.
 - `treasury_config`: lectura permitida; escritura admin por RPC.
 
 ## RPC usadas
@@ -55,6 +58,9 @@ Estado:
 - `admin_delete_guest_attendance`
 - `submit_training_vote`
 - `admin_list_player_documents`
+- `admin_list_treasury_movements`
+- `admin_upsert_treasury_movement`
+- `admin_delete_treasury_movement`
 
 ## Campos relevantes
 
@@ -70,6 +76,7 @@ Estado:
 - `sunday_billing_base`: base de cobro para domingos.
 - `fixed_training_only_amount`: monto fijo historico para solo entrenamientos.
 - `fixed_competitor_amount`: monto fijo historico para competidores.
+- `cash_adjustment_amount`: ajuste de caja que suma o descuenta del total a dividir.
 
 `payments`:
 
@@ -101,6 +108,16 @@ Estado:
 - `document_type`: `estudios_medicos`, `djdr`, `pase`, `seguro` o `lista_buena_fe`.
 - `drive_url`: link del archivo en Drive.
 - `status`: `cargado`, `pendiente`, `revisar` o `vencido`.
+
+`treasury_movements`:
+
+- `fee_id`: cuota/mes al que pertenece el egreso.
+- `movement_type`: por ahora `egreso`.
+- `category`: `entrenamiento`, `domingo` u `otro`.
+- `amount`: monto pagado.
+- `occurred_at`: fecha del gasto.
+- `description`: detalle libre.
+- `active`: borrado logico.
 
 La carga inicial de links de Drive no se versiona en GitHub. Usar el archivo local privado:
 
