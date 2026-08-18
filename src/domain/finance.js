@@ -151,7 +151,7 @@ export function getBaseExpectedFeeForPlayer(player, fee, players) {
       ? breakdown.fixedCompetitorAmount
       : breakdown.fixedTrainingOnlyAmount;
   if (fixedExpected) {
-    return roundUpToBillingStep(Math.max(fixedExpected + breakdown.cashAdjustmentShare, 0));
+    return Math.max(Math.round(fixedExpected + breakdown.cashAdjustmentShare), 0);
   }
 
   const expected =
