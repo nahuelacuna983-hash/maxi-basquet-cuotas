@@ -1871,7 +1871,7 @@ function renderDefaulters(defaulters) {
           <tr>
                           <th>Jugador</th>
                           <th>Cuotas vencidas</th>
-                          <th>Saldo</th>
+                          <th>Saldo vencido</th>
                           <th>Interes</th>
                           <th>Interno</th>
                         </tr>
@@ -1883,7 +1883,7 @@ function renderDefaulters(defaulters) {
                 <tr>
                   <td><strong>${escapeHtml(getPlayerName(debt.player))}</strong></td>
                   <td>${debt.overdueFees.map((fee) => fee.month).join(", ")}</td>
-                  <td class="debt-value">${formatMoney(debt.balance)}</td>
+                  <td class="debt-value">${formatMoney(debt.overdueBalance ?? 0)}</td>
                   <td>${formatMoney(debt.interestTotal)}</td>
                   <td>${debt.player.internalEnabled ? "Habilitado" : "No habilitado"}</td>
                 </tr>

@@ -282,6 +282,8 @@ export function calculateDebts(players, fees, payments, feeAdjustments = [], tod
       }
     });
 
+    const overdueBalance = overdueFees.reduce((sum, fee) => sum + fee.balance, 0);
+
     return {
       player,
       totalDue,
@@ -291,7 +293,8 @@ export function calculateDebts(players, fees, payments, feeAdjustments = [], tod
         ? getExpectedFeeForPlayer(player, currentFee, players, feeAdjustments)
         : 0,
       balance: Math.max(totalDue + interestTotal - totalPaid, 0),
-      isDefaulter: overdueFees.length > 0,
+      overdueBalance,
+      isDefaulter: overdueBalance > 0,
       nextDueDate: nextFee ? getFeeDueDate(nextFee) : "-",
       lastPayment,
       overdueFees,
@@ -306,6 +309,6 @@ export function getDefaulters(players, fees, payments, feeAdjustments = [], toda
   }
 
   return calculateDebts(players, fees, payments, feeAdjustments, today).filter(
-    (debt) => debt.balance > 0 && debt.overdueFees.length > 0,
+    (debt) => debt.overdueBalance > 0,
   );
 }
