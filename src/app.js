@@ -2098,6 +2098,8 @@ function renderPaymentsHistory() {
 }
 
 function renderPlayerDocuments() {
+  renderDocumentRequirementFormOptions();
+
   if (!state.documentSyncReady) {
     elements.playerDocumentsPanel.innerHTML = `
       <p class="empty-state">
@@ -2107,8 +2109,6 @@ function renderPlayerDocuments() {
     `;
     return;
   }
-
-  renderDocumentRequirementFormOptions();
 
   const documents = (state.playerDocuments ?? []).slice().sort(comparePlayerDocuments);
   const pendingRows = getPendingPlayerDocumentRows(documents);
@@ -2152,6 +2152,22 @@ function renderDocumentRequirementFormOptions() {
   elements.documentRequirementType.value = playerDocumentTypes.some((item) => item.id === selectedType)
     ? selectedType
     : playerDocumentTypes[0]?.id ?? "";
+
+  const submitButton = elements.documentRequirementForm?.querySelector('button[type="submit"]');
+  const missingSql = isSupabaseEnabled() && supabaseHydrated && !state.documentSyncReady;
+
+  if (submitButton) {
+    submitButton.disabled = missingSql;
+  }
+
+  if (missingSql && elements.documentRequirementMessage) {
+    elements.documentRequirementMessage.textContent =
+      "Para guardar avisos falta ejecutar supabase/player-documents-expiry-v1.sql.";
+  } else if (
+    elements.documentRequirementMessage?.textContent.includes("falta ejecutar supabase/player-documents-expiry-v1.sql")
+  ) {
+    elements.documentRequirementMessage.textContent = "";
+  }
 }
 
 async function savePlayerDocumentRequirement() {
