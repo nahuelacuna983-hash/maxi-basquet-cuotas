@@ -207,6 +207,7 @@ Estado actual:
 - `treasury_movements`: lectura y escritura solo por RPC admin.
 - `players`: lectura directa bloqueada; listado publico por RPC sin `access_code`; validacion de codigo por RPC; cambios admin por RPC.
 - `player_documents`: se usa como control de avisos/requisitos; lectura completa solo por RPC admin; vista jugador por RPC propia, validando codigo y sin exponer links privados de Drive.
+- No se infieren pendientes por defecto. Si la documentacion ya fue presentada, el admin carga el aviso como `Presentado` y solo actualiza la fecha de vencimiento.
 
 Importante:
 

@@ -99,7 +99,6 @@ const playerDocumentTypes = [
   { id: "seguro", label: "Seguro" },
   { id: "lista_buena_fe", label: "Lista buena fe" },
 ];
-const requiredCompetitorDocumentTypes = new Set(["estudios_medicos", "djdr", "pase"]);
 const state = {
   ...persistedAppState,
   playerFilter: "todos",
@@ -2121,7 +2120,7 @@ function renderPlayerDocuments() {
       ${renderDocumentSummaryCard("Avisos", documents.length)}
       ${renderDocumentSummaryCard("Jugadores con aviso", countDocumentedPlayers(documents))}
       ${renderDocumentSummaryCard("Para revisar", reviewRows.length)}
-      ${renderDocumentSummaryCard("Pendientes sugeridos", pendingRows.length)}
+      ${renderDocumentSummaryCard("Avisos activos", pendingRows.length)}
     </div>
     ${
       documents.length
@@ -2246,9 +2245,8 @@ function renderSelfDocumentsPanel(player) {
   if (!elements.selfDocumentsPanel) return;
 
   const rows = getSelfDocumentChecklistRows(player);
-  const readyRows = rows.filter((row) => row.state === "ok" || row.state === "soon");
-  const requiredRows = rows.filter((row) => row.required);
-  const pendingRows = rows.filter((row) => row.required && (row.state === "missing" || row.state === "expired"));
+  const expiringRows = rows.filter((row) => row.state === "soon");
+  const attentionRows = rows.filter((row) => ["missing", "expired", "review"].includes(row.state));
   const loadError = selfServiceDocumentErrorsByPlayerId.get(player.id);
   const isLoading = selfServiceDocumentLoadsByPlayerId.has(player.id);
   const isReady = isSelfDocumentsReadyForPlayer(player);
@@ -2256,16 +2254,16 @@ function renderSelfDocumentsPanel(player) {
   elements.selfDocumentsPanel.innerHTML = `
     <div class="document-check-summary">
       <article>
-        <span>Al dia</span>
-        <strong>${isReady ? `${readyRows.length}/${rows.length}` : "-"}</strong>
+        <span>Avisos</span>
+        <strong>${isReady ? rows.length : "-"}</strong>
       </article>
       <article>
-        <span>Requisitos</span>
-        <strong>${requiredRows.length}</strong>
+        <span>Por vencer</span>
+        <strong>${isReady ? expiringRows.length : "-"}</strong>
       </article>
       <article>
         <span>A revisar</span>
-        <strong>${pendingRows.length}</strong>
+        <strong>${isReady ? attentionRows.length : "-"}</strong>
       </article>
     </div>
     ${
@@ -2276,9 +2274,9 @@ function renderSelfDocumentsPanel(player) {
           : ""
     }
     ${
-      isReady
+      isReady && rows.length
         ? `<ul class="document-checklist">${rows.map(renderSelfDocumentChecklistItem).join("")}</ul>`
-        : '<p class="empty-state">Los avisos se muestran cuando termina la revision.</p>'
+        : `<p class="empty-state">${isReady ? "No tenes avisos de documentacion." : "Los avisos se muestran cuando termina la revision."}</p>`
     }
     <p class="muted-detail">Si un vencimiento no coincide o ya lo presentaste, avisale al administrador.</p>
   `;
@@ -2311,7 +2309,7 @@ function renderSelfDocumentsNotice(player) {
 
   const rows = getSelfDocumentChecklistRows(player);
   const alertRows = rows.filter((row) =>
-    row.required && ["missing", "expired", "soon", "review"].includes(row.state),
+    ["missing", "expired", "soon", "review"].includes(row.state),
   );
 
   if (!alertRows.length) {
@@ -2338,7 +2336,7 @@ function renderSelfDocumentChecklistItem(row) {
         <input type="checkbox" disabled ${isChecked ? "checked" : ""} />
         <span>
           <strong>${escapeHtml(row.label)}</strong>
-          <small>${row.required ? "Requisito" : "Extra"}</small>
+          <small>Aviso</small>
         </span>
       </label>
       <span class="${statusClass}">${escapeHtml(row.message)}</span>
@@ -2349,26 +2347,13 @@ function renderSelfDocumentChecklistItem(row) {
 function getSelfDocumentChecklistRows(player) {
   const playerDocuments = getSelfDocumentsForPlayer(player);
   const documentsByType = groupLatestDocumentsByType(playerDocuments);
-  const requiredTypes = getRequiredDocumentTypesForPlayer(player);
-  const typeIds = new Set(requiredTypes);
 
-  playerDocuments.forEach((document) => {
-    if (document.documentType) typeIds.add(document.documentType);
-  });
-
-  playerDocumentTypes.forEach((documentType) => {
-    if (requiredTypes.includes(documentType.id)) typeIds.add(documentType.id);
-  });
-
-  return Array.from(typeIds).map((documentType) => {
-    const document = documentsByType.get(documentType);
-    const required = requiredTypes.includes(documentType);
+  return Array.from(documentsByType.entries()).map(([documentType, document]) => {
     const validity = getDocumentValidity(document);
 
     return {
       documentType,
       document,
-      required,
       label: formatDocumentType(documentType),
       ...validity,
     };
@@ -2405,11 +2390,6 @@ function compareDocumentFreshness(a, b) {
   const aDate = a.expiresAt || a.updatedAt || a.createdAt || "";
   const bDate = b.expiresAt || b.updatedAt || b.createdAt || "";
   return aDate.localeCompare(bDate);
-}
-
-function getRequiredDocumentTypesForPlayer(player) {
-  if (player.type === "competidor") return Array.from(requiredCompetitorDocumentTypes);
-  return ["estudios_medicos"];
 }
 
 function getDocumentValidity(document) {
@@ -2547,19 +2527,19 @@ function renderDocumentTable(documents) {
 
 function renderPendingPlayerDocuments(rows) {
   if (!rows.length) {
-    return '<p class="empty-state">Competidores activos: sin pendientes sugeridos.</p>';
+    return '<p class="empty-state">Sin avisos activos de documentacion.</p>';
   }
 
   return `
     <section class="document-subsection">
-      <h3>Pendientes sugeridos</h3>
-      <p class="muted-detail">Control rapido para competidores activos. Revisalo antes de exigir un documento.</p>
+      <h3>Avisos activos</h3>
+      <p class="muted-detail">Solo muestra vencidos, pendientes, por vencer o a revisar que hayan sido cargados por admin.</p>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Jugador</th>
-              <th>Falta</th>
+              <th>Aviso</th>
             </tr>
           </thead>
           <tbody>
@@ -2568,7 +2548,7 @@ function renderPendingPlayerDocuments(rows) {
                 (row) => `
                   <tr>
                     <td><strong>${escapeHtml(row.playerName)}</strong></td>
-                    <td>${row.missingTypes.map(formatDocumentType).join(", ")}</td>
+                    <td>${row.alerts.map(escapeHtml).join(", ")}</td>
                   </tr>
                 `,
               )
@@ -2594,27 +2574,34 @@ function renderTeamDocuments(rows) {
 }
 
 function getPendingPlayerDocumentRows(documents) {
-  return getSortedPlayers()
-    .filter((player) => player.status === "activo" && player.type === "competidor")
-    .map((player) => {
-      const loadedTypes = new Set(
-        documents
-          .filter(
-            (document) =>
-              document.playerId === player.id &&
-              document.status === "cargado" &&
-              !isDocumentExpired(document),
-          )
-          .map((document) => document.documentType),
-      );
-      return {
-        playerName: getPlayerName(player),
-        missingTypes: Array.from(requiredCompetitorDocumentTypes).filter(
-          (type) => !loadedTypes.has(type),
-        ),
-      };
-    })
-    .filter((row) => row.missingTypes.length > 0);
+  const rowsByPlayer = new Map();
+
+  documents.forEach((document) => {
+    if (!document.playerId || !isDocumentAlert(document)) return;
+
+    const player = state.players.find((item) => item.id === document.playerId);
+    const playerName = player ? getPlayerName(player) : document.playerName || "Sin asociar";
+    const row = rowsByPlayer.get(document.playerId) ?? {
+      playerName,
+      alerts: [],
+    };
+
+    row.alerts.push(formatDocumentAlert(document));
+    rowsByPlayer.set(document.playerId, row);
+  });
+
+  return Array.from(rowsByPlayer.values()).sort((a, b) =>
+    a.playerName.localeCompare(b.playerName, "es"),
+  );
+}
+
+function isDocumentAlert(document) {
+  return ["missing", "expired", "soon", "review"].includes(getDocumentValidity(document).state);
+}
+
+function formatDocumentAlert(document) {
+  const validity = getDocumentValidity(document);
+  return `${formatDocumentType(document.documentType)}: ${validity.message}`;
 }
 
 function comparePlayerDocuments(a, b) {

@@ -113,6 +113,7 @@ Estado:
 - `drive_url`: opcional. Para avisos sin archivo queda vacio.
 - `status`: `cargado`, `pendiente`, `revisar` o `vencido`.
 - `expires_at`: fecha de vencimiento si aplica.
+- La app no marca pendientes por ausencia de filas. Solo notifica avisos cargados por admin.
 
 `treasury_movements`:
 
