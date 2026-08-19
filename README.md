@@ -144,6 +144,7 @@ Funciones RPC usadas por la app:
 - `submit_training_attendance`
 - `submit_training_vote`
 - `admin_list_player_documents`
+- `list_player_documents_for_player`
 - `admin_upsert_attendance`
 - `admin_delete_guest_attendance`
 - `admin_review_payment`
@@ -173,6 +174,7 @@ SQL adicional para documentacion de jugadores:
 
 ```txt
 supabase/player-documents-v1.sql
+supabase/player-documents-expiry-v1.sql
 ```
 
 La carga inicial de links de Drive queda en un archivo local privado, no versionado:
@@ -203,7 +205,7 @@ Estado actual:
 - `fee_adjustments`: lectura de ajustes activos; escritura admin por RPC.
 - `treasury_movements`: lectura y escritura solo por RPC admin.
 - `players`: lectura directa bloqueada; listado publico por RPC sin `access_code`; validacion de codigo por RPC; cambios admin por RPC.
-- `player_documents`: lectura solo por RPC admin; no se expone a la vista jugador.
+- `player_documents`: lectura completa solo por RPC admin; vista jugador por RPC propia, validando codigo y sin exponer links privados de Drive.
 
 Importante:
 

@@ -60,6 +60,7 @@ Estado:
 - `admin_delete_guest_attendance`
 - `submit_training_vote`
 - `admin_list_player_documents`
+- `list_player_documents_for_player`
 - `admin_list_treasury_movements`
 - `admin_upsert_treasury_movement`
 - `admin_delete_treasury_movement`
@@ -110,6 +111,7 @@ Estado:
 - `document_type`: `estudios_medicos`, `djdr`, `pase`, `seguro` o `lista_buena_fe`.
 - `drive_url`: link del archivo en Drive.
 - `status`: `cargado`, `pendiente`, `revisar` o `vencido`.
+- `expires_at`: fecha de vencimiento si aplica.
 
 `treasury_movements`:
 
@@ -126,6 +128,12 @@ La carga inicial de links de Drive no se versiona en GitHub. Usar el archivo loc
 
 ```txt
 private/player-documents-seed.local.sql
+```
+
+Para mostrar vencimientos y checklist propio en la vista del jugador, ejecutar:
+
+```txt
+supabase/player-documents-expiry-v1.sql
 ```
 
 ## Nota de seguridad

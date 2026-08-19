@@ -137,6 +137,7 @@ function normalizePlayerDocument(document) {
     mimeType: String(document.mimeType ?? ""),
     status: String(document.status ?? "cargado"),
     observation: String(document.observation ?? ""),
+    expiresAt: normalizeDate(document.expiresAt),
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
   };

@@ -1198,6 +1198,96 @@ tbody tr:last-child td {
   text-decoration: none;
 }
 
+.player-documents-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+}
+
+.document-check-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.document-check-summary article {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8f4ec;
+}
+
+.document-check-summary span,
+.document-check-item small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.document-check-summary strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.25rem;
+}
+
+.document-checklist {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 12px 0;
+  list-style: none;
+}
+
+.document-check-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+}
+
+.document-check-item label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+}
+
+.document-check-item input {
+  width: 18px;
+  height: 18px;
+}
+
+.document-check-status {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.document-check-ok {
+  color: #1f6d4a;
+  background: #dff0e7;
+}
+
+.document-check-soon,
+.document-check-review {
+  color: #8a5d11;
+  background: #f8ecd2;
+}
+
+.document-check-missing,
+.document-check-expired {
+  color: #ac3b36;
+  background: #f5dedd;
+}
+
 .report-output {
   display: grid;
   gap: 14px;
@@ -1299,6 +1389,7 @@ tbody tr:last-child td {
   .progress-grid,
   .stats-grid,
   .document-summary-grid,
+  .document-check-summary,
   .report-controls,
   .training-list-grid,
   .vote-beta-columns {
@@ -1358,6 +1449,11 @@ tbody tr:last-child td {
 
   .self-tab-button {
     width: 100%;
+  }
+
+  .document-check-item {
+    display: grid;
+    align-items: start;
   }
 
   .training-signup-card {

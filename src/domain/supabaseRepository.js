@@ -108,6 +108,20 @@ export async function validatePlayerAccess(playerId, accessCode) {
   return Boolean(fallbackResult.data?.access_code?.trim() === accessCode);
 }
 
+export async function listPlayerDocumentsForPlayer(playerId, accessCode) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("list_player_documents_for_player", {
+    p_player_id: playerId,
+    p_access_code: accessCode,
+  });
+
+  if (rpcResult.error) {
+    throwSupabaseError(rpcResult, "list_player_documents_for_player");
+  }
+
+  return (rpcResult.data ?? []).map(fromSupabasePlayerDocument);
+}
+
 export async function adminUpsertPlayer(adminPin, player) {
   const client = await getSupabaseClient();
   const payload = toSupabasePlayer(player);
@@ -823,6 +837,7 @@ function fromSupabasePlayerDocument(row) {
     mimeType: row.mime_type ?? "",
     status: row.status ?? "cargado",
     observation: row.observation ?? "",
+    expiresAt: row.expires_at ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

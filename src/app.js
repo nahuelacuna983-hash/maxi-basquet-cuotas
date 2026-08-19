@@ -47,6 +47,7 @@ import {
   adminUpsertFee,
   adminUpsertPlayer,
   isSupabaseEnabled,
+  listPlayerDocumentsForPlayer,
   loadSupabaseState,
   saveSupabaseState,
   submitPayment,
@@ -66,6 +67,9 @@ let suppressNextSupabaseSync = false;
 let treasuryFormDirty = false;
 const authorizedSelfServicePlayerIds = new Set();
 const selfServiceAccessCodesByPlayerId = new Map();
+const selfServiceDocumentsByPlayerId = new Map();
+const selfServiceDocumentLoadsByPlayerId = new Set();
+const selfServiceDocumentErrorsByPlayerId = new Map();
 const attendanceTagOptions = [
   { id: "meat", emoji: "🥩" },
   { id: "cook", emoji: "👨‍🍳" },
@@ -234,6 +238,7 @@ const elements = {
   selfPaymentDate: document.querySelector("#selfPaymentDate"),
   selfPaymentNote: document.querySelector("#selfPaymentNote"),
   selfBirthdayNotice: document.querySelector("#selfBirthdayNotice"),
+  selfDocumentsPanel: document.querySelector("#selfDocumentsPanel"),
   selfTrainingCard: document.querySelector("#selfTrainingCard"),
   selfTrainingTitle: document.querySelector("#selfTrainingTitle"),
   selfTrainingWindow: document.querySelector("#selfTrainingWindow"),
@@ -1177,6 +1182,7 @@ function renderSelfService() {
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
     elements.selfBirthdayNotice.hidden = true;
+    elements.selfDocumentsPanel.innerHTML = "";
     updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, 0);
     updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, 0);
     return;
@@ -1202,6 +1208,7 @@ function renderSelfService() {
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
     elements.selfBirthdayNotice.hidden = true;
+    elements.selfDocumentsPanel.innerHTML = "";
     elements.selfTrainingCard.hidden = true;
     elements.selfVoteGate.hidden = true;
     elements.selfTrainingVoteCard.hidden = true;
@@ -1220,6 +1227,8 @@ function renderSelfService() {
     elements.selfAccessMessage.textContent = "Vista habilitada por modo admin.";
   }
   renderSelfBirthdayNotice(fallbackPlayer);
+  renderSelfDocumentsPanel(fallbackPlayer);
+  loadSelfServiceDocumentsIfNeeded(fallbackPlayer);
 
   const currentMonth = selectedMonth;
   const currentFee = getSelectedSelfServiceFee();
@@ -2105,6 +2114,200 @@ function renderPlayerDocuments() {
   `;
 }
 
+function renderSelfDocumentsPanel(player) {
+  if (!elements.selfDocumentsPanel) return;
+
+  const rows = getSelfDocumentChecklistRows(player);
+  const readyRows = rows.filter((row) => row.state === "ok" || row.state === "soon");
+  const requiredRows = rows.filter((row) => row.required);
+  const pendingRows = rows.filter((row) => row.required && (row.state === "missing" || row.state === "expired"));
+  const loadError = selfServiceDocumentErrorsByPlayerId.get(player.id);
+  const isLoading = selfServiceDocumentLoadsByPlayerId.has(player.id);
+
+  elements.selfDocumentsPanel.innerHTML = `
+    <div class="document-check-summary">
+      <article>
+        <span>Presentados</span>
+        <strong>${readyRows.length}/${rows.length}</strong>
+      </article>
+      <article>
+        <span>Requisitos</span>
+        <strong>${requiredRows.length}</strong>
+      </article>
+      <article>
+        <span>A revisar</span>
+        <strong>${pendingRows.length}</strong>
+      </article>
+    </div>
+    ${
+      isLoading
+        ? '<p class="muted-detail">Cargando documentacion...</p>'
+        : loadError
+          ? `<p class="form-message">No se pudo cargar documentacion: ${escapeHtml(loadError)}</p>`
+          : ""
+    }
+    <ul class="document-checklist">
+      ${rows.map(renderSelfDocumentChecklistItem).join("")}
+    </ul>
+    <p class="muted-detail">Si un vencimiento no coincide o falta un archivo, avisale al administrador.</p>
+  `;
+}
+
+function renderSelfDocumentChecklistItem(row) {
+  const isChecked = row.state === "ok" || row.state === "soon";
+  const statusClass = `document-check-status document-check-${row.state}`;
+
+  return `
+    <li class="document-check-item">
+      <label>
+        <input type="checkbox" disabled ${isChecked ? "checked" : ""} />
+        <span>
+          <strong>${escapeHtml(row.label)}</strong>
+          <small>${row.required ? "Requisito" : "Extra"}</small>
+        </span>
+      </label>
+      <span class="${statusClass}">${escapeHtml(row.message)}</span>
+    </li>
+  `;
+}
+
+function getSelfDocumentChecklistRows(player) {
+  const playerDocuments = getSelfDocumentsForPlayer(player);
+  const documentsByType = groupLatestDocumentsByType(playerDocuments);
+  const requiredTypes = getRequiredDocumentTypesForPlayer(player);
+  const typeIds = new Set(requiredTypes);
+
+  playerDocuments.forEach((document) => {
+    if (document.documentType) typeIds.add(document.documentType);
+  });
+
+  playerDocumentTypes.forEach((documentType) => {
+    if (requiredTypes.includes(documentType.id)) typeIds.add(documentType.id);
+  });
+
+  return Array.from(typeIds).map((documentType) => {
+    const document = documentsByType.get(documentType);
+    const required = requiredTypes.includes(documentType);
+    const validity = getDocumentValidity(document);
+
+    return {
+      documentType,
+      document,
+      required,
+      label: formatDocumentType(documentType),
+      ...validity,
+    };
+  });
+}
+
+function getSelfDocumentsForPlayer(player) {
+  if (!player) return [];
+
+  if (state.isAdminMode) {
+    return (state.playerDocuments ?? []).filter((document) => document.playerId === player.id);
+  }
+
+  return selfServiceDocumentsByPlayerId.get(player.id) ?? [];
+}
+
+function groupLatestDocumentsByType(documents) {
+  const documentsByType = new Map();
+
+  documents.forEach((document) => {
+    const type = document.documentType;
+    if (!type) return;
+
+    const current = documentsByType.get(type);
+    if (!current || compareDocumentFreshness(document, current) > 0) {
+      documentsByType.set(type, document);
+    }
+  });
+
+  return documentsByType;
+}
+
+function compareDocumentFreshness(a, b) {
+  const aDate = a.expiresAt || a.updatedAt || a.createdAt || "";
+  const bDate = b.expiresAt || b.updatedAt || b.createdAt || "";
+  return aDate.localeCompare(bDate);
+}
+
+function getRequiredDocumentTypesForPlayer(player) {
+  if (player.type === "competidor") return Array.from(requiredCompetitorDocumentTypes);
+  return ["estudios_medicos"];
+}
+
+function getDocumentValidity(document) {
+  if (!document) {
+    return { state: "missing", message: "Pendiente" };
+  }
+
+  if (document.status === "vencido") {
+    return { state: "expired", message: "Vencido" };
+  }
+
+  if (document.status === "pendiente") {
+    return { state: "missing", message: "Pendiente" };
+  }
+
+  if (document.status === "revisar") {
+    return { state: "review", message: "A revisar" };
+  }
+
+  if (isDocumentExpired(document)) {
+    return { state: "expired", message: `Vencio ${formatDisplayDate(document.expiresAt)}` };
+  }
+
+  if (isDocumentExpiringSoon(document)) {
+    return { state: "soon", message: `Vence ${formatDisplayDate(document.expiresAt)}` };
+  }
+
+  if (document.expiresAt) {
+    return { state: "ok", message: `Vence ${formatDisplayDate(document.expiresAt)}` };
+  }
+
+  return { state: "ok", message: "Presentado sin vencimiento cargado" };
+}
+
+async function loadSelfServiceDocumentsIfNeeded(player) {
+  if (!player || state.isAdminMode || !isSupabaseEnabled() || !supabaseHydrated) return;
+  if (selfServiceDocumentsByPlayerId.has(player.id)) return;
+  if (selfServiceDocumentLoadsByPlayerId.has(player.id)) return;
+
+  const accessCode = selfServiceAccessCodesByPlayerId.get(player.id);
+  if (!accessCode) return;
+
+  selfServiceDocumentLoadsByPlayerId.add(player.id);
+  selfServiceDocumentErrorsByPlayerId.delete(player.id);
+
+  try {
+    const documents = await listPlayerDocumentsForPlayer(player.id, accessCode);
+    selfServiceDocumentsByPlayerId.set(player.id, documents);
+  } catch (error) {
+    selfServiceDocumentsByPlayerId.set(player.id, []);
+    selfServiceDocumentErrorsByPlayerId.set(player.id, formatSelfDocumentLoadError(error.message));
+  } finally {
+    selfServiceDocumentLoadsByPlayerId.delete(player.id);
+  }
+
+  if (state.selectedSelfServicePlayerId === player.id && canViewSelfServicePlayer(player)) {
+    renderSelfService();
+  }
+}
+
+function formatSelfDocumentLoadError(message) {
+  const text = String(message ?? "");
+  if (
+    text.includes("Could not find the function") ||
+    text.includes("does not exist") ||
+    text.includes("schema cache")
+  ) {
+    return "Falta ejecutar supabase/player-documents-expiry-v1.sql en Supabase.";
+  }
+
+  return text || "Error desconocido";
+}
+
 function renderDocumentSummaryCard(label, value) {
   return `
     <article class="document-summary-card">
@@ -2124,6 +2327,7 @@ function renderDocumentTable(documents) {
             <th>Documento</th>
             <th>Archivo</th>
             <th>Estado</th>
+            <th>Vencimiento</th>
             <th>Observacion</th>
             <th>Accion</th>
           </tr>
@@ -2140,6 +2344,7 @@ function renderDocumentTable(documents) {
                   <td>${formatDocumentType(document.documentType)}</td>
                   <td>${escapeHtml(document.title || "-")}</td>
                   <td><span class="payment-status ${getDocumentStatusClass(document.status)}">${formatDocumentStatus(document.status)}</span></td>
+                  <td>${formatDocumentExpiry(document)}</td>
                   <td>${escapeHtml(document.observation || "-")}</td>
                   <td>
                     ${
@@ -2212,7 +2417,12 @@ function getPendingPlayerDocumentRows(documents) {
     .map((player) => {
       const loadedTypes = new Set(
         documents
-          .filter((document) => document.playerId === player.id && document.status !== "revisar")
+          .filter(
+            (document) =>
+              document.playerId === player.id &&
+              document.status === "cargado" &&
+              !isDocumentExpired(document),
+          )
           .map((document) => document.documentType),
       );
       return {
@@ -2255,6 +2465,50 @@ function getDocumentStatusClass(status) {
   if (status === "cargado") return "status-aprobado";
   if (status === "pendiente") return "status-pendiente";
   return "status-rechazado";
+}
+
+function formatDocumentExpiry(document) {
+  if (!document?.expiresAt) return '<span class="muted-detail">Sin vencimiento</span>';
+
+  const status = isDocumentExpired(document)
+    ? "Vencido"
+    : isDocumentExpiringSoon(document)
+      ? "Vence pronto"
+      : "Vigente";
+
+  return `${formatDisplayDate(document.expiresAt)} <span class="muted-detail">(${status})</span>`;
+}
+
+function isDocumentExpired(document) {
+  const expiresAt = parseDateInputValue(document?.expiresAt);
+  if (!expiresAt) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  expiresAt.setHours(0, 0, 0, 0);
+  return expiresAt < today;
+}
+
+function isDocumentExpiringSoon(document) {
+  const expiresAt = parseDateInputValue(document?.expiresAt);
+  if (!expiresAt || isDocumentExpired(document)) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  expiresAt.setHours(0, 0, 0, 0);
+  const daysUntil = Math.ceil((expiresAt.getTime() - today.getTime()) / 86400000);
+  return daysUntil <= 30;
+}
+
+function formatDisplayDate(dateValue) {
+  const date = parseDateInputValue(dateValue);
+  if (!date) return "-";
+
+  return [
+    String(date.getDate()).padStart(2, "0"),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    date.getFullYear(),
+  ].join("/");
 }
 
 function getSafeDriveUrl(url) {
@@ -5088,6 +5342,7 @@ async function authorizeSelfServicePlayer() {
   authorizedSelfServicePlayerIds.add(player.id);
   selfServiceAccessCodesByPlayerId.set(player.id, accessCode);
   saveSelfServiceSession(player.id, accessCode);
+  await loadSelfServiceDocumentsIfNeeded(player);
   state.selfAccessNotice = "";
   elements.selfAccessCode.value = "";
   elements.selfAccessMessage.textContent = "Acceso habilitado.";

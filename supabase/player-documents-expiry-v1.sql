@@ -1,37 +1,5 @@
-create table if not exists public.player_documents (
-  id text primary key,
-  player_id text references public.players(id) on delete set null,
-  player_name text default '',
-  document_type text not null check (
-    document_type in (
-      'estudios_medicos',
-      'djdr',
-      'pase',
-      'seguro',
-      'lista_buena_fe'
-    )
-  ),
-  title text not null,
-  drive_file_id text default '',
-  drive_url text not null,
-  mime_type text default '',
-  status text not null default 'cargado' check (
-    status in ('cargado', 'pendiente', 'revisar', 'vencido')
-  ),
-  observation text default '',
-  expires_at date,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (document_type, drive_file_id)
-);
-
 alter table public.player_documents
 add column if not exists expires_at date;
-
-alter table public.player_documents enable row level security;
-
-drop policy if exists "mvp_player_documents_select" on public.player_documents;
-drop policy if exists "mvp_player_documents_write" on public.player_documents;
 
 drop function if exists public.admin_list_player_documents(text);
 
@@ -84,8 +52,6 @@ begin
   order by player_name, d.document_type, d.title;
 end;
 $$;
-
-grant execute on function public.admin_list_player_documents(text) to anon, authenticated;
 
 drop function if exists public.list_player_documents_for_player(text, text);
 
@@ -149,4 +115,5 @@ begin
 end;
 $$;
 
+grant execute on function public.admin_list_player_documents(text) to anon, authenticated;
 grant execute on function public.list_player_documents_for_player(text, text) to anon, authenticated;
