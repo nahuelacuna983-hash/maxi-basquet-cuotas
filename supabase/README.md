@@ -61,6 +61,7 @@ Estado:
 - `submit_training_vote`
 - `admin_list_player_documents`
 - `list_player_documents_for_player`
+- `admin_upsert_player_document_requirement`
 - `admin_list_treasury_movements`
 - `admin_upsert_treasury_movement`
 - `admin_delete_treasury_movement`
@@ -107,9 +108,9 @@ Estado:
 `player_documents`:
 
 - `player_id`: jugador asociado. Puede quedar vacio si falta revisar.
-- `player_name`: nombre de respaldo o texto libre para documentos sin asociar.
+- `player_name`: nombre de respaldo o texto libre para avisos sin asociar.
 - `document_type`: `estudios_medicos`, `djdr`, `pase`, `seguro` o `lista_buena_fe`.
-- `drive_url`: link del archivo en Drive.
+- `drive_url`: opcional. Para avisos sin archivo queda vacio.
 - `status`: `cargado`, `pendiente`, `revisar` o `vencido`.
 - `expires_at`: fecha de vencimiento si aplica.
 
@@ -124,13 +125,13 @@ Estado:
 - `source`: `manual` o `auto`. Los automaticos se generan desde la cuota del mes sin duplicar fecha/concepto/monto.
 - `active`: borrado logico.
 
-La carga inicial de links de Drive no se versiona en GitHub. Usar el archivo local privado:
+La carga inicial de links de Drive no es necesaria para avisos de vencimiento. Si alguna vez se usa, no se versiona en GitHub:
 
 ```txt
 private/player-documents-seed.local.sql
 ```
 
-Para mostrar vencimientos y checklist propio en la vista del jugador, ejecutar:
+Para mostrar vencimientos, checklist propio y guardar avisos desde admin, ejecutar:
 
 ```txt
 supabase/player-documents-expiry-v1.sql

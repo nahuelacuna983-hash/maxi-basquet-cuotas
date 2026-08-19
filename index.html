@@ -52,6 +52,7 @@
 
           <div id="selfServiceProtectedContent" hidden>
             <div class="birthday-notice" id="selfBirthdayNotice" hidden></div>
+            <div class="self-document-notice" id="selfDocumentsNotice" hidden></div>
 
             <nav class="self-tabs" id="playerTabs" aria-label="Secciones del jugador">
               <button class="self-tab-button active" type="button" data-player-tab="quota" aria-controls="selfQuotaTab">
@@ -226,9 +227,9 @@
               <article class="player-documents-card">
                 <div class="training-card-header">
                   <div>
-                    <span class="section-kicker">Documentacion</span>
-                    <h3>Estudios y requisitos</h3>
-                    <p>Control rapido de lo que tenes presentado y lo que falta actualizar.</p>
+                    <span class="section-kicker">Requisitos</span>
+                    <h3>Avisos de documentacion</h3>
+                    <p>Control rapido de lo que tenes pendiente o por vencer.</p>
                   </div>
                 </div>
                 <div id="selfDocumentsPanel"></div>
@@ -940,9 +941,38 @@
               <div class="panel-icon" aria-hidden="true">D</div>
               <div>
                 <h2>Documentacion</h2>
-                <p>Control admin de estudios, DJDR, seguro, pase y lista de buena fe</p>
+                <p>Avisos de vencimientos y requisitos pendientes, sin subir archivos</p>
               </div>
             </div>
+            <form class="form-grid" id="documentRequirementForm">
+              <label>
+                Jugador
+                <select id="documentRequirementPlayer"></select>
+              </label>
+              <label>
+                Requisito
+                <select id="documentRequirementType"></select>
+              </label>
+              <label>
+                Estado
+                <select id="documentRequirementStatus">
+                  <option value="cargado">Presentado</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="vencido">Vencido</option>
+                  <option value="revisar">A revisar</option>
+                </select>
+              </label>
+              <label>
+                Vencimiento
+                <input id="documentRequirementExpiresAt" type="date" />
+              </label>
+              <label class="wide-field">
+                Observacion
+                <input id="documentRequirementObservation" placeholder="Ej: falta entregar, vence en septiembre..." />
+              </label>
+              <button class="primary-button" type="submit">Guardar aviso</button>
+            </form>
+            <p class="form-message" id="documentRequirementMessage"></p>
             <div id="playerDocumentsPanel"></div>
           </section>
 

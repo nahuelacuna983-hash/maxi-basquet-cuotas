@@ -41,6 +41,7 @@ import {
   adminDeleteGuestAttendance,
   adminSoftDeletePayment,
   adminUpdateTreasuryConfig,
+  adminUpsertPlayerDocumentRequirement,
   adminUpsertFeeAdjustment,
   adminUpsertTreasuryMovement,
   adminUpsertAttendance,
@@ -238,6 +239,7 @@ const elements = {
   selfPaymentDate: document.querySelector("#selfPaymentDate"),
   selfPaymentNote: document.querySelector("#selfPaymentNote"),
   selfBirthdayNotice: document.querySelector("#selfBirthdayNotice"),
+  selfDocumentsNotice: document.querySelector("#selfDocumentsNotice"),
   selfDocumentsPanel: document.querySelector("#selfDocumentsPanel"),
   selfTrainingCard: document.querySelector("#selfTrainingCard"),
   selfTrainingTitle: document.querySelector("#selfTrainingTitle"),
@@ -303,6 +305,13 @@ const elements = {
   adminStatsPanel: document.querySelector("#adminStatsPanel"),
   adminCallupsPanel: document.querySelector("#adminCallupsPanel"),
   playerDocumentsPanel: document.querySelector("#playerDocumentsPanel"),
+  documentRequirementForm: document.querySelector("#documentRequirementForm"),
+  documentRequirementPlayer: document.querySelector("#documentRequirementPlayer"),
+  documentRequirementType: document.querySelector("#documentRequirementType"),
+  documentRequirementStatus: document.querySelector("#documentRequirementStatus"),
+  documentRequirementExpiresAt: document.querySelector("#documentRequirementExpiresAt"),
+  documentRequirementObservation: document.querySelector("#documentRequirementObservation"),
+  documentRequirementMessage: document.querySelector("#documentRequirementMessage"),
   reportType: document.querySelector("#reportType"),
   reportPlayer: document.querySelector("#reportPlayer"),
   reportPlayerField: document.querySelector("#reportPlayerField"),
@@ -471,6 +480,11 @@ elements.trainingVoteAward.addEventListener("change", () => {
 elements.trainingVoteSecond.addEventListener("change", () => {
   state.selectedTrainingVoteSecond = elements.trainingVoteSecond.value;
   renderTrainingVoteBeta();
+});
+
+elements.documentRequirementForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  savePlayerDocumentRequirement();
 });
 
 elements.selfTrainingVoteDate.addEventListener("change", () => {
@@ -1182,6 +1196,7 @@ function renderSelfService() {
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
     elements.selfBirthdayNotice.hidden = true;
+    elements.selfDocumentsNotice.hidden = true;
     elements.selfDocumentsPanel.innerHTML = "";
     updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, 0);
     updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, 0);
@@ -1208,6 +1223,7 @@ function renderSelfService() {
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
     elements.selfBirthdayNotice.hidden = true;
+    elements.selfDocumentsNotice.hidden = true;
     elements.selfDocumentsPanel.innerHTML = "";
     elements.selfTrainingCard.hidden = true;
     elements.selfVoteGate.hidden = true;
@@ -1227,8 +1243,9 @@ function renderSelfService() {
     elements.selfAccessMessage.textContent = "Vista habilitada por modo admin.";
   }
   renderSelfBirthdayNotice(fallbackPlayer);
-  renderSelfDocumentsPanel(fallbackPlayer);
   loadSelfServiceDocumentsIfNeeded(fallbackPlayer);
+  renderSelfDocumentsNotice(fallbackPlayer);
+  renderSelfDocumentsPanel(fallbackPlayer);
 
   const currentMonth = selectedMonth;
   const currentFee = getSelectedSelfServiceFee();
@@ -2085,12 +2102,14 @@ function renderPlayerDocuments() {
   if (!state.documentSyncReady) {
     elements.playerDocumentsPanel.innerHTML = `
       <p class="empty-state">
-        Falta activar documentacion en Supabase. Ejecuta el SQL
-        <strong>supabase/player-documents-v1.sql</strong> y despues la carga privada de Drive.
+        Falta activar avisos de documentacion en Supabase. Ejecuta el SQL
+        <strong>supabase/player-documents-expiry-v1.sql</strong>.
       </p>
     `;
     return;
   }
+
+  renderDocumentRequirementFormOptions();
 
   const documents = (state.playerDocuments ?? []).slice().sort(comparePlayerDocuments);
   const pendingRows = getPendingPlayerDocumentRows(documents);
@@ -2099,19 +2118,128 @@ function renderPlayerDocuments() {
 
   elements.playerDocumentsPanel.innerHTML = `
     <div class="document-summary-grid">
-      ${renderDocumentSummaryCard("Documentos", documents.length)}
-      ${renderDocumentSummaryCard("Jugadores con docs", countDocumentedPlayers(documents))}
+      ${renderDocumentSummaryCard("Avisos", documents.length)}
+      ${renderDocumentSummaryCard("Jugadores con aviso", countDocumentedPlayers(documents))}
       ${renderDocumentSummaryCard("Para revisar", reviewRows.length)}
       ${renderDocumentSummaryCard("Pendientes sugeridos", pendingRows.length)}
     </div>
     ${
       documents.length
         ? renderDocumentTable(documents)
-        : '<p class="empty-state">Todavia no hay documentacion cargada.</p>'
+        : '<p class="empty-state">Todavia no hay avisos de documentacion.</p>'
     }
     ${renderPendingPlayerDocuments(pendingRows)}
     ${renderTeamDocuments(teamRows)}
   `;
+}
+
+function renderDocumentRequirementFormOptions() {
+  if (!elements.documentRequirementPlayer || !elements.documentRequirementType) return;
+
+  const selectedPlayerId = elements.documentRequirementPlayer.value;
+  const selectedType = elements.documentRequirementType.value;
+
+  elements.documentRequirementPlayer.innerHTML = getSortedPlayers()
+    .map((player) => `<option value="${player.id}">${escapeHtml(getPlayerSelectLabel(player))}</option>`)
+    .join("");
+  elements.documentRequirementPlayer.value =
+    state.players.some((player) => player.id === selectedPlayerId)
+      ? selectedPlayerId
+      : getSortedPlayers()[0]?.id ?? "";
+
+  elements.documentRequirementType.innerHTML = playerDocumentTypes
+    .map((item) => `<option value="${item.id}">${escapeHtml(item.label)}</option>`)
+    .join("");
+  elements.documentRequirementType.value = playerDocumentTypes.some((item) => item.id === selectedType)
+    ? selectedType
+    : playerDocumentTypes[0]?.id ?? "";
+}
+
+async function savePlayerDocumentRequirement() {
+  if (!requireAdmin()) return;
+
+  const player = state.players.find((item) => item.id === elements.documentRequirementPlayer.value);
+  const documentType = elements.documentRequirementType.value;
+
+  if (!player || !documentType) {
+    elements.documentRequirementMessage.textContent = "Elegir jugador y requisito.";
+    return;
+  }
+
+  const requirement = createPlayerDocumentRequirement({
+    player,
+    documentType,
+    status: elements.documentRequirementStatus.value,
+    expiresAt: elements.documentRequirementExpiresAt.value,
+    observation: elements.documentRequirementObservation.value,
+  });
+
+  try {
+    let mode = "local";
+
+    if (isSupabaseEnabled() && supabaseHydrated) {
+      mode = await adminUpsertPlayerDocumentRequirement(adminConfig.pin, requirement);
+    }
+
+    upsertPlayerDocumentRequirementInState(requirement);
+    selfServiceDocumentsByPlayerId.delete(player.id);
+    selfServiceDocumentErrorsByPlayerId.delete(player.id);
+    state.documentSyncReady = true;
+    elements.documentRequirementObservation.value = "";
+    elements.documentRequirementMessage.textContent =
+      mode === "rpc" ? "Aviso actualizado con RPC" : "Aviso actualizado localmente";
+    renderAll();
+  } catch (error) {
+    elements.documentRequirementMessage.textContent = `Error al guardar aviso: ${error.message}`;
+  }
+}
+
+function createPlayerDocumentRequirement({ player, documentType, status, expiresAt, observation }) {
+  const id = getPlayerDocumentRequirementId(player.id, documentType);
+
+  return {
+    id,
+    playerId: player.id,
+    playerName: getPlayerName(player),
+    documentType,
+    title: formatDocumentType(documentType),
+    driveFileId: getPlayerDocumentRequirementFileId(player.id, documentType),
+    driveUrl: "",
+    mimeType: "requirement",
+    status: ["cargado", "pendiente", "revisar", "vencido"].includes(status) ? status : "pendiente",
+    observation: String(observation ?? "").trim(),
+    expiresAt: /^\d{4}-\d{2}-\d{2}$/.test(expiresAt) ? expiresAt : "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function upsertPlayerDocumentRequirementInState(requirement) {
+  const existingIndex = state.playerDocuments.findIndex(
+    (document) =>
+      document.id === requirement.id ||
+      (document.playerId === requirement.playerId &&
+        document.documentType === requirement.documentType &&
+        document.mimeType === "requirement"),
+  );
+
+  if (existingIndex >= 0) {
+    state.playerDocuments[existingIndex] = {
+      ...state.playerDocuments[existingIndex],
+      ...requirement,
+      createdAt: state.playerDocuments[existingIndex].createdAt ?? requirement.createdAt,
+    };
+  } else {
+    state.playerDocuments.push(requirement);
+  }
+}
+
+function getPlayerDocumentRequirementId(playerId, documentType) {
+  return `requirement-${playerId}-${documentType}`;
+}
+
+function getPlayerDocumentRequirementFileId(playerId, documentType) {
+  return `requirement:${playerId}:${documentType}`;
 }
 
 function renderSelfDocumentsPanel(player) {
@@ -2123,12 +2251,13 @@ function renderSelfDocumentsPanel(player) {
   const pendingRows = rows.filter((row) => row.required && (row.state === "missing" || row.state === "expired"));
   const loadError = selfServiceDocumentErrorsByPlayerId.get(player.id);
   const isLoading = selfServiceDocumentLoadsByPlayerId.has(player.id);
+  const isReady = isSelfDocumentsReadyForPlayer(player);
 
   elements.selfDocumentsPanel.innerHTML = `
     <div class="document-check-summary">
       <article>
-        <span>Presentados</span>
-        <strong>${readyRows.length}/${rows.length}</strong>
+        <span>Al dia</span>
+        <strong>${isReady ? `${readyRows.length}/${rows.length}` : "-"}</strong>
       </article>
       <article>
         <span>Requisitos</span>
@@ -2141,16 +2270,62 @@ function renderSelfDocumentsPanel(player) {
     </div>
     ${
       isLoading
-        ? '<p class="muted-detail">Cargando documentacion...</p>'
+        ? '<p class="muted-detail">Revisando avisos...</p>'
         : loadError
-          ? `<p class="form-message">No se pudo cargar documentacion: ${escapeHtml(loadError)}</p>`
+          ? `<p class="form-message">No se pudieron revisar avisos: ${escapeHtml(loadError)}</p>`
           : ""
     }
-    <ul class="document-checklist">
-      ${rows.map(renderSelfDocumentChecklistItem).join("")}
-    </ul>
-    <p class="muted-detail">Si un vencimiento no coincide o falta un archivo, avisale al administrador.</p>
+    ${
+      isReady
+        ? `<ul class="document-checklist">${rows.map(renderSelfDocumentChecklistItem).join("")}</ul>`
+        : '<p class="empty-state">Los avisos se muestran cuando termina la revision.</p>'
+    }
+    <p class="muted-detail">Si un vencimiento no coincide o ya lo presentaste, avisale al administrador.</p>
   `;
+}
+
+function renderSelfDocumentsNotice(player) {
+  if (!elements.selfDocumentsNotice) return;
+
+  const loadError = selfServiceDocumentErrorsByPlayerId.get(player.id);
+  const isLoading = selfServiceDocumentLoadsByPlayerId.has(player.id);
+  const isReady = isSelfDocumentsReadyForPlayer(player);
+
+  if (isLoading && !isReady) {
+    elements.selfDocumentsNotice.hidden = false;
+    elements.selfDocumentsNotice.innerHTML = "<strong>Revisando requisitos...</strong>";
+    return;
+  }
+
+  if (loadError) {
+    elements.selfDocumentsNotice.hidden = false;
+    elements.selfDocumentsNotice.innerHTML = `<strong>Avisos de documentacion no disponibles.</strong> ${escapeHtml(loadError)}`;
+    return;
+  }
+
+  if (!isReady) {
+    elements.selfDocumentsNotice.hidden = true;
+    elements.selfDocumentsNotice.innerHTML = "";
+    return;
+  }
+
+  const rows = getSelfDocumentChecklistRows(player);
+  const alertRows = rows.filter((row) =>
+    row.required && ["missing", "expired", "soon", "review"].includes(row.state),
+  );
+
+  if (!alertRows.length) {
+    elements.selfDocumentsNotice.hidden = true;
+    elements.selfDocumentsNotice.innerHTML = "";
+    return;
+  }
+
+  const details = alertRows
+    .map((row) => `${escapeHtml(row.label)}: ${escapeHtml(row.message)}`)
+    .join(" - ");
+
+  elements.selfDocumentsNotice.hidden = false;
+  elements.selfDocumentsNotice.innerHTML = `<strong>Aviso de documentacion.</strong> ${details}`;
 }
 
 function renderSelfDocumentChecklistItem(row) {
@@ -2266,7 +2441,14 @@ function getDocumentValidity(document) {
     return { state: "ok", message: `Vence ${formatDisplayDate(document.expiresAt)}` };
   }
 
-  return { state: "ok", message: "Presentado sin vencimiento cargado" };
+  return { state: "ok", message: "Sin vencimiento informado" };
+}
+
+function isSelfDocumentsReadyForPlayer(player) {
+  if (!player) return false;
+  if (state.isAdminMode) return true;
+  if (!isSupabaseEnabled() || !supabaseHydrated) return true;
+  return selfServiceDocumentsByPlayerId.has(player.id);
 }
 
 async function loadSelfServiceDocumentsIfNeeded(player) {
@@ -2324,8 +2506,8 @@ function renderDocumentTable(documents) {
         <thead>
           <tr>
             <th>Jugador</th>
-            <th>Documento</th>
-            <th>Archivo</th>
+            <th>Requisito</th>
+            <th>Referencia</th>
             <th>Estado</th>
             <th>Vencimiento</th>
             <th>Observacion</th>
@@ -2342,7 +2524,7 @@ function renderDocumentTable(documents) {
                 <tr>
                   <td><strong>${escapeHtml(playerName)}</strong></td>
                   <td>${formatDocumentType(document.documentType)}</td>
-                  <td>${escapeHtml(document.title || "-")}</td>
+                  <td>${escapeHtml(document.title || "Aviso")}</td>
                   <td><span class="payment-status ${getDocumentStatusClass(document.status)}">${formatDocumentStatus(document.status)}</span></td>
                   <td>${formatDocumentExpiry(document)}</td>
                   <td>${escapeHtml(document.observation || "-")}</td>
@@ -2350,7 +2532,7 @@ function renderDocumentTable(documents) {
                     ${
                       safeUrl
                         ? `<a class="secondary-button document-link" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">Abrir</a>`
-                        : '<span class="muted-detail">Sin link</span>'
+                        : `<span class="muted-detail">${document.mimeType === "requirement" ? "Solo aviso" : "Sin link"}</span>`
                     }
                   </td>
                 </tr>

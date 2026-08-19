@@ -191,6 +191,24 @@ export async function adminUpsertFeeAdjustment(adminPin, adjustment) {
   return logMutationMode("fallback");
 }
 
+export async function adminUpsertPlayerDocumentRequirement(adminPin, requirement) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("admin_upsert_player_document_requirement", {
+    p_admin_pin: adminPin,
+    p_requirement: toSupabasePlayerDocumentRequirement(requirement),
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_upsert_player_document_requirement");
+  }
+
+  throwSupabaseError(rpcResult, "admin_upsert_player_document_requirement");
+}
+
 export async function adminDeleteFeeAdjustment(adminPin, adjustmentId) {
   const client = await getSupabaseClient();
   const rpcResult = await client.rpc("admin_delete_fee_adjustment", {
@@ -772,6 +790,17 @@ function toSupabaseTreasuryMovement(movement) {
     active: movement.active !== false,
     created_at: movement.createdAt ?? new Date().toISOString(),
     updated_at: movement.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+function toSupabasePlayerDocumentRequirement(requirement) {
+  return {
+    id: requirement.id,
+    player_id: requirement.playerId,
+    document_type: requirement.documentType,
+    status: requirement.status ?? "pendiente",
+    expires_at: requirement.expiresAt || null,
+    observation: requirement.observation ?? "",
   };
 }
 

@@ -232,6 +232,15 @@ h1 {
   min-width: 0;
 }
 
+.self-document-notice {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #e9d3a7;
+  border-radius: 8px;
+  color: #594015;
+  background: #fbf1dc;
+}
+
 .locked-tab {
   opacity: 0.72;
 }
