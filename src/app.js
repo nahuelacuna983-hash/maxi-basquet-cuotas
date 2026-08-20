@@ -2103,8 +2103,8 @@ function renderPlayerDocuments() {
   if (!state.documentSyncReady) {
     elements.playerDocumentsPanel.innerHTML = `
       <p class="empty-state">
-        Falta activar avisos de documentacion en Supabase. Ejecuta el SQL
-        <strong>supabase/player-documents-expiry-v1.sql</strong>.
+        Todavia no pude leer avisos guardados. Si ya ejecutaste
+        <strong>supabase/player-documents-expiry-v1.sql</strong>, proba guardar un aviso o actualiza la app.
       </p>
     `;
     return;
@@ -2154,16 +2154,12 @@ function renderDocumentRequirementFormOptions() {
     : playerDocumentTypes[0]?.id ?? "";
 
   const submitButton = elements.documentRequirementForm?.querySelector('button[type="submit"]');
-  const missingSql = isSupabaseEnabled() && supabaseHydrated && !state.documentSyncReady;
 
   if (submitButton) {
-    submitButton.disabled = missingSql;
+    submitButton.disabled = false;
   }
 
-  if (missingSql && elements.documentRequirementMessage) {
-    elements.documentRequirementMessage.textContent =
-      "Para guardar avisos falta ejecutar supabase/player-documents-expiry-v1.sql.";
-  } else if (
+  if (
     elements.documentRequirementMessage?.textContent.includes("falta ejecutar supabase/player-documents-expiry-v1.sql")
   ) {
     elements.documentRequirementMessage.textContent = "";
