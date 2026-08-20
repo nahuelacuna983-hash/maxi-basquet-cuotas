@@ -2199,7 +2199,7 @@ async function savePlayerDocumentRequirement() {
     elements.documentRequirementObservation.value = "";
     elements.documentRequirementMessage.textContent =
       mode === "rpc" ? "Aviso actualizado con RPC" : "Aviso actualizado localmente";
-    renderAll();
+    render();
   } catch (error) {
     elements.documentRequirementMessage.textContent = `Error al guardar aviso: ${error.message}`;
   }
