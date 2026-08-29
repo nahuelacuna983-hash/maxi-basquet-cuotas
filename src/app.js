@@ -6034,12 +6034,12 @@ function renderTreasuryCashControl() {
   }
 
   const summary = getTreasuryCashSummary(fee);
-  const missingAutomaticMovements = getMissingAutomaticTreasuryMovements(fee);
+  const automaticMovementsToSync = getAutomaticTreasuryMovementsNeedingSync(fee);
   const nextFee = getNextFeeForFee(fee);
   const nextAdjustment = -summary.balance;
   elements.autoTreasuryMovementsButton.disabled = false;
-  elements.autoTreasuryMovementsButton.textContent = missingAutomaticMovements.length
-    ? `Actualizar automatico (${missingAutomaticMovements.length})`
+  elements.autoTreasuryMovementsButton.textContent = automaticMovementsToSync.length
+    ? `Actualizar automatico (${automaticMovementsToSync.length})`
     : "Revisar automatico";
   elements.applyCashBalanceButton.disabled = !nextFee;
   elements.applyCashBalanceButton.textContent = nextFee
@@ -6061,7 +6061,7 @@ function renderTreasuryCashControl() {
       <article class="metric-card compact-stat">
         <span>Egresos registrados</span>
         <strong>${formatMoney(summary.expenses)}</strong>
-        <p>${missingAutomaticMovements.length ? `${missingAutomaticMovements.length} automaticos pendientes.` : "Automatico al dia."}</p>
+        <p>${automaticMovementsToSync.length ? `${automaticMovementsToSync.length} automaticos para actualizar.` : "Automatico al dia."}</p>
       </article>
       <article class="metric-card compact-stat">
         <span>Saldo de caja</span>
@@ -6178,7 +6178,7 @@ async function syncAutomaticTreasuryMovementsForSelectedFee() {
     return;
   }
 
-  const movements = getMissingAutomaticTreasuryMovements(fee);
+  const movements = getAutomaticTreasuryMovementsNeedingSync(fee);
   if (!movements.length) {
     elements.treasuryMovementMessage.textContent =
       `Caja automatica revisada: no hay egresos vencidos pendientes para ${formatMonthLabel(fee.month)}.`;
@@ -6186,8 +6186,22 @@ async function syncAutomaticTreasuryMovementsForSelectedFee() {
     return;
   }
 
+  const updates = movements.filter((movement) => getActiveAutomaticTreasuryMovementById(movement.id));
+  if (
+    updates.length &&
+    !confirm(
+      `Hay ${updates.length} egresos automaticos ya creados con valores distintos.\n` +
+        `Se van a recalcular usando los valores actuales de la cuota ${formatMonthLabel(fee.month)}.\n\n` +
+        "Antes de continuar, revisa que Turno entrenamiento y Domingo sean correctos.",
+    )
+  ) {
+    elements.treasuryMovementMessage.textContent =
+      "Actualizacion automatica cancelada. Revisa los valores de la cuota.";
+    return;
+  }
+
   const previousMovements = state.treasuryMovements ?? [];
-  state.treasuryMovements = [...movements, ...previousMovements];
+  state.treasuryMovements = mergeTreasuryMovements(previousMovements, movements);
   const saved = await persistTreasuryMovements(
     movements,
     previousMovements,
@@ -6197,7 +6211,7 @@ async function syncAutomaticTreasuryMovementsForSelectedFee() {
   if (!saved) return;
 
   elements.treasuryMovementMessage.textContent =
-    `Se registraron ${movements.length} egresos automaticos de ${formatMonthLabel(fee.month)}.`;
+    `Se agregaron o actualizaron ${movements.length} egresos automaticos de ${formatMonthLabel(fee.month)}.`;
 }
 
 async function persistTreasuryMovement(movement, previousMovements, successMessage, errorMessage) {
@@ -6474,10 +6488,26 @@ function getActiveTreasuryMovements(feeId = null) {
     .sort((a, b) => `${b.occurredAt ?? ""}${b.createdAt ?? ""}`.localeCompare(`${a.occurredAt ?? ""}${a.createdAt ?? ""}`));
 }
 
-function getMissingAutomaticTreasuryMovements(fee, cutoffDate = new Date()) {
-  return getAutomaticTreasuryMovementsForFee(fee, cutoffDate).filter(
-    (movement) => !hasExistingTreasuryMovementForAutomatic(movement),
-  );
+function getAutomaticTreasuryMovementsNeedingSync(fee, cutoffDate = new Date()) {
+  const updatedAt = new Date().toISOString();
+
+  return getAutomaticTreasuryMovementsForFee(fee, cutoffDate).flatMap((movement) => {
+    const existingAutoMovement = getActiveAutomaticTreasuryMovementById(movement.id);
+
+    if (existingAutoMovement) {
+      if (!isAutomaticTreasuryMovementOutdated(existingAutoMovement, movement)) return [];
+
+      return [
+        {
+          ...movement,
+          createdAt: existingAutoMovement.createdAt ?? movement.createdAt,
+          updatedAt,
+        },
+      ];
+    }
+
+    return hasExistingTreasuryMovementForAutomatic(movement) ? [] : [movement];
+  });
 }
 
 function getAutomaticTreasuryMovementsForFee(fee, cutoffDate = new Date()) {
@@ -6568,6 +6598,39 @@ function hasExistingTreasuryMovementForAutomatic(automaticMovement) {
       Number(movement.amount) === Number(automaticMovement.amount)
     );
   });
+}
+
+function getActiveAutomaticTreasuryMovementById(movementId) {
+  return (state.treasuryMovements ?? []).find(
+    (movement) =>
+      movement.id === movementId &&
+      movement.active !== false &&
+      movement.source === AUTO_TREASURY_SOURCE,
+  );
+}
+
+function isAutomaticTreasuryMovementOutdated(existingMovement, nextMovement) {
+  return (
+    Number(existingMovement.amount) !== Number(nextMovement.amount) ||
+    existingMovement.category !== nextMovement.category ||
+    existingMovement.occurredAt !== nextMovement.occurredAt ||
+    existingMovement.description !== nextMovement.description
+  );
+}
+
+function mergeTreasuryMovements(previousMovements, nextMovements) {
+  const nextMovementsById = new Map(nextMovements.map((movement) => [movement.id, movement]));
+  const updatedIds = new Set();
+  const mergedMovements = previousMovements.map((movement) => {
+    const nextMovement = nextMovementsById.get(movement.id);
+    if (!nextMovement) return movement;
+
+    updatedIds.add(movement.id);
+    return { ...movement, ...nextMovement };
+  });
+  const additions = nextMovements.filter((movement) => !updatedIds.has(movement.id));
+
+  return [...additions, ...mergedMovements];
 }
 
 function getDatesForWeekdaysInMonth(month, weekdays) {
