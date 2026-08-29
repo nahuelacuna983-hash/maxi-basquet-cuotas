@@ -9,7 +9,7 @@ create table if not exists public.treasury_movements (
     movement_type in ('egreso')
   ),
   category text not null default 'otro' check (
-    category in ('entrenamiento', 'domingo', 'otro')
+    category in ('entrenamiento', 'domingo', 'seguro_documentacion', 'aporte_club', 'otro')
   ),
   amount numeric not null check (amount >= 0),
   occurred_at date not null,
@@ -177,7 +177,7 @@ begin
     raise exception 'Movimiento de caja invalido';
   end if;
 
-  if v_category not in ('entrenamiento', 'domingo', 'otro') then
+  if v_category not in ('entrenamiento', 'domingo', 'seguro_documentacion', 'aporte_club', 'otro') then
     raise exception 'Concepto invalido';
   end if;
 

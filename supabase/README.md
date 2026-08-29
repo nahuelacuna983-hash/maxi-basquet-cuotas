@@ -15,6 +15,7 @@ supabase/player-birthdays-v1.sql
 supabase/player-documents-v1.sql
 supabase/treasury-cash-v1.sql
 supabase/treasury-cash-auto-v1.sql
+supabase/treasury-movement-categories-v1.sql
 ```
 
 ## Tablas principales
@@ -119,7 +120,7 @@ Estado:
 
 - `fee_id`: cuota/mes al que pertenece el egreso.
 - `movement_type`: por ahora `egreso`.
-- `category`: `entrenamiento`, `domingo` u `otro`.
+- `category`: `entrenamiento`, `domingo`, `seguro_documentacion`, `aporte_club` u `otro`.
 - `amount`: monto pagado.
 - `occurred_at`: fecha del gasto.
 - `description`: detalle libre.

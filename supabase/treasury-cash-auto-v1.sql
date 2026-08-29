@@ -37,7 +37,7 @@ begin
   ) then
     alter table public.treasury_movements
     add constraint treasury_movements_category_check
-    check (category in ('entrenamiento', 'domingo', 'otro'));
+    check (category in ('entrenamiento', 'domingo', 'seguro_documentacion', 'aporte_club', 'otro'));
   end if;
 
   if not exists (
@@ -214,7 +214,7 @@ begin
     raise exception 'Movimiento de caja invalido';
   end if;
 
-  if v_category not in ('entrenamiento', 'domingo', 'otro') then
+  if v_category not in ('entrenamiento', 'domingo', 'seguro_documentacion', 'aporte_club', 'otro') then
     raise exception 'Concepto invalido';
   end if;
 

@@ -6608,6 +6608,8 @@ function formatTreasuryMovementCategory(category) {
   const labels = {
     entrenamiento: "Entrenamiento",
     domingo: "Domingo / partido",
+    seguro_documentacion: "Seguros / documentacion",
+    aporte_club: "Aporte al club / personeria",
     otro: "Otro",
   };
 
