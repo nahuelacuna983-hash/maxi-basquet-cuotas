@@ -1827,108 +1827,166 @@ function formatLastPayment(payment) {
 }
 
 function renderFeesList() {
-  elements.feesList.innerHTML = state.fees
-    .map((fee) => {
-      const breakdown = getFeeBreakdown(fee, state.players);
-      const collected = state.players.reduce(
-        (sum, player) => sum + getPaidAmount(state.payments, player.id, fee.id),
-        0,
-      );
-      const expected = state.players.reduce(
-        (sum, player) => sum + getExpectedFeeForPlayer(player, fee, state.players),
-        0,
-      );
-      const trainingOnlyPlayer = state.players.find(
-        (player) => player.type === "solo_entrenamientos" && player.status === "activo",
-      );
-      const competitorPlayer = state.players.find(
-        (player) => player.type === "competidor" && player.status === "activo",
-      );
-      const expectedTrainingOnly = trainingOnlyPlayer
-        ? getExpectedFeeForPlayer(trainingOnlyPlayer, fee, state.players)
-        : 0;
-      const expectedCompetitor = competitorPlayer
-        ? getExpectedFeeForPlayer(competitorPlayer, fee, state.players)
-        : 0;
-      const fixedAmountLabel = breakdown.usesFixedAmounts
-        ? `<span>Monto fijo historico: solo entrenamientos ${formatMoney(breakdown.fixedTrainingOnlyAmount ?? 0)} / competidor ${formatMoney(breakdown.fixedCompetitorAmount ?? 0)}</span>`
-        : "";
-      const cashAdjustmentLabel = Number(fee.cashAdjustmentAmount)
-        ? `<span>Ajuste de caja aplicado: ${formatMoney(Number(fee.cashAdjustmentAmount) || 0)}</span>`
-        : "";
-      const activeAdjustments = getActiveFeeAdjustments().filter(
-        (adjustment) => adjustment.feeId === fee.id,
-      );
-      const adjustmentLabel = activeAdjustments.length
-        ? `<span>Ajustes individuales activos: ${activeAdjustments.length}</span>`
-        : "";
+  const { activeFees, historicalFees } = getFeeListSections();
 
-      return `
-        <article class="fee-row">
-          <div>
-            <strong>${fee.month}</strong>
-            <span>${breakdown.tuesdays} martes, ${breakdown.thursdays} jueves, ${breakdown.sundays} domingos</span>
-          </div>
-          <div>
-            <strong>Vence ${getFeeDueDate(fee)}</strong>
-            <span>Cobrado ${formatMoney(collected)} de ${formatMoney(expected)}</span>
-            <span>Jugadores reales: ${breakdown.totalPlayers} / Competidores reales: ${breakdown.competitors}</span>
-            <span>Valores: entrenamiento ${formatMoney(breakdown.trainingSessionCost)} / domingo ${formatMoney(breakdown.sundayCost)} / interes ${Number(fee.interestPercent ?? 0)}%</span>
-            <span>Base de cobro: ${breakdown.trainingBillingBase} entrenamientos / ${breakdown.sundayBillingBase} domingos</span>
-            <span>Total entrenamientos: ${formatMoney(breakdown.trainingTotal)} / ajustado por caja ${formatMoney(breakdown.adjustedTrainingTotal)}</span>
-            <span>Solo entrenamientos ${formatMoney(expectedTrainingOnly)} / Competidor ${formatMoney(expectedCompetitor)}</span>
-            ${fixedAmountLabel}
-            ${cashAdjustmentLabel}
-            ${adjustmentLabel}
-            <div class="fee-base-controls">
-              <label>
-                Turno entrenamiento
-                <input class="score-input" data-fee-base-field="trainingSessionCost" data-fee-base-id="${fee.id}" type="number" min="1" value="${fee.trainingSessionCost ?? ""}" />
-              </label>
-              <label>
-                Domingo
-                <input class="score-input" data-fee-base-field="sundayCost" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.sundayCost ?? ""}" />
-              </label>
-              <label>
-                Base entrenamientos
-                <input class="score-input" data-fee-base-field="trainingBillingBase" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.trainingBillingBase ?? ""}" placeholder="Auto" />
-              </label>
-              <label>
-                Base domingos
-                <input class="score-input" data-fee-base-field="sundayBillingBase" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.sundayBillingBase ?? ""}" placeholder="Auto" />
-              </label>
-              <label>
-                Fijo solo entrenamientos
-                <input class="score-input" data-fee-base-field="fixedTrainingOnlyAmount" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.fixedTrainingOnlyAmount ?? ""}" placeholder="Formula" />
-              </label>
-              <label>
-                Fijo competidor
-                <input class="score-input" data-fee-base-field="fixedCompetitorAmount" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.fixedCompetitorAmount ?? ""}" placeholder="Formula" />
-              </label>
-              <label>
-                Ajuste caja
-                <input class="score-input" data-fee-base-field="cashAdjustmentAmount" data-fee-base-id="${fee.id}" type="number" step="1" value="${fee.cashAdjustmentAmount ?? 0}" />
-              </label>
-              <label>
-                Interes %
-                <input class="score-input" data-fee-base-field="interestPercent" data-fee-base-id="${fee.id}" type="number" min="0" step="0.1" value="${fee.interestPercent ?? 0}" />
-              </label>
-              <label>
-                Vence dia
-                <input class="score-input" data-fee-base-field="dueDay" data-fee-base-id="${fee.id}" type="number" min="1" max="31" value="${fee.dueDay ?? 10}" />
-              </label>
+  if (!state.fees.length) {
+    elements.feesList.innerHTML = '<p class="empty-state">Todavia no hay cuotas cargadas.</p>';
+    return;
+  }
+
+  elements.feesList.innerHTML = `
+    <section class="fee-section">
+      <div class="fee-section-heading">
+        <strong>Cuotas activas</strong>
+        <span>Mes actual, proximo mes cargado y ultimo mes disponible.</span>
+      </div>
+      ${activeFees.map(renderFeeRow).join("")}
+    </section>
+    ${
+      historicalFees.length
+        ? `
+          <details class="fee-history">
+            <summary>Ver meses anteriores (${historicalFees.length})</summary>
+            <div class="fee-history-list">
+              ${historicalFees.map(renderFeeRow).join("")}
             </div>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
+          </details>
+        `
+        : ""
+    }
+  `;
 
   document.querySelectorAll("[data-fee-base-id]").forEach((input) => {
     input.addEventListener("change", () => {
       updateFeeBillingBase(input.dataset.feeBaseId, input.dataset.feeBaseField, input.value);
     });
   });
+}
+
+function renderFeeRow(fee) {
+  const breakdown = getFeeBreakdown(fee, state.players);
+  const collected = state.players.reduce(
+    (sum, player) => sum + getPaidAmount(state.payments, player.id, fee.id),
+    0,
+  );
+  const expected = state.players.reduce(
+    (sum, player) => sum + getExpectedFeeForPlayer(player, fee, state.players),
+    0,
+  );
+  const trainingOnlyPlayer = state.players.find(
+    (player) => player.type === "solo_entrenamientos" && player.status === "activo",
+  );
+  const competitorPlayer = state.players.find(
+    (player) => player.type === "competidor" && player.status === "activo",
+  );
+  const expectedTrainingOnly = trainingOnlyPlayer
+    ? getExpectedFeeForPlayer(trainingOnlyPlayer, fee, state.players)
+    : 0;
+  const expectedCompetitor = competitorPlayer
+    ? getExpectedFeeForPlayer(competitorPlayer, fee, state.players)
+    : 0;
+  const fixedAmountLabel = breakdown.usesFixedAmounts
+    ? `<span>Monto fijo historico: solo entrenamientos ${formatMoney(breakdown.fixedTrainingOnlyAmount ?? 0)} / competidor ${formatMoney(breakdown.fixedCompetitorAmount ?? 0)}</span>`
+    : "";
+  const cashAdjustmentLabel = Number(fee.cashAdjustmentAmount)
+    ? `<span>Ajuste de caja aplicado: ${formatMoney(Number(fee.cashAdjustmentAmount) || 0)}</span>`
+    : "";
+  const activeAdjustments = getActiveFeeAdjustments().filter(
+    (adjustment) => adjustment.feeId === fee.id,
+  );
+  const adjustmentLabel = activeAdjustments.length
+    ? `<span>Ajustes individuales activos: ${activeAdjustments.length}</span>`
+    : "";
+
+  return `
+    <article class="fee-row">
+      <div>
+        <strong>${fee.month}</strong>
+        <span>${breakdown.tuesdays} martes, ${breakdown.thursdays} jueves, ${breakdown.sundays} domingos</span>
+      </div>
+      <div>
+        <strong>Vence ${getFeeDueDate(fee)}</strong>
+        <span>Cobrado ${formatMoney(collected)} de ${formatMoney(expected)}</span>
+        <span>Jugadores reales: ${breakdown.totalPlayers} / Competidores reales: ${breakdown.competitors}</span>
+        <span>Valores: entrenamiento ${formatMoney(breakdown.trainingSessionCost)} / domingo ${formatMoney(breakdown.sundayCost)} / interes ${Number(fee.interestPercent ?? 0)}%</span>
+        <span>Base de cobro: ${breakdown.trainingBillingBase} entrenamientos / ${breakdown.sundayBillingBase} domingos</span>
+        <span>Total entrenamientos: ${formatMoney(breakdown.trainingTotal)} / ajustado por caja ${formatMoney(breakdown.adjustedTrainingTotal)}</span>
+        <span>Solo entrenamientos ${formatMoney(expectedTrainingOnly)} / Competidor ${formatMoney(expectedCompetitor)}</span>
+        ${fixedAmountLabel}
+        ${cashAdjustmentLabel}
+        ${adjustmentLabel}
+        <div class="fee-base-controls">
+          <label>
+            Turno entrenamiento
+            <input class="score-input" data-fee-base-field="trainingSessionCost" data-fee-base-id="${fee.id}" type="number" min="1" value="${fee.trainingSessionCost ?? ""}" />
+          </label>
+          <label>
+            Domingo
+            <input class="score-input" data-fee-base-field="sundayCost" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.sundayCost ?? ""}" />
+          </label>
+          <label>
+            Base entrenamientos
+            <input class="score-input" data-fee-base-field="trainingBillingBase" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.trainingBillingBase ?? ""}" placeholder="Auto" />
+          </label>
+          <label>
+            Base domingos
+            <input class="score-input" data-fee-base-field="sundayBillingBase" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.sundayBillingBase ?? ""}" placeholder="Auto" />
+          </label>
+          <label>
+            Fijo solo entrenamientos
+            <input class="score-input" data-fee-base-field="fixedTrainingOnlyAmount" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.fixedTrainingOnlyAmount ?? ""}" placeholder="Formula" />
+          </label>
+          <label>
+            Fijo competidor
+            <input class="score-input" data-fee-base-field="fixedCompetitorAmount" data-fee-base-id="${fee.id}" type="number" min="0" value="${fee.fixedCompetitorAmount ?? ""}" placeholder="Formula" />
+          </label>
+          <label>
+            Ajuste caja
+            <input class="score-input" data-fee-base-field="cashAdjustmentAmount" data-fee-base-id="${fee.id}" type="number" step="1" value="${fee.cashAdjustmentAmount ?? 0}" />
+          </label>
+          <label>
+            Interes %
+            <input class="score-input" data-fee-base-field="interestPercent" data-fee-base-id="${fee.id}" type="number" min="0" step="0.1" value="${fee.interestPercent ?? 0}" />
+          </label>
+          <label>
+            Vence dia
+            <input class="score-input" data-fee-base-field="dueDay" data-fee-base-id="${fee.id}" type="number" min="1" max="31" value="${fee.dueDay ?? 10}" />
+          </label>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function getFeeListSections() {
+  const sortedFees = getSortedFees();
+  const currentMonth = getCurrentMonth();
+  const nextMonth = getNextMonth(currentMonth);
+  const latestFee = sortedFees[sortedFees.length - 1];
+  const activeFeeIds = new Set();
+
+  sortedFees.forEach((fee) => {
+    if (fee.month === currentMonth || fee.month === nextMonth) {
+      activeFeeIds.add(fee.id);
+    }
+  });
+
+  if (latestFee) activeFeeIds.add(latestFee.id);
+
+  const activeFees = sortedFees
+    .filter((fee) => activeFeeIds.has(fee.id))
+    .sort((a, b) => getFeeWorkPriority(a, currentMonth, nextMonth) - getFeeWorkPriority(b, currentMonth, nextMonth));
+  const historicalFees = sortedFees
+    .filter((fee) => !activeFeeIds.has(fee.id))
+    .sort((a, b) => b.month.localeCompare(a.month));
+
+  return { activeFees, historicalFees };
+}
+
+function getFeeWorkPriority(fee, currentMonth, nextMonth) {
+  if (fee.month === currentMonth) return 0;
+  if (fee.month === nextMonth) return 1;
+  return 2;
 }
 
 function renderDefaulters(defaulters) {

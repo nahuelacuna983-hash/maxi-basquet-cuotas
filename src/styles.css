@@ -1094,6 +1094,39 @@ tbody tr:last-child td {
   gap: 10px;
 }
 
+.fee-section,
+.fee-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.fee-section-heading {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.fee-section-heading span {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.fee-history {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+}
+
+.fee-history summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  font-weight: 700;
+}
+
+.fee-history-list {
+  padding: 0 14px 14px;
+}
+
 .fee-row {
   display: grid;
   grid-template-columns: 1fr minmax(220px, auto);
