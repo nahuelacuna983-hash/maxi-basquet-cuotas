@@ -524,8 +524,11 @@
                 <select id="scholarshipFee" required></select>
               </label>
               <label>
-                Responder hasta
-                <input id="scholarshipDeadline" type="date" required />
+                Plazo automatico
+                <input id="scholarshipDeadline" type="datetime-local" readonly required />
+                <small class="muted-detail">
+                  Vence 48 horas despues de ofrecerse. Sin respuesta, pasa al siguiente.
+                </small>
               </label>
               <button class="primary-button" type="submit">Ofrecer beca</button>
               <p class="form-message wide-field" id="scholarshipMessage"></p>

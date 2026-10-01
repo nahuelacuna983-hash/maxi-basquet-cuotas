@@ -70,6 +70,7 @@ Estado:
 - `list_player_scholarship_offers`
 - `admin_upsert_scholarship_offer`
 - `respond_scholarship_offer`
+- `refresh_scholarship_offers`
 - `admin_list_treasury_movements`
 - `admin_upsert_treasury_movement`
 - `admin_delete_treasury_movement`
@@ -128,8 +129,9 @@ Estado:
 - `fee_id`: cuota a la que aplica la beca.
 - `player_id`: jugador al que se ofrece la beca.
 - `status`: `pending`, `accepted`, `declined`, `no_response` o `cancelled`.
-- `response_deadline`: fecha limite para aceptar o renunciar.
+- `response_deadline`: fecha y hora limite para aceptar o renunciar.
 - `explanation_seen`: evita repetir el mensaje largo despues de la primera decision.
+- Las becas pendientes vencen a las 48 horas. `refresh_scholarship_offers` marca `no_response` y ofrece automaticamente al siguiente elegible cuando un admin o jugador consulta becas.
 - Si el jugador acepta, `respond_scholarship_offer` crea un ajuste de cuota a $0 con motivo `beca`.
 
 `treasury_movements`:

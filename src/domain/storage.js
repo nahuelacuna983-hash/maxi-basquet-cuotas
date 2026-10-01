@@ -154,7 +154,7 @@ function normalizeScholarshipOffer(offer) {
     month: normalizeBillingStartMonth(offer.month),
     playerId: String(offer.playerId ?? ""),
     status: String(offer.status ?? "pending"),
-    responseDeadline: normalizeDate(offer.responseDeadline),
+    responseDeadline: normalizeDateTime(offer.responseDeadline),
     explanationSeen: Boolean(offer.explanationSeen),
     note: String(offer.note ?? ""),
     createdAt: offer.createdAt,
@@ -220,6 +220,15 @@ function normalizeBirthDate(value) {
 function normalizeDate(value) {
   const date = String(value ?? "").trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
+}
+
+function normalizeDateTime(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
 function dedupeFeesByMonth(fees) {

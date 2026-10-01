@@ -109,6 +109,7 @@ const playerDocumentTypes = [
   { id: "seguro", label: "Seguro" },
   { id: "lista_buena_fe", label: "Lista buena fe" },
 ];
+const SCHOLARSHIP_RESPONSE_HOURS = 48;
 const scholarshipStatuses = {
   pending: "Pendiente",
   accepted: "Beca usada",
@@ -356,7 +357,7 @@ elements.treasuryMovementDate.value = new Date().toISOString().slice(0, 10);
 elements.selfPaymentDate.value = new Date().toISOString().slice(0, 10);
 elements.playerPaymentDate.value = new Date().toISOString().slice(0, 10);
 document.querySelector("#playerBillingStartMonth").value = getCurrentMonth();
-elements.scholarshipDeadline.value = getDefaultScholarshipDeadline(getNextMonth(getCurrentMonth()));
+elements.scholarshipDeadline.value = getScholarshipDeadlineInputValue();
 elements.attendanceDate.value = new Date().toISOString().slice(0, 10);
 elements.attendanceNoveltyDate.value = getDefaultTrainingResponseDate();
 elements.trainingVoteDate.value = state.selectedTrainingVoteDate;
@@ -834,10 +835,7 @@ elements.feeAdjustmentForm.addEventListener("submit", async (event) => {
 
 elements.scholarshipFee.addEventListener("change", () => {
   state.selectedScholarshipFeeId = elements.scholarshipFee.value;
-  const fee = state.fees.find((item) => item.id === state.selectedScholarshipFeeId);
-  if (fee) {
-    elements.scholarshipDeadline.value = getDefaultScholarshipDeadline(fee.month);
-  }
+  elements.scholarshipDeadline.value = getScholarshipDeadlineInputValue();
 });
 
 elements.scholarshipDeadline.addEventListener("change", () => {
@@ -1732,6 +1730,7 @@ function renderFeeAdjustments() {
 }
 
 function renderScholarships() {
+  refreshExpiredScholarshipsLocally();
   renderScholarshipOptions();
 
   if (!state.scholarshipSyncReady && isSupabaseEnabled()) {
@@ -1759,7 +1758,7 @@ function renderScholarships() {
             <th>Estado</th>
             <th>Responder hasta</th>
             <th>Detalle</th>
-            <th>Admin</th>
+            <th>Regla</th>
           </tr>
         </thead>
         <tbody>
@@ -1767,25 +1766,20 @@ function renderScholarships() {
             .map((offer) => {
               const player = state.players.find((item) => item.id === offer.playerId);
               const fee = state.fees.find((item) => item.id === offer.feeId);
-              const isExpiredPending =
-                offer.status === "pending" &&
-                offer.responseDeadline &&
-                offer.responseDeadline < getTodayString();
+              const isPending = offer.status === "pending";
+              const hoursLeft = getScholarshipHoursLeft(offer);
+              const ruleLabel = isPending && hoursLeft !== null
+                ? `${hoursLeft} h restantes`
+                : "48 h automaticas";
 
               return `
                 <tr>
                   <td>${fee ? formatMonthLabel(fee.month) : formatMonthLabel(offer.month || "0000-00")}</td>
                   <td><strong>${escapeHtml(player ? getPlayerName(player) : "Jugador")}</strong></td>
                   <td><span class="payment-status ${getScholarshipStatusClass(offer.status)}">${formatScholarshipStatus(offer.status)}</span></td>
-                  <td>${offer.responseDeadline ? formatDisplayDate(offer.responseDeadline) : "-"}</td>
+                  <td>${offer.responseDeadline ? formatDisplayDateTime(offer.responseDeadline) : "-"}</td>
                   <td>${escapeHtml(offer.note || "-")}</td>
-                  <td>
-                    ${
-                      isExpiredPending
-                        ? `<button class="secondary-button" type="button" data-scholarship-no-response="${offer.id}">Marcar sin respuesta</button>`
-                        : '<span class="muted-detail">-</span>'
-                    }
-                  </td>
+                  <td><span class="muted-detail">${escapeHtml(ruleLabel)}</span></td>
                 </tr>
               `;
             })
@@ -1794,12 +1788,6 @@ function renderScholarships() {
       </table>
     </div>
   `;
-
-  document.querySelectorAll("[data-scholarship-no-response]").forEach((button) => {
-    button.addEventListener("click", () => {
-      markScholarshipNoResponse(button.dataset.scholarshipNoResponse);
-    });
-  });
 }
 
 function renderScholarshipOptions() {
@@ -1819,7 +1807,7 @@ function renderScholarshipOptions() {
   const fee = state.fees.find((item) => item.id === state.selectedScholarshipFeeId);
   if (!elements.scholarshipDeadline.value && fee) {
     elements.scholarshipDeadline.value =
-      state.selectedScholarshipDeadline || getDefaultScholarshipDeadline(fee.month);
+      state.selectedScholarshipDeadline || getScholarshipDeadlineInputValue();
   }
 }
 
@@ -2749,18 +2737,18 @@ function renderSelfScholarshipNotice(player) {
   const fee = state.fees.find((item) => item.id === pendingOffer.feeId);
   const monthLabel = fee ? formatMonthLabel(fee.month) : formatMonthLabel(pendingOffer.month);
   const deadlineLabel = pendingOffer.responseDeadline
-    ? formatDisplayDate(pendingOffer.responseDeadline)
+    ? formatDisplayDateTime(pendingOffer.responseDeadline)
     : "sin fecha limite";
   const showFirstExplanation = !pendingOffer.explanationSeen && !hasSeenScholarshipExplanation(player.id);
   const explanation = showFirstExplanation
-    ? "Este mes te toca la posibilidad de usar la beca del equipo. La idea es que, entre todos, podamos acompanar a quien lo necesite sin exponer a nadie. Si hoy no la necesitas, podes renunciarla y la beca pasa al siguiente companero, acercandose a quien realmente la pueda aprovechar. Si la necesitas, aceptala tranquilo: la decision es privada y no tenes que explicar nada."
-    : `Tenes disponible la beca de ${monthLabel}. Podes usarla o renunciarla. Si renuncias, pasa al siguiente companero.`;
+    ? `Este mes te toca la posibilidad de usar la beca del equipo. La idea es que, entre todos, podamos acompanar a quien lo necesite sin exponer a nadie. Si hoy no la necesitas, podes renunciarla y la beca pasa al siguiente companero, acercandose a quien realmente la pueda aprovechar. Si la necesitas, aceptala tranquilo: la decision es privada y no tenes que explicar nada. Importante: tenes ${SCHOLARSHIP_RESPONSE_HOURS} horas para responder; si no respondes, se toma como sin respuesta y pasa automaticamente.`
+    : `Tenes disponible la beca de ${monthLabel}. Podes usarla o renunciarla. Si renuncias, pasa al siguiente companero. Si no respondes dentro de ${SCHOLARSHIP_RESPONSE_HOURS} horas, pasa automaticamente.`;
 
   elements.selfScholarshipNotice.hidden = false;
   elements.selfScholarshipNotice.innerHTML = `
     <strong>Beca disponible para ${escapeHtml(monthLabel)}</strong>
     <p>${escapeHtml(explanation)}</p>
-    <span class="muted-detail">Fecha limite: ${escapeHtml(deadlineLabel)}</span>
+    <span class="muted-detail">Vence: ${escapeHtml(deadlineLabel)}. Despues se registra como sin respuesta.</span>
     <div class="scholarship-actions">
       <button class="primary-button" type="button" data-scholarship-response="accepted" data-scholarship-offer="${pendingOffer.id}">
         Usar beca
@@ -3128,6 +3116,35 @@ function formatDisplayDate(dateValue) {
     String(date.getMonth() + 1).padStart(2, "0"),
     date.getFullYear(),
   ].join("/");
+}
+
+function parseDateTimeInputValue(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    const date = parseDateInputValue(text);
+    if (date) date.setHours(23, 59, 0, 0);
+    return date;
+  }
+
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDateTimeInputValue(date) {
+  return `${formatDateInputValue(date)}T${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes(),
+  ).padStart(2, "0")}`;
+}
+
+function formatDisplayDateTime(dateValue) {
+  const date = parseDateTimeInputValue(dateValue);
+  if (!date) return "-";
+
+  return `${formatDisplayDate(formatDateInputValue(date))} ${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes(),
+  ).padStart(2, "0")}`;
 }
 
 function getSafeDriveUrl(url) {
@@ -4958,9 +4975,7 @@ function syncFormValuesFromState({ forceTreasury = false } = {}) {
     elements.attendanceNoveltyDate.value = getDefaultTrainingResponseDate();
   }
   if (!elements.scholarshipDeadline.value) {
-    const fee = state.fees.find((item) => item.id === state.selectedScholarshipFeeId) ??
-      state.fees.find((item) => item.id === getDefaultScholarshipFeeId());
-    elements.scholarshipDeadline.value = getDefaultScholarshipDeadline(fee?.month ?? getCurrentMonth());
+    elements.scholarshipDeadline.value = getScholarshipDeadlineInputValue();
   }
   syncFeeFormDefaults();
 
@@ -6494,36 +6509,22 @@ async function deleteFeeAdjustment(adjustmentId) {
 async function createScholarshipOfferFromForm() {
   if (!requireAdmin()) return;
 
-  const fee = state.fees.find((item) => item.id === elements.scholarshipFee.value);
-  const responseDeadline = elements.scholarshipDeadline.value;
+  refreshExpiredScholarshipsLocally();
 
-  if (!fee || !responseDeadline) {
-    elements.scholarshipMessage.textContent = "Elegir cuota y fecha limite.";
+  const fee = state.fees.find((item) => item.id === elements.scholarshipFee.value);
+  const responseDeadline = getScholarshipResponseDeadlineIso();
+
+  if (!fee) {
+    elements.scholarshipMessage.textContent = "Elegir cuota.";
     return;
   }
 
   const pendingOffer = getPendingScholarshipOfferForFee(fee.id);
   if (pendingOffer) {
-    if (pendingOffer.responseDeadline && pendingOffer.responseDeadline < getTodayString()) {
-      const shouldMarkNoResponse = confirm(
-        "Hay una beca pendiente vencida para esta cuota. ¿Marcarla sin respuesta y ofrecer al siguiente?",
-      );
-      if (!shouldMarkNoResponse) return;
-
-      const marked = await saveScholarshipOffer({
-        ...pendingOffer,
-        status: "no_response",
-        explanationSeen: true,
-        respondedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      if (!marked) return;
-    } else {
-      const player = state.players.find((item) => item.id === pendingOffer.playerId);
-      elements.scholarshipMessage.textContent =
-        `Ya hay una beca pendiente para ${player ? getPlayerName(player) : "un jugador"}.`;
-      return;
-    }
+    const player = state.players.find((item) => item.id === pendingOffer.playerId);
+    elements.scholarshipMessage.textContent =
+      `Ya hay una beca pendiente para ${player ? getPlayerName(player) : "un jugador"}.`;
+    return;
   }
 
   const candidate = getNextScholarshipCandidate(fee);
@@ -6551,8 +6552,9 @@ async function createScholarshipOfferFromForm() {
   const saved = await saveScholarshipOffer(offer);
   if (!saved) return;
 
+  elements.scholarshipDeadline.value = getScholarshipDeadlineInputValue(responseDeadline);
   elements.scholarshipMessage.textContent =
-    `Beca ${formatMonthLabel(fee.month)} ofrecida a ${getPlayerName(candidate)}.`;
+    `Beca ${formatMonthLabel(fee.month)} ofrecida a ${getPlayerName(candidate)} por ${SCHOLARSHIP_RESPONSE_HOURS} horas.`;
 }
 
 async function markScholarshipNoResponse(offerId) {
@@ -7591,11 +7593,50 @@ function getDefaultScholarshipFeeId() {
   );
 }
 
-function getDefaultScholarshipDeadline(month) {
-  const normalizedMonth = normalizeBillingStartMonth(month) || getCurrentMonth();
-  const [year, monthNumber] = normalizedMonth.split("-").map(Number);
-  const date = new Date(year, monthNumber - 1, 0);
-  return formatDateInputValue(date);
+function getScholarshipResponseDeadlineIso(baseDate = new Date()) {
+  return new Date(baseDate.getTime() + SCHOLARSHIP_RESPONSE_HOURS * 60 * 60 * 1000).toISOString();
+}
+
+function getScholarshipDeadlineInputValue(value = getScholarshipResponseDeadlineIso()) {
+  const date = parseDateTimeInputValue(value) ?? new Date();
+  return formatDateTimeInputValue(date);
+}
+
+function isScholarshipOfferExpired(offer) {
+  if (offer.status !== "pending" || !offer.responseDeadline) return false;
+  const deadline = parseDateTimeInputValue(offer.responseDeadline);
+  return Boolean(deadline && deadline.getTime() < Date.now());
+}
+
+function getScholarshipHoursLeft(offer) {
+  if (!offer.responseDeadline) return null;
+  const deadline = parseDateTimeInputValue(offer.responseDeadline);
+  if (!deadline) return null;
+  const diffMs = deadline.getTime() - Date.now();
+  if (diffMs <= 0) return 0;
+  return Math.ceil(diffMs / (60 * 60 * 1000));
+}
+
+function refreshExpiredScholarshipsLocally() {
+  const now = new Date().toISOString();
+  let changed = false;
+
+  state.scholarshipOffers = (state.scholarshipOffers ?? []).map((offer) => {
+    if (!isScholarshipOfferExpired(offer)) return offer;
+
+    changed = true;
+    return {
+      ...offer,
+      status: "no_response",
+      explanationSeen: true,
+      respondedAt: now,
+      updatedAt: now,
+    };
+  });
+
+  if (changed) {
+    selfServiceScholarshipsByPlayerId.clear();
+  }
 }
 
 function getScholarshipEligiblePlayers(fee) {
@@ -7647,7 +7688,7 @@ function getNextScholarshipCandidate(fee) {
 function getPendingScholarshipOfferForFee(feeId) {
   return (
     (state.scholarshipOffers ?? []).find(
-      (offer) => offer.feeId === feeId && offer.status === "pending",
+      (offer) => offer.feeId === feeId && offer.status === "pending" && !isScholarshipOfferExpired(offer),
     ) ?? null
   );
 }
@@ -7660,8 +7701,7 @@ function getPendingScholarshipOfferForPlayer(playerId) {
   return (
     playerOffers.find((offer) => {
       if (offer.status !== "pending") return false;
-      if (!offer.responseDeadline) return true;
-      return offer.responseDeadline >= getTodayString();
+      return !isScholarshipOfferExpired(offer);
     }) ?? null
   );
 }
