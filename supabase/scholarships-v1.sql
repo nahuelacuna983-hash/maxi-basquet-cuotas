@@ -1,3 +1,35 @@
+create table if not exists public.fee_adjustments (
+  id text primary key,
+  player_id text not null references public.players(id) on delete cascade,
+  fee_id text not null references public.fees(id) on delete cascade,
+  adjustment_type text not null default 'monto_final' check (
+    adjustment_type in ('monto_final')
+  ),
+  final_amount numeric not null check (final_amount >= 0),
+  reason text not null default 'otro' check (
+    reason in ('viaje', 'lesion', 'permiso', 'ingreso_tarde', 'beca', 'otro')
+  ),
+  observation text default '',
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists fee_adjustments_active_player_fee_unique
+on public.fee_adjustments (player_id, fee_id)
+where active = true;
+
+alter table public.fee_adjustments enable row level security;
+
+drop policy if exists "fee_adjustments_select_active" on public.fee_adjustments;
+
+create policy "fee_adjustments_select_active"
+on public.fee_adjustments
+for select
+using (active = true);
+
+grant select on public.fee_adjustments to anon, authenticated;
+
 alter table public.fee_adjustments
 drop constraint if exists fee_adjustments_reason_check;
 
