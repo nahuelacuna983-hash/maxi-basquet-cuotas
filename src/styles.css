@@ -600,6 +600,32 @@ h1 {
   color: var(--ink);
 }
 
+.scholarship-notice {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 12px;
+  padding: 12px;
+  border: 1px solid #9dc5af;
+  border-radius: 8px;
+  background: #eff8f3;
+  color: var(--muted);
+}
+
+.scholarship-notice strong {
+  color: var(--ink);
+}
+
+.scholarship-notice p {
+  margin: 0;
+  max-width: 780px;
+}
+
+.scholarship-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .birthday-today {
   border-color: #edc66a;
   background: #fff4cf;
@@ -1087,6 +1113,11 @@ tbody tr:last-child td {
   display: block;
   color: var(--ink-soft);
   font-size: 0.84rem;
+}
+
+.warning-detail {
+  color: #a15c00;
+  font-weight: 700;
 }
 
 .fee-list {

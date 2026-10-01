@@ -43,13 +43,16 @@ import {
   adminUpdateTreasuryConfig,
   adminUpsertPlayerDocumentRequirement,
   adminUpsertFeeAdjustment,
+  adminUpsertScholarshipOffer,
   adminUpsertTreasuryMovement,
   adminUpsertAttendance,
   adminUpsertFee,
   adminUpsertPlayer,
   isSupabaseEnabled,
   listPlayerDocumentsForPlayer,
+  listScholarshipOffersForPlayer,
   loadSupabaseState,
+  respondScholarshipOffer,
   saveSupabaseState,
   submitPayment,
   submitTrainingAttendance,
@@ -65,12 +68,16 @@ const persistedSelfServiceSession = loadSelfServiceSession();
 let supabaseHydrated = !isSupabaseEnabled();
 let supabaseSyncInProgress = false;
 let suppressNextSupabaseSync = false;
+let feeFormDirty = false;
 let treasuryFormDirty = false;
 const authorizedSelfServicePlayerIds = new Set();
 const selfServiceAccessCodesByPlayerId = new Map();
 const selfServiceDocumentsByPlayerId = new Map();
 const selfServiceDocumentLoadsByPlayerId = new Set();
 const selfServiceDocumentErrorsByPlayerId = new Map();
+const selfServiceScholarshipsByPlayerId = new Map();
+const selfServiceScholarshipLoadsByPlayerId = new Set();
+const selfServiceScholarshipErrorsByPlayerId = new Map();
 const attendanceTagOptions = [
   { id: "meat", emoji: "🥩" },
   { id: "cook", emoji: "👨‍🍳" },
@@ -82,7 +89,10 @@ const attendanceTagOptions = [
 const TRAINING_VOTE_OPEN_AT = "22:01";
 const TRAINING_VOTE_CLOSE_DAYS_AFTER = 1;
 const TRAINING_VOTE_CLOSE_AT = "23:59";
+const TRAINING_VOTING_ENABLED = false;
 const AUTO_TREASURY_SOURCE = "auto";
+const DEFAULT_TRAINING_SESSION_COST = 65000;
+const DEFAULT_SUNDAY_COST = 120000;
 const dinnerAttendanceTags = new Set(attendanceTagOptions.map((tag) => tag.id));
 const BIRTHDAY_SYMBOL_HTML = "&#127874;";
 const BIRTHDAY_SYMBOL_TEXT = String.fromCodePoint(0x1f382);
@@ -99,6 +109,14 @@ const playerDocumentTypes = [
   { id: "seguro", label: "Seguro" },
   { id: "lista_buena_fe", label: "Lista buena fe" },
 ];
+const scholarshipStatuses = {
+  pending: "Pendiente",
+  accepted: "Beca usada",
+  declined: "Renunciada",
+  no_response: "Sin respuesta",
+  cancelled: "Cancelada",
+};
+const scholarshipBlockedLastNames = new Set(["acuna", "arevalo"]);
 const state = {
   ...persistedAppState,
   playerFilter: "todos",
@@ -106,6 +124,8 @@ const state = {
   selectedPlayerPaymentFeeId: "",
   selectedFeeAdjustmentPlayerId: "",
   selectedFeeAdjustmentFeeId: "",
+  selectedScholarshipFeeId: "",
+  selectedScholarshipDeadline: "",
   selectedTreasuryMovementFeeId: "",
   selectedSelfServicePlayerId:
     persistedAppState.players.find((player) => player.id === initialUrlPlayerId)?.id ??
@@ -136,6 +156,7 @@ const state = {
   attendanceSyncReady: !isSupabaseEnabled(),
   voteSyncReady: !isSupabaseEnabled(),
   documentSyncReady: !isSupabaseEnabled(),
+  scholarshipSyncReady: !isSupabaseEnabled(),
   feeAdjustmentSyncReady: !isSupabaseEnabled(),
   treasuryMovementSyncReady: !isSupabaseEnabled(),
   syncStatus: isSupabaseEnabled() ? "Conectando con Supabase..." : "Modo local",
@@ -183,6 +204,11 @@ const elements = {
   feeAdjustmentObservation: document.querySelector("#feeAdjustmentObservation"),
   feeAdjustmentMessage: document.querySelector("#feeAdjustmentMessage"),
   feeAdjustmentsList: document.querySelector("#feeAdjustmentsList"),
+  scholarshipForm: document.querySelector("#scholarshipForm"),
+  scholarshipFee: document.querySelector("#scholarshipFee"),
+  scholarshipDeadline: document.querySelector("#scholarshipDeadline"),
+  scholarshipMessage: document.querySelector("#scholarshipMessage"),
+  scholarshipList: document.querySelector("#scholarshipList"),
   treasuryMovementForm: document.querySelector("#treasuryMovementForm"),
   treasuryMovementFee: document.querySelector("#treasuryMovementFee"),
   treasuryMovementDate: document.querySelector("#treasuryMovementDate"),
@@ -237,6 +263,7 @@ const elements = {
   selfPaymentAmount: document.querySelector("#selfPaymentAmount"),
   selfPaymentDate: document.querySelector("#selfPaymentDate"),
   selfPaymentNote: document.querySelector("#selfPaymentNote"),
+  selfScholarshipNotice: document.querySelector("#selfScholarshipNotice"),
   selfBirthdayNotice: document.querySelector("#selfBirthdayNotice"),
   selfDocumentsNotice: document.querySelector("#selfDocumentsNotice"),
   selfDocumentsPanel: document.querySelector("#selfDocumentsPanel"),
@@ -329,6 +356,7 @@ elements.treasuryMovementDate.value = new Date().toISOString().slice(0, 10);
 elements.selfPaymentDate.value = new Date().toISOString().slice(0, 10);
 elements.playerPaymentDate.value = new Date().toISOString().slice(0, 10);
 document.querySelector("#playerBillingStartMonth").value = getCurrentMonth();
+elements.scholarshipDeadline.value = getDefaultScholarshipDeadline(getNextMonth(getCurrentMonth()));
 elements.attendanceDate.value = new Date().toISOString().slice(0, 10);
 elements.attendanceNoveltyDate.value = getDefaultTrainingResponseDate();
 elements.trainingVoteDate.value = state.selectedTrainingVoteDate;
@@ -337,6 +365,20 @@ elements.treasuryHolder.value = state.treasuryConfig.accountHolder;
 elements.treasuryPaymentLink.value = state.treasuryConfig.paymentLink;
 elements.treasuryPaymentTestMode.checked = Boolean(state.treasuryConfig.paymentTestMode);
 elements.treasuryInstructions.value = state.treasuryConfig.paymentInstructions;
+syncFeeFormDefaults({ force: true });
+
+[
+  document.querySelector("#feeMonth"),
+  document.querySelector("#feeTrainingCost"),
+  document.querySelector("#feeSundayCost"),
+  document.querySelector("#feeTrainingBillingBase"),
+  document.querySelector("#feeSundayBillingBase"),
+  document.querySelector("#feeInterestPercent"),
+].forEach((element) => {
+  element.addEventListener("input", () => {
+    feeFormDirty = true;
+  });
+});
 
 [
   elements.treasuryAlias,
@@ -735,6 +777,17 @@ elements.feeForm.addEventListener("submit", async (event) => {
   const interestPercent = Number(document.querySelector("#feeInterestPercent").value);
 
   if (!month || trainingSessionCost <= 0 || sundayCost < 0 || interestPercent < 0) return;
+  if (
+    sundayCost > 0 &&
+    sundayCost < trainingSessionCost &&
+    !confirm(
+      `Domingo quedo en ${formatMoney(sundayCost)}, menor que el turno de entrenamiento ${formatMoney(trainingSessionCost)}.\n\n` +
+        "Si falta un cero, cancela y corregilo antes de guardar. ¿Guardar igual?",
+    )
+  ) {
+    return;
+  }
+
   if (state.fees.some((fee) => fee.month === month)) {
     alert(`Ya existe una cuota cargada para ${month}. Edita la base de cobro en la lista de cuotas.`);
     return;
@@ -755,12 +808,8 @@ elements.feeForm.addEventListener("submit", async (event) => {
   const saved = await persistFee(fee, previousFees, "Cuota guardada", "Error al guardar cuota");
   if (!saved) return;
 
-  elements.feeForm.reset();
-  document.querySelector("#feeTrainingCost").value = "55000";
-  document.querySelector("#feeSundayCost").value = "90000";
-  document.querySelector("#feeTrainingBillingBase").value = "";
-  document.querySelector("#feeSundayBillingBase").value = "";
-  document.querySelector("#feeInterestPercent").value = "5";
+  feeFormDirty = false;
+  syncFeeFormDefaults({ referenceFee: fee, force: true });
   elements.feeMessage.textContent = `Cuota ${month} creada. Ya se pueden registrar pagos de ese mes.`;
 });
 
@@ -781,6 +830,23 @@ elements.feeAdjustmentFee.addEventListener("change", () => {
 elements.feeAdjustmentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await saveFeeAdjustmentFromForm();
+});
+
+elements.scholarshipFee.addEventListener("change", () => {
+  state.selectedScholarshipFeeId = elements.scholarshipFee.value;
+  const fee = state.fees.find((item) => item.id === state.selectedScholarshipFeeId);
+  if (fee) {
+    elements.scholarshipDeadline.value = getDefaultScholarshipDeadline(fee.month);
+  }
+});
+
+elements.scholarshipDeadline.addEventListener("change", () => {
+  state.selectedScholarshipDeadline = elements.scholarshipDeadline.value;
+});
+
+elements.scholarshipForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await createScholarshipOfferFromForm();
 });
 
 elements.treasuryMovementFee.addEventListener("change", () => {
@@ -1139,6 +1205,7 @@ function render() {
   renderPlayerPaymentOptions();
   renderFeeAdjustmentOptions();
   renderFeeAdjustments();
+  renderScholarships();
   renderTreasuryCashControl();
   renderAttendanceOptions();
   renderAttendanceNoveltyOptions();
@@ -1194,6 +1261,7 @@ function renderSelfService() {
     elements.selfPaymentInstructions.hidden = true;
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
+    elements.selfScholarshipNotice.hidden = true;
     elements.selfBirthdayNotice.hidden = true;
     elements.selfDocumentsNotice.hidden = true;
     elements.selfDocumentsPanel.innerHTML = "";
@@ -1221,6 +1289,7 @@ function renderSelfService() {
     elements.selfPaymentInstructions.hidden = true;
     elements.selfPaymentAlert.hidden = true;
     elements.selfPaymentForm.hidden = true;
+    elements.selfScholarshipNotice.hidden = true;
     elements.selfBirthdayNotice.hidden = true;
     elements.selfDocumentsNotice.hidden = true;
     elements.selfDocumentsPanel.innerHTML = "";
@@ -1242,6 +1311,8 @@ function renderSelfService() {
     elements.selfAccessMessage.textContent = "Vista habilitada por modo admin.";
   }
   renderSelfBirthdayNotice(fallbackPlayer);
+  loadSelfServiceScholarshipsIfNeeded(fallbackPlayer);
+  renderSelfScholarshipNotice(fallbackPlayer);
   loadSelfServiceDocumentsIfNeeded(fallbackPlayer);
   renderSelfDocumentsNotice(fallbackPlayer);
   renderSelfDocumentsPanel(fallbackPlayer);
@@ -1311,7 +1382,7 @@ function renderSelfService() {
   updateProgress(elements.selfMonthPercentBar, elements.selfMonthPercentText, monthPercent);
   updateProgress(elements.selfYearPercentBar, elements.selfYearPercentText, yearPercent);
 
-  const pendingVoteDate = state.voteSyncReady && !state.isAdminMode
+  const pendingVoteDate = TRAINING_VOTING_ENABLED && state.voteSyncReady && !state.isAdminMode
     ? getPendingTrainingVoteDate(fallbackPlayer.id)
     : "";
 
@@ -1346,15 +1417,20 @@ function renderPlayerTabs() {
 }
 
 function renderAdminTabs() {
+  if (!TRAINING_VOTING_ENABLED && state.activeAdminTab === "votaciones") {
+    state.activeAdminTab = "resumen";
+  }
+
   const activeTab = state.activeAdminTab || "resumen";
   const activePanels = getAdminPanelsForTab(activeTab);
   const activeCard = getActiveAdminCard(activeTab, activePanels);
   const workspaceTabs = new Set([
     "jugadores",
     "cuotas",
+    "becas",
     "pagos",
     "entrenamientos",
-    "votaciones",
+    ...(TRAINING_VOTING_ENABLED ? ["votaciones"] : []),
     "estadisticas",
     "convocatorias",
     "documentacion",
@@ -1364,12 +1440,21 @@ function renderAdminTabs() {
   ]);
 
   elements.adminTabButtons.forEach((button) => {
+    if (button.dataset.adminTab === "votaciones") {
+      button.hidden = !TRAINING_VOTING_ENABLED;
+    }
+
     const isActive = button.dataset.adminTab === activeTab;
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-selected", String(isActive));
   });
 
   elements.adminTabPanels.forEach((panel) => {
+    if (panel.dataset.adminPanel === "votaciones" && !TRAINING_VOTING_ENABLED) {
+      panel.hidden = true;
+      return;
+    }
+
     const isActivePanel = panel.dataset.adminPanel === activeTab;
     const cardId = ensureAdminCardId(panel);
     panel.hidden = !isActivePanel || cardId !== activeCard;
@@ -1646,6 +1731,98 @@ function renderFeeAdjustments() {
   });
 }
 
+function renderScholarships() {
+  renderScholarshipOptions();
+
+  if (!state.scholarshipSyncReady && isSupabaseEnabled()) {
+    elements.scholarshipMessage.textContent =
+      "Falta ejecutar el SQL de becas en Supabase.";
+  }
+
+  const offers = (state.scholarshipOffers ?? [])
+    .slice()
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+
+  if (!offers.length) {
+    elements.scholarshipList.innerHTML =
+      '<p class="empty-state">Todavia no hay becas ofrecidas.</p>';
+    return;
+  }
+
+  elements.scholarshipList.innerHTML = `
+    <div class="table-wrap">
+      <table class="compact-table">
+        <thead>
+          <tr>
+            <th>Cuota</th>
+            <th>Jugador</th>
+            <th>Estado</th>
+            <th>Responder hasta</th>
+            <th>Detalle</th>
+            <th>Admin</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${offers
+            .map((offer) => {
+              const player = state.players.find((item) => item.id === offer.playerId);
+              const fee = state.fees.find((item) => item.id === offer.feeId);
+              const isExpiredPending =
+                offer.status === "pending" &&
+                offer.responseDeadline &&
+                offer.responseDeadline < getTodayString();
+
+              return `
+                <tr>
+                  <td>${fee ? formatMonthLabel(fee.month) : formatMonthLabel(offer.month || "0000-00")}</td>
+                  <td><strong>${escapeHtml(player ? getPlayerName(player) : "Jugador")}</strong></td>
+                  <td><span class="payment-status ${getScholarshipStatusClass(offer.status)}">${formatScholarshipStatus(offer.status)}</span></td>
+                  <td>${offer.responseDeadline ? formatDisplayDate(offer.responseDeadline) : "-"}</td>
+                  <td>${escapeHtml(offer.note || "-")}</td>
+                  <td>
+                    ${
+                      isExpiredPending
+                        ? `<button class="secondary-button" type="button" data-scholarship-no-response="${offer.id}">Marcar sin respuesta</button>`
+                        : '<span class="muted-detail">-</span>'
+                    }
+                  </td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.querySelectorAll("[data-scholarship-no-response]").forEach((button) => {
+    button.addEventListener("click", () => {
+      markScholarshipNoResponse(button.dataset.scholarshipNoResponse);
+    });
+  });
+}
+
+function renderScholarshipOptions() {
+  const sortedFees = getSortedFees();
+  const selectedFee = state.selectedScholarshipFeeId || elements.scholarshipFee.value;
+
+  elements.scholarshipFee.innerHTML = sortedFees
+    .map((fee) => `<option value="${fee.id}">${escapeHtml(formatFeeOptionLabel(fee))}</option>`)
+    .join("");
+
+  state.selectedScholarshipFeeId =
+    sortedFees.find((fee) => fee.id === selectedFee)?.id ??
+    getDefaultScholarshipFeeId() ??
+    "";
+  elements.scholarshipFee.value = state.selectedScholarshipFeeId;
+
+  const fee = state.fees.find((item) => item.id === state.selectedScholarshipFeeId);
+  if (!elements.scholarshipDeadline.value && fee) {
+    elements.scholarshipDeadline.value =
+      state.selectedScholarshipDeadline || getDefaultScholarshipDeadline(fee.month);
+  }
+}
+
 function renderPlayersTable(debts) {
   updateFilterButtons();
 
@@ -1805,6 +1982,18 @@ async function createNextFeeFromLatest() {
     cashAdjustmentAmount: 0,
   };
 
+  if (
+    hasSuspiciousSundayCost(nextFee) &&
+    !confirm(
+      `La cuota base ${formatMonthLabel(latestFee.month)} tiene Domingo en ${formatMoney(Number(latestFee.sundayCost) || 0)}, menor que el turno de entrenamiento ${formatMoney(Number(latestFee.trainingSessionCost) || 0)}.\n\n` +
+        `Si falta un cero, corregi ${formatMonthLabel(latestFee.month)} antes de crear ${formatMonthLabel(nextMonth)}. ¿Crear igual?`,
+    )
+  ) {
+    elements.feeMessage.textContent =
+      `Creacion cancelada. Revisa los valores de ${formatMonthLabel(latestFee.month)}.`;
+    return;
+  }
+
   const saved = await persistFee(
     nextFee,
     previousFees,
@@ -1891,6 +2080,9 @@ function renderFeeRow(fee) {
   const cashAdjustmentLabel = Number(fee.cashAdjustmentAmount)
     ? `<span>Ajuste de caja aplicado: ${formatMoney(Number(fee.cashAdjustmentAmount) || 0)}</span>`
     : "";
+  const suspiciousSundayCostLabel = hasSuspiciousSundayCost(fee)
+    ? `<span class="warning-detail">Revisar: el valor de domingo es menor que entrenamiento. Puede faltar un cero.</span>`
+    : "";
   const activeAdjustments = getActiveFeeAdjustments().filter(
     (adjustment) => adjustment.feeId === fee.id,
   );
@@ -1914,6 +2106,7 @@ function renderFeeRow(fee) {
         <span>Solo entrenamientos ${formatMoney(expectedTrainingOnly)} / Competidor ${formatMoney(expectedCompetitor)}</span>
         ${fixedAmountLabel}
         ${cashAdjustmentLabel}
+        ${suspiciousSundayCostLabel}
         ${adjustmentLabel}
         <div class="fee-base-controls">
           <label>
@@ -2525,6 +2718,193 @@ async function loadSelfServiceDocumentsIfNeeded(player) {
   if (state.selectedSelfServicePlayerId === player.id && canViewSelfServicePlayer(player)) {
     renderSelfService();
   }
+}
+
+function renderSelfScholarshipNotice(player) {
+  if (!elements.selfScholarshipNotice) return;
+
+  const loadError = selfServiceScholarshipErrorsByPlayerId.get(player.id);
+  const isLoading = selfServiceScholarshipLoadsByPlayerId.has(player.id);
+  const pendingOffer = getPendingScholarshipOfferForPlayer(player.id);
+
+  if (isLoading && !pendingOffer) {
+    elements.selfScholarshipNotice.hidden = false;
+    elements.selfScholarshipNotice.innerHTML = "<strong>Revisando becas...</strong>";
+    return;
+  }
+
+  if (loadError) {
+    elements.selfScholarshipNotice.hidden = false;
+    elements.selfScholarshipNotice.innerHTML =
+      `<strong>Becas no disponibles.</strong> ${escapeHtml(loadError)}`;
+    return;
+  }
+
+  if (!pendingOffer) {
+    elements.selfScholarshipNotice.hidden = true;
+    elements.selfScholarshipNotice.innerHTML = "";
+    return;
+  }
+
+  const fee = state.fees.find((item) => item.id === pendingOffer.feeId);
+  const monthLabel = fee ? formatMonthLabel(fee.month) : formatMonthLabel(pendingOffer.month);
+  const deadlineLabel = pendingOffer.responseDeadline
+    ? formatDisplayDate(pendingOffer.responseDeadline)
+    : "sin fecha limite";
+  const showFirstExplanation = !pendingOffer.explanationSeen && !hasSeenScholarshipExplanation(player.id);
+  const explanation = showFirstExplanation
+    ? "Este mes te toca la posibilidad de usar la beca del equipo. La idea es que, entre todos, podamos acompanar a quien lo necesite sin exponer a nadie. Si hoy no la necesitas, podes renunciarla y la beca pasa al siguiente companero, acercandose a quien realmente la pueda aprovechar. Si la necesitas, aceptala tranquilo: la decision es privada y no tenes que explicar nada."
+    : `Tenes disponible la beca de ${monthLabel}. Podes usarla o renunciarla. Si renuncias, pasa al siguiente companero.`;
+
+  elements.selfScholarshipNotice.hidden = false;
+  elements.selfScholarshipNotice.innerHTML = `
+    <strong>Beca disponible para ${escapeHtml(monthLabel)}</strong>
+    <p>${escapeHtml(explanation)}</p>
+    <span class="muted-detail">Fecha limite: ${escapeHtml(deadlineLabel)}</span>
+    <div class="scholarship-actions">
+      <button class="primary-button" type="button" data-scholarship-response="accepted" data-scholarship-offer="${pendingOffer.id}">
+        Usar beca
+      </button>
+      <button class="secondary-button" type="button" data-scholarship-response="declined" data-scholarship-offer="${pendingOffer.id}">
+        Renunciar beca
+      </button>
+    </div>
+  `;
+
+  elements.selfScholarshipNotice.querySelectorAll("[data-scholarship-response]").forEach((button) => {
+    button.addEventListener("click", () => {
+      respondToScholarship(button.dataset.scholarshipOffer, button.dataset.scholarshipResponse);
+    });
+  });
+}
+
+async function loadSelfServiceScholarshipsIfNeeded(player) {
+  if (!player) return;
+
+  if (state.isAdminMode) {
+    selfServiceScholarshipsByPlayerId.set(
+      player.id,
+      (state.scholarshipOffers ?? []).filter((offer) => offer.playerId === player.id),
+    );
+    return;
+  }
+
+  if (!isSupabaseEnabled() || !supabaseHydrated) {
+    selfServiceScholarshipsByPlayerId.set(
+      player.id,
+      (state.scholarshipOffers ?? []).filter((offer) => offer.playerId === player.id),
+    );
+    return;
+  }
+
+  if (selfServiceScholarshipsByPlayerId.has(player.id)) return;
+  if (selfServiceScholarshipLoadsByPlayerId.has(player.id)) return;
+
+  const accessCode = selfServiceAccessCodesByPlayerId.get(player.id);
+  if (!accessCode) return;
+
+  selfServiceScholarshipLoadsByPlayerId.add(player.id);
+  selfServiceScholarshipErrorsByPlayerId.delete(player.id);
+
+  try {
+    const offers = await listScholarshipOffersForPlayer(player.id, accessCode);
+    selfServiceScholarshipsByPlayerId.set(player.id, offers);
+    state.scholarshipOffers = mergeScholarshipOffers(state.scholarshipOffers ?? [], offers);
+  } catch (error) {
+    selfServiceScholarshipsByPlayerId.set(player.id, []);
+    selfServiceScholarshipErrorsByPlayerId.set(player.id, formatScholarshipLoadError(error.message));
+  } finally {
+    selfServiceScholarshipLoadsByPlayerId.delete(player.id);
+  }
+
+  if (state.selectedSelfServicePlayerId === player.id && canViewSelfServicePlayer(player)) {
+    renderSelfService();
+  }
+}
+
+async function respondToScholarship(offerId, response) {
+  const player = state.players.find((item) => item.id === state.selectedSelfServicePlayerId);
+  const offer = (state.scholarshipOffers ?? []).find((item) => item.id === offerId);
+
+  if (!player || !offer || !canViewSelfServicePlayer(player)) {
+    elements.selfScholarshipNotice.innerHTML = "<strong>Ingresa tu codigo para responder la beca.</strong>";
+    return;
+  }
+
+  if (!["accepted", "declined"].includes(response)) return;
+
+  const previousOffers = state.scholarshipOffers ?? [];
+  const previousAdjustments = state.feeAdjustments ?? [];
+  const now = new Date().toISOString();
+  const updatedOffer = {
+    ...offer,
+    status: response,
+    explanationSeen: true,
+    respondedAt: now,
+    updatedAt: now,
+  };
+
+  state.scholarshipOffers = upsertScholarshipOffer(previousOffers, updatedOffer);
+  if (response === "accepted") {
+    state.feeAdjustments = upsertFeeAdjustment(previousAdjustments, createScholarshipFeeAdjustment(updatedOffer));
+  }
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = response === "accepted" ? "Aceptando beca..." : "Renunciando beca...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await respondScholarshipOffer(
+        player.id,
+        selfServiceAccessCodesByPlayerId.get(player.id) ?? "",
+        offer.id,
+        response,
+      );
+      state.syncStatus = getPaymentMutationMessage(
+        response === "accepted" ? "Beca aceptada" : "Beca renunciada",
+        mutationResult,
+      );
+      state.scholarshipSyncReady = true;
+      if (response === "accepted") state.feeAdjustmentSyncReady = true;
+    } catch (error) {
+      state.scholarshipOffers = previousOffers;
+      state.feeAdjustments = previousAdjustments;
+      state.syncStatus = `Error al responder beca: ${error.message}`;
+      if (isInvalidPlayerCodeError(error)) {
+        clearSelfServiceAccess(player.id);
+        state.syncStatus = "El codigo guardado no coincide. Ingresalo de nuevo.";
+      }
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = response === "accepted" ? "Beca aceptada localmente" : "Beca renunciada localmente";
+  }
+
+  selfServiceScholarshipsByPlayerId.set(
+    player.id,
+    (state.scholarshipOffers ?? []).filter((item) => item.playerId === player.id),
+  );
+  suppressNextSupabaseSync = true;
+  render();
+}
+
+function formatScholarshipLoadError(message) {
+  const text = String(message ?? "");
+  if (
+    text.includes("Could not find the function") ||
+    text.includes("does not exist") ||
+    text.includes("schema cache")
+  ) {
+    return "Falta ejecutar supabase/scholarships-v1.sql en Supabase.";
+  }
+
+  return text || "Error desconocido";
 }
 
 function formatSelfDocumentLoadError(message) {
@@ -4484,6 +4864,9 @@ function removeSampleData() {
       !samplePlayerIds.has(vote.featuredPlayerId) &&
       !samplePlayerIds.has(vote.spongePlayerId),
   );
+  state.scholarshipOffers = (state.scholarshipOffers ?? []).filter(
+    (offer) => !samplePlayerIds.has(offer.playerId),
+  );
   state.responsibilityAdjustments = state.responsibilityAdjustments.filter(
     (adjustment) => !samplePlayerIds.has(adjustment.playerId),
   );
@@ -4514,6 +4897,7 @@ function applyPersistentState(nextState) {
   state.attendances = nextState.attendances.map((attendance) => ({ ...attendance }));
   state.trainingVotes = (nextState.trainingVotes ?? []).map((vote) => ({ ...vote }));
   state.playerDocuments = (nextState.playerDocuments ?? []).map((document) => ({ ...document }));
+  state.scholarshipOffers = (nextState.scholarshipOffers ?? []).map((offer) => ({ ...offer }));
   state.feeAdjustments = (nextState.feeAdjustments ?? []).map((adjustment) => ({
     ...adjustment,
     active: adjustment.active !== false,
@@ -4543,6 +4927,9 @@ function applyPersistentState(nextState) {
   if (typeof nextState.documentSyncReady === "boolean") {
     state.documentSyncReady = nextState.documentSyncReady;
   }
+  if (typeof nextState.scholarshipSyncReady === "boolean") {
+    state.scholarshipSyncReady = nextState.scholarshipSyncReady;
+  }
   if (typeof nextState.feeAdjustmentSyncReady === "boolean") {
     state.feeAdjustmentSyncReady = nextState.feeAdjustmentSyncReady;
   }
@@ -4570,6 +4957,13 @@ function syncFormValuesFromState({ forceTreasury = false } = {}) {
   if (!elements.attendanceNoveltyDate.value) {
     elements.attendanceNoveltyDate.value = getDefaultTrainingResponseDate();
   }
+  if (!elements.scholarshipDeadline.value) {
+    const fee = state.fees.find((item) => item.id === state.selectedScholarshipFeeId) ??
+      state.fees.find((item) => item.id === getDefaultScholarshipFeeId());
+    elements.scholarshipDeadline.value = getDefaultScholarshipDeadline(fee?.month ?? getCurrentMonth());
+  }
+  syncFeeFormDefaults();
+
   if (treasuryFormDirty && !forceTreasury) return;
 
   elements.treasuryAlias.value = state.treasuryConfig.paymentAlias;
@@ -4577,6 +4971,40 @@ function syncFormValuesFromState({ forceTreasury = false } = {}) {
   elements.treasuryPaymentLink.value = state.treasuryConfig.paymentLink;
   elements.treasuryPaymentTestMode.checked = Boolean(state.treasuryConfig.paymentTestMode);
   elements.treasuryInstructions.value = state.treasuryConfig.paymentInstructions;
+}
+
+function syncFeeFormDefaults({ referenceFee = null, force = false } = {}) {
+  if (feeFormDirty && !force) return;
+
+  const defaults = getSuggestedFeeFormValues(referenceFee);
+  document.querySelector("#feeMonth").value = defaults.month;
+  document.querySelector("#feeTrainingCost").value = String(defaults.trainingSessionCost);
+  document.querySelector("#feeSundayCost").value = String(defaults.sundayCost);
+  document.querySelector("#feeTrainingBillingBase").value = defaults.trainingBillingBase ?? "";
+  document.querySelector("#feeSundayBillingBase").value = defaults.sundayBillingBase ?? "";
+  document.querySelector("#feeInterestPercent").value = String(defaults.interestPercent);
+}
+
+function getSuggestedFeeFormValues(referenceFee = null) {
+  const sortedFees = getSortedFees();
+  const latestFee = referenceFee ?? sortedFees[sortedFees.length - 1] ?? null;
+  const nextMonth = latestFee?.month ? getNextMonth(latestFee.month) : getCurrentMonth();
+
+  return {
+    month: nextMonth,
+    trainingSessionCost:
+      Number(latestFee?.trainingSessionCost) > 0
+        ? Number(latestFee.trainingSessionCost)
+        : DEFAULT_TRAINING_SESSION_COST,
+    sundayCost:
+      Number(latestFee?.sundayCost) >= 0
+        ? Number(latestFee.sundayCost)
+        : DEFAULT_SUNDAY_COST,
+    trainingBillingBase: latestFee?.trainingBillingBase ?? "",
+    sundayBillingBase: latestFee?.sundayBillingBase ?? "",
+    interestPercent:
+      Number(latestFee?.interestPercent) >= 0 ? Number(latestFee.interestPercent) : 5,
+  };
 }
 
 function getSelfServiceUiSnapshot() {
@@ -6063,6 +6491,123 @@ async function deleteFeeAdjustment(adjustmentId) {
   render();
 }
 
+async function createScholarshipOfferFromForm() {
+  if (!requireAdmin()) return;
+
+  const fee = state.fees.find((item) => item.id === elements.scholarshipFee.value);
+  const responseDeadline = elements.scholarshipDeadline.value;
+
+  if (!fee || !responseDeadline) {
+    elements.scholarshipMessage.textContent = "Elegir cuota y fecha limite.";
+    return;
+  }
+
+  const pendingOffer = getPendingScholarshipOfferForFee(fee.id);
+  if (pendingOffer) {
+    if (pendingOffer.responseDeadline && pendingOffer.responseDeadline < getTodayString()) {
+      const shouldMarkNoResponse = confirm(
+        "Hay una beca pendiente vencida para esta cuota. ¿Marcarla sin respuesta y ofrecer al siguiente?",
+      );
+      if (!shouldMarkNoResponse) return;
+
+      const marked = await saveScholarshipOffer({
+        ...pendingOffer,
+        status: "no_response",
+        explanationSeen: true,
+        respondedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      if (!marked) return;
+    } else {
+      const player = state.players.find((item) => item.id === pendingOffer.playerId);
+      elements.scholarshipMessage.textContent =
+        `Ya hay una beca pendiente para ${player ? getPlayerName(player) : "un jugador"}.`;
+      return;
+    }
+  }
+
+  const candidate = getNextScholarshipCandidate(fee);
+  if (!candidate) {
+    elements.scholarshipMessage.textContent =
+      "No hay candidato elegible disponible para esta cuota.";
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const offer = {
+    id: createId("scholarship"),
+    feeId: fee.id,
+    month: fee.month,
+    playerId: candidate.id,
+    status: "pending",
+    responseDeadline,
+    explanationSeen: hasSeenScholarshipExplanation(candidate.id),
+    note: "Beca solidaria mensual",
+    createdAt: now,
+    updatedAt: now,
+    respondedAt: "",
+  };
+
+  const saved = await saveScholarshipOffer(offer);
+  if (!saved) return;
+
+  elements.scholarshipMessage.textContent =
+    `Beca ${formatMonthLabel(fee.month)} ofrecida a ${getPlayerName(candidate)}.`;
+}
+
+async function markScholarshipNoResponse(offerId) {
+  if (!requireAdmin()) return;
+
+  const offer = (state.scholarshipOffers ?? []).find((item) => item.id === offerId);
+  if (!offer) return;
+
+  const saved = await saveScholarshipOffer({
+    ...offer,
+    status: "no_response",
+    explanationSeen: true,
+    respondedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  if (saved) {
+    elements.scholarshipMessage.textContent =
+      "Beca marcada sin respuesta. Ya podes ofrecer al siguiente.";
+  }
+}
+
+async function saveScholarshipOffer(offer) {
+  const previousOffers = state.scholarshipOffers ?? [];
+  state.scholarshipOffers = upsertScholarshipOffer(previousOffers, offer);
+
+  if (isSupabaseEnabled() && supabaseHydrated) {
+    supabaseSyncInProgress = true;
+    state.syncStatus = "Guardando beca...";
+    renderRoleVisibility();
+
+    try {
+      const mutationResult = await adminUpsertScholarshipOffer(adminConfig.pin, offer);
+      state.syncStatus = getPaymentMutationMessage("Beca guardada", mutationResult);
+      state.scholarshipSyncReady = true;
+    } catch (error) {
+      state.scholarshipOffers = previousOffers;
+      state.syncStatus = `Error al guardar beca: ${error.message}`;
+      elements.scholarshipMessage.textContent = state.syncStatus;
+      supabaseSyncInProgress = false;
+      suppressNextSupabaseSync = true;
+      render();
+      return false;
+    } finally {
+      supabaseSyncInProgress = false;
+    }
+  } else {
+    state.syncStatus = "Beca guardada localmente";
+  }
+
+  suppressNextSupabaseSync = true;
+  render();
+  return true;
+}
+
 function renderTreasuryCashControl() {
   const sortedFees = getSortedFees();
   const selectedFeeId = state.selectedTreasuryMovementFeeId || elements.treasuryMovementFee.value;
@@ -6447,6 +6992,25 @@ async function updateFeeBillingBase(feeId, field, value) {
   }
 
   const previousFees = state.fees;
+  const currentFee = previousFees.find((fee) => fee.id === feeId);
+  if (!currentFee) return;
+
+  const previewFee = {
+    ...currentFee,
+    [field]: nextValue,
+  };
+
+  if (
+    hasSuspiciousSundayCost(previewFee) &&
+    !confirm(
+      `En ${formatMonthLabel(previewFee.month)}, Domingo queda en ${formatMoney(Number(previewFee.sundayCost) || 0)}, menor que el turno de entrenamiento ${formatMoney(Number(previewFee.trainingSessionCost) || 0)}.\n\n` +
+        "Si falta un cero, cancela y corregilo antes de guardar. ¿Guardar igual?",
+    )
+  ) {
+    render();
+    return;
+  }
+
   let updatedFee = null;
   state.fees = state.fees.map((fee) =>
     fee.id === feeId
@@ -6516,6 +7080,13 @@ function normalizeEditableFeeValue(field, value) {
   }
 
   return undefined;
+}
+
+function hasSuspiciousSundayCost(fee) {
+  const trainingSessionCost = Number(fee.trainingSessionCost) || 0;
+  const sundayCost = Number(fee.sundayCost) || 0;
+
+  return sundayCost > 0 && trainingSessionCost > 0 && sundayCost < trainingSessionCost;
 }
 
 function getTreasuryCashSummary(fee) {
@@ -7002,10 +7573,148 @@ function formatFeeAdjustmentReason(reason) {
     lesion: "Lesion",
     permiso: "Permiso",
     ingreso_tarde: "Ingreso tarde",
+    beca: "Beca",
     otro: "Otro",
   };
 
   return labels[reason] ?? reason ?? "Otro";
+}
+
+function getDefaultScholarshipFeeId() {
+  const sortedFees = getSortedFees();
+  const nextMonth = getNextMonth(getCurrentMonth());
+  return (
+    sortedFees.find((fee) => fee.month === nextMonth)?.id ??
+    sortedFees.find((fee) => fee.month === getCurrentMonth())?.id ??
+    sortedFees[sortedFees.length - 1]?.id ??
+    ""
+  );
+}
+
+function getDefaultScholarshipDeadline(month) {
+  const normalizedMonth = normalizeBillingStartMonth(month) || getCurrentMonth();
+  const [year, monthNumber] = normalizedMonth.split("-").map(Number);
+  const date = new Date(year, monthNumber - 1, 0);
+  return formatDateInputValue(date);
+}
+
+function getScholarshipEligiblePlayers(fee) {
+  if (!fee) return [];
+
+  return getSortedPlayers().filter((player) => {
+    const lastName = normalizePlayerName(player.lastName || getPlayerName(player).split(" ")[0] || "");
+    const hasBaseFee = getBaseExpectedFeeForPlayer(player, fee, state.players) > 0;
+    const activeAdjustment = getActiveFeeAdjustment(player.id, fee.id);
+
+    return (
+      player.status === "activo" &&
+      player.type === "competidor" &&
+      player.internalEnabled !== false &&
+      hasBaseFee &&
+      !scholarshipBlockedLastNames.has(lastName) &&
+      !(activeAdjustment && Number(activeAdjustment.finalAmount) === 0)
+    );
+  });
+}
+
+function getNextScholarshipCandidate(fee) {
+  const eligiblePlayers = getScholarshipEligiblePlayers(fee);
+  if (!eligiblePlayers.length) return null;
+
+  const eligibleIds = new Set(eligiblePlayers.map((player) => player.id));
+  const offeredForFeeIds = new Set(
+    (state.scholarshipOffers ?? [])
+      .filter((offer) => offer.feeId === fee.id && offer.status !== "cancelled")
+      .map((offer) => offer.playerId),
+  );
+  const latestOffer = (state.scholarshipOffers ?? [])
+    .filter((offer) => eligibleIds.has(offer.playerId))
+    .slice()
+    .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""))
+    .at(-1);
+  const latestIndex = latestOffer
+    ? eligiblePlayers.findIndex((player) => player.id === latestOffer.playerId)
+    : -1;
+  const startIndex = latestIndex >= 0 ? latestIndex + 1 : 0;
+  const rotatedPlayers = [
+    ...eligiblePlayers.slice(startIndex),
+    ...eligiblePlayers.slice(0, startIndex),
+  ];
+
+  return rotatedPlayers.find((player) => !offeredForFeeIds.has(player.id)) ?? null;
+}
+
+function getPendingScholarshipOfferForFee(feeId) {
+  return (
+    (state.scholarshipOffers ?? []).find(
+      (offer) => offer.feeId === feeId && offer.status === "pending",
+    ) ?? null
+  );
+}
+
+function getPendingScholarshipOfferForPlayer(playerId) {
+  const playerOffers = state.isAdminMode
+    ? (state.scholarshipOffers ?? []).filter((offer) => offer.playerId === playerId)
+    : selfServiceScholarshipsByPlayerId.get(playerId) ?? [];
+
+  return (
+    playerOffers.find((offer) => {
+      if (offer.status !== "pending") return false;
+      if (!offer.responseDeadline) return true;
+      return offer.responseDeadline >= getTodayString();
+    }) ?? null
+  );
+}
+
+function hasSeenScholarshipExplanation(playerId) {
+  return (state.scholarshipOffers ?? []).some(
+    (offer) =>
+      offer.playerId === playerId &&
+      offer.explanationSeen &&
+      ["accepted", "declined", "no_response"].includes(offer.status),
+  );
+}
+
+function createScholarshipFeeAdjustment(offer) {
+  const fee = state.fees.find((item) => item.id === offer.feeId);
+  const now = new Date().toISOString();
+
+  return {
+    id: `fee-adjustment-beca-${offer.feeId}-${offer.playerId}`,
+    playerId: offer.playerId,
+    feeId: offer.feeId,
+    adjustmentType: "monto_final",
+    finalAmount: 0,
+    reason: "beca",
+    observation: `Beca solidaria ${fee ? formatMonthLabel(fee.month) : ""}`.trim(),
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function upsertScholarshipOffer(offers, nextOffer) {
+  return [
+    ...offers.filter((offer) => offer.id !== nextOffer.id),
+    nextOffer,
+  ];
+}
+
+function mergeScholarshipOffers(currentOffers, incomingOffers) {
+  return incomingOffers.reduce(
+    (offers, offer) => upsertScholarshipOffer(offers, offer),
+    currentOffers,
+  );
+}
+
+function formatScholarshipStatus(status) {
+  return scholarshipStatuses[status] ?? "Pendiente";
+}
+
+function getScholarshipStatusClass(status) {
+  if (status === "accepted") return "status-aprobado";
+  if (status === "pending") return "status-pendiente";
+  return "status-rechazado";
 }
 
 function getSortedPlayers(players = state.players) {

@@ -131,6 +131,8 @@ export const initialTreasuryMovements = [];
 
 export const initialPlayerDocuments = [];
 
+export const initialScholarshipOffers = [];
+
 export const adminConfig = {
   pin: "1234",
 };
@@ -144,6 +146,7 @@ export function createInitialAppState() {
     attendances: initialAttendances.map((attendance) => ({ ...attendance })),
     trainingVotes: initialTrainingVotes.map((vote) => ({ ...vote })),
     playerDocuments: initialPlayerDocuments.map((document) => ({ ...document })),
+    scholarshipOffers: initialScholarshipOffers.map((offer) => ({ ...offer })),
     feeAdjustments: initialFeeAdjustments.map((adjustment) => ({ ...adjustment })),
     treasuryMovements: initialTreasuryMovements.map((movement) => ({ ...movement })),
     responsibilityAdjustments: initialResponsibilityAdjustments.map((adjustment) => ({

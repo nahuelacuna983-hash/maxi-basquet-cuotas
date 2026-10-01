@@ -16,6 +16,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     attendancesResult,
     votesResult,
     documentsResult,
+    scholarshipResult,
     feeAdjustmentsResult,
     treasuryMovementsResult,
   ] = await Promise.all([
@@ -30,6 +31,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     loadAttendances(client),
     loadTrainingVotes(client),
     loadPlayerDocuments(client, options),
+    loadScholarshipOffers(client, options),
     loadFeeAdjustments(client),
     loadTreasuryMovements(client, options),
   ]);
@@ -41,6 +43,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
   assertSupabaseResult(attendancesResult, "attendances");
   assertSupabaseResult(votesResult, "training_votes");
   assertSupabaseResult(documentsResult, "player_documents");
+  assertSupabaseResult(scholarshipResult, "scholarship_offers");
   assertSupabaseResult(feeAdjustmentsResult, "fee_adjustments");
   assertSupabaseResult(treasuryMovementsResult, "treasury_movements");
 
@@ -52,6 +55,7 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     .filter((attendance) => !isRemovedGuestAttendance(attendance));
   const trainingVotes = votesResult.data.map(fromSupabaseTrainingVote);
   const playerDocuments = documentsResult.data.map(fromSupabasePlayerDocument);
+  const scholarshipOffers = scholarshipResult.data.map(fromSupabaseScholarshipOffer);
   const feeAdjustments = feeAdjustmentsResult.data.map(fromSupabaseFeeAdjustment);
   const treasuryMovements = treasuryMovementsResult.disabled
     ? fallbackState.treasuryMovements ?? []
@@ -68,11 +72,13 @@ export async function loadSupabaseState(fallbackState, options = {}) {
     attendances,
     trainingVotes,
     playerDocuments,
+    scholarshipOffers,
     feeAdjustments,
     treasuryMovements,
     attendanceSyncReady: !attendancesResult.disabled,
     voteSyncReady: !votesResult.disabled,
     documentSyncReady: !documentsResult.disabled,
+    scholarshipSyncReady: !scholarshipResult.disabled,
     feeAdjustmentSyncReady: !feeAdjustmentsResult.disabled,
     treasuryMovementSyncReady: !treasuryMovementsResult.disabled,
     treasuryConfig,
@@ -207,6 +213,58 @@ export async function adminUpsertPlayerDocumentRequirement(adminPin, requirement
   }
 
   throwSupabaseError(rpcResult, "admin_upsert_player_document_requirement");
+}
+
+export async function listScholarshipOffersForPlayer(playerId, accessCode) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("list_player_scholarship_offers", {
+    p_player_id: playerId,
+    p_access_code: accessCode,
+  });
+
+  if (rpcResult.error) {
+    throwSupabaseError(rpcResult, "list_player_scholarship_offers");
+  }
+
+  return (rpcResult.data ?? []).map(fromSupabaseScholarshipOffer);
+}
+
+export async function adminUpsertScholarshipOffer(adminPin, offer) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("admin_upsert_scholarship_offer", {
+    p_admin_pin: adminPin,
+    p_offer: toSupabaseScholarshipOffer(offer),
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "admin_upsert_scholarship_offer");
+  }
+
+  throwSupabaseError(rpcResult, "admin_upsert_scholarship_offer");
+}
+
+export async function respondScholarshipOffer(playerId, accessCode, offerId, response) {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("respond_scholarship_offer", {
+    p_player_id: playerId,
+    p_access_code: accessCode,
+    p_offer_id: offerId,
+    p_response: response,
+  });
+
+  if (!rpcResult.error) {
+    return logMutationMode("rpc");
+  }
+
+  if (!isRpcUnavailableError(rpcResult.error)) {
+    throwSupabaseError(rpcResult, "respond_scholarship_offer");
+  }
+
+  throwSupabaseError(rpcResult, "respond_scholarship_offer");
 }
 
 export async function adminDeleteFeeAdjustment(adminPin, adjustmentId) {
@@ -564,6 +622,22 @@ async function loadPlayerDocuments(client, options = {}) {
   return result;
 }
 
+async function loadScholarshipOffers(client, options = {}) {
+  if (!options.adminPin) {
+    return { data: [], error: null, disabled: true };
+  }
+
+  const result = await client.rpc("admin_list_scholarship_offers", {
+    p_admin_pin: options.adminPin,
+  });
+
+  if (result.error && isRpcUnavailableError(result.error)) {
+    return { data: [], error: null, disabled: true };
+  }
+
+  return result;
+}
+
 async function loadFeeAdjustments(client) {
   const result = await client
     .from("fee_adjustments")
@@ -744,6 +818,22 @@ function fromSupabaseFeeAdjustment(row) {
   };
 }
 
+function fromSupabaseScholarshipOffer(row) {
+  return {
+    id: row.id,
+    feeId: row.fee_id,
+    month: row.month ?? "",
+    playerId: row.player_id,
+    status: row.status ?? "pending",
+    responseDeadline: row.response_deadline ?? "",
+    explanationSeen: Boolean(row.explanation_seen),
+    note: row.note ?? "",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    respondedAt: row.responded_at,
+  };
+}
+
 function toSupabaseFee(fee) {
   return {
     id: fee.id,
@@ -773,6 +863,22 @@ function toSupabaseFeeAdjustment(adjustment) {
     active: adjustment.active !== false,
     created_at: adjustment.createdAt ?? new Date().toISOString(),
     updated_at: adjustment.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+function toSupabaseScholarshipOffer(offer) {
+  return {
+    id: offer.id,
+    fee_id: offer.feeId,
+    month: offer.month ?? "",
+    player_id: offer.playerId,
+    status: offer.status ?? "pending",
+    response_deadline: offer.responseDeadline || null,
+    explanation_seen: Boolean(offer.explanationSeen),
+    note: offer.note ?? "",
+    created_at: offer.createdAt ?? new Date().toISOString(),
+    updated_at: offer.updatedAt ?? new Date().toISOString(),
+    responded_at: offer.respondedAt ?? null,
   };
 }
 

@@ -51,6 +51,7 @@
           </div>
 
           <div id="selfServiceProtectedContent" hidden>
+            <div class="scholarship-notice" id="selfScholarshipNotice" hidden></div>
             <div class="birthday-notice" id="selfBirthdayNotice" hidden></div>
             <div class="self-document-notice" id="selfDocumentsNotice" hidden></div>
 
@@ -291,6 +292,7 @@
         <button class="admin-tab-button active" type="button" data-admin-tab="resumen">Resumen</button>
         <button class="admin-tab-button" type="button" data-admin-tab="jugadores">Jugadores</button>
         <button class="admin-tab-button" type="button" data-admin-tab="cuotas">Cuotas</button>
+        <button class="admin-tab-button" type="button" data-admin-tab="becas">Becas</button>
         <button class="admin-tab-button" type="button" data-admin-tab="pagos">Pagos</button>
         <button class="admin-tab-button" type="button" data-admin-tab="entrenamientos">Entrenamientos</button>
         <button class="admin-tab-button" type="button" data-admin-tab="votaciones">Votaciones beta</button>
@@ -438,11 +440,11 @@
               </label>
               <label>
                 Turno entrenamiento
-                <input id="feeTrainingCost" type="number" min="1" value="55000" required />
+                <input id="feeTrainingCost" type="number" min="1" value="65000" required />
               </label>
               <label>
                 Domingo
-                <input id="feeSundayCost" type="number" min="0" value="90000" required />
+                <input id="feeSundayCost" type="number" min="0" value="120000" required />
               </label>
               <label>
                 Base cobro entrenamientos
@@ -494,6 +496,7 @@
                   <option value="lesion">Lesion</option>
                   <option value="permiso">Permiso</option>
                   <option value="ingreso_tarde">Ingreso tarde</option>
+                  <option value="beca">Beca</option>
                   <option value="otro">Otro</option>
                 </select>
               </label>
@@ -505,6 +508,39 @@
               <p class="form-message wide-field" id="feeAdjustmentMessage"></p>
             </form>
             <div id="feeAdjustmentsList" class="fee-adjustments-list"></div>
+          </section>
+
+          <section class="panel" data-admin-panel="becas">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">B</div>
+              <div>
+                <h2>Beca mensual</h2>
+                <p>Ofrecer ayuda privada para jugadores de cuota completa</p>
+              </div>
+            </div>
+            <form class="form-grid" id="scholarshipForm">
+              <label>
+                Cuota
+                <select id="scholarshipFee" required></select>
+              </label>
+              <label>
+                Responder hasta
+                <input id="scholarshipDeadline" type="date" required />
+              </label>
+              <button class="primary-button" type="submit">Ofrecer beca</button>
+              <p class="form-message wide-field" id="scholarshipMessage"></p>
+            </form>
+          </section>
+
+          <section class="panel" data-admin-panel="becas">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">H</div>
+              <div>
+                <h2>Historial de becas</h2>
+                <p>Seguimiento interno sin exponer al grupo</p>
+              </div>
+            </div>
+            <div id="scholarshipList" class="fee-adjustments-list"></div>
           </section>
 
           <section class="panel" data-admin-panel="cuotas">

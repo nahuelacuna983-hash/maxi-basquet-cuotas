@@ -10,6 +10,7 @@ export function createPersistedState(source) {
     attendances: source.attendances,
     trainingVotes: source.trainingVotes,
     playerDocuments: source.playerDocuments,
+    scholarshipOffers: source.scholarshipOffers,
     feeAdjustments: source.feeAdjustments,
     treasuryMovements: source.treasuryMovements,
     responsibilityAdjustments: source.responsibilityAdjustments,
@@ -66,6 +67,9 @@ export function normalizePersistedState(parsedState, fallbackState) {
     playerDocuments: Array.isArray(parsedState.playerDocuments)
       ? parsedState.playerDocuments.map(normalizePlayerDocument)
       : fallbackState.playerDocuments ?? [],
+    scholarshipOffers: Array.isArray(parsedState.scholarshipOffers)
+      ? parsedState.scholarshipOffers.map(normalizeScholarshipOffer)
+      : fallbackState.scholarshipOffers ?? [],
     feeAdjustments: Array.isArray(parsedState.feeAdjustments)
       ? parsedState.feeAdjustments.map(normalizeFeeAdjustment)
       : fallbackState.feeAdjustments ?? [],
@@ -140,6 +144,22 @@ function normalizePlayerDocument(document) {
     expiresAt: normalizeDate(document.expiresAt),
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
+  };
+}
+
+function normalizeScholarshipOffer(offer) {
+  return {
+    id: String(offer.id ?? ""),
+    feeId: String(offer.feeId ?? ""),
+    month: normalizeBillingStartMonth(offer.month),
+    playerId: String(offer.playerId ?? ""),
+    status: String(offer.status ?? "pending"),
+    responseDeadline: normalizeDate(offer.responseDeadline),
+    explanationSeen: Boolean(offer.explanationSeen),
+    note: String(offer.note ?? ""),
+    createdAt: offer.createdAt,
+    updatedAt: offer.updatedAt,
+    respondedAt: offer.respondedAt,
   };
 }
 

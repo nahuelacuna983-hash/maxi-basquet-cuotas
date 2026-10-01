@@ -16,6 +16,7 @@ supabase/player-documents-v1.sql
 supabase/treasury-cash-v1.sql
 supabase/treasury-cash-auto-v1.sql
 supabase/treasury-movement-categories-v1.sql
+supabase/scholarships-v1.sql
 ```
 
 ## Tablas principales
@@ -26,6 +27,7 @@ supabase/treasury-movement-categories-v1.sql
 - `attendances`
 - `training_votes`
 - `player_documents`
+- `scholarship_offers`
 - `treasury_movements`
 - `treasury_config`
 
@@ -41,6 +43,7 @@ Estado:
 - `attendances`: lectura de listados; respuestas de jugador por RPC con codigo; correcciones admin por RPC; eliminacion de invitados por RPC.
 - `training_votes`: lectura permitida; escritura de votos por RPC con codigo de jugador y ventana horaria.
 - `player_documents`: lectura solo por RPC admin; sin policies directas de lectura/escritura.
+- `scholarship_offers`: lectura/escritura solo por RPC; admin ve historial completo, jugador ve y responde solo su propia beca con codigo.
 - `treasury_movements`: lectura y escritura solo por RPC admin.
 - `treasury_movements.source`: permite distinguir egresos `manual` y `auto`.
 - `treasury_config`: lectura permitida; escritura admin por RPC.
@@ -63,6 +66,10 @@ Estado:
 - `admin_list_player_documents`
 - `list_player_documents_for_player`
 - `admin_upsert_player_document_requirement`
+- `admin_list_scholarship_offers`
+- `list_player_scholarship_offers`
+- `admin_upsert_scholarship_offer`
+- `respond_scholarship_offer`
 - `admin_list_treasury_movements`
 - `admin_upsert_treasury_movement`
 - `admin_delete_treasury_movement`
@@ -115,6 +122,15 @@ Estado:
 - `status`: `cargado`, `pendiente`, `revisar` o `vencido`.
 - `expires_at`: fecha de vencimiento si aplica.
 - La app no marca pendientes por ausencia de filas. Solo notifica avisos cargados por admin.
+
+`scholarship_offers`:
+
+- `fee_id`: cuota a la que aplica la beca.
+- `player_id`: jugador al que se ofrece la beca.
+- `status`: `pending`, `accepted`, `declined`, `no_response` o `cancelled`.
+- `response_deadline`: fecha limite para aceptar o renunciar.
+- `explanation_seen`: evita repetir el mensaje largo despues de la primera decision.
+- Si el jugador acepta, `respond_scholarship_offer` crea un ajuste de cuota a $0 con motivo `beca`.
 
 `treasury_movements`:
 
