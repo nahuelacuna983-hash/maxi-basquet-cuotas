@@ -93,6 +93,15 @@ const TRAINING_VOTING_ENABLED = false;
 const AUTO_TREASURY_SOURCE = "auto";
 const DEFAULT_TRAINING_SESSION_COST = 65000;
 const DEFAULT_SUNDAY_COST = 120000;
+const billingBaseAttendanceStatuses = new Set([
+  "voy",
+  "avisa_mas_tarde",
+  "llega_sobre_la_hora",
+  "baja_sobre_la_hora",
+  "baja_sobre_hora",
+  "asistio",
+  "anotado",
+]);
 const dinnerAttendanceTags = new Set(attendanceTagOptions.map((tag) => tag.id));
 const BIRTHDAY_SYMBOL_HTML = "&#127874;";
 const BIRTHDAY_SYMBOL_TEXT = String.fromCodePoint(0x1f382);
@@ -1961,10 +1970,19 @@ async function createNextFeeFromLatest() {
   }
 
   const previousFees = state.fees;
+  const attendanceBillingBase = getAttendanceBillingBaseForMonth(latestFee.month);
   const nextFee = {
     ...latestFee,
     id: createId("fee"),
     month: nextMonth,
+    trainingBillingBase:
+      attendanceBillingBase.totalPlayers > 0
+        ? attendanceBillingBase.totalPlayers
+        : latestFee.trainingBillingBase,
+    sundayBillingBase:
+      attendanceBillingBase.totalPlayers > 0
+        ? attendanceBillingBase.competitors
+        : latestFee.sundayBillingBase,
     fixedTrainingOnlyAmount: null,
     fixedCompetitorAmount: null,
     cashAdjustmentAmount: 0,
@@ -1993,8 +2011,11 @@ async function createNextFeeFromLatest() {
   state.selectedSelfServiceMonth = nextMonth;
   state.selectedAdminPaymentFeeId = nextFee.id;
   state.selectedPlayerPaymentFeeId = nextFee.id;
+  const baseMessage = attendanceBillingBase.totalPlayers > 0
+    ? ` Base tomada de anotados en ${formatMonthLabel(latestFee.month)}: ${attendanceBillingBase.totalPlayers} total (${attendanceBillingBase.competitors} cuota completa, ${attendanceBillingBase.trainingOnly} solo entrenamiento).`
+    : ` No habia anotados en ${formatMonthLabel(latestFee.month)}; se mantuvo la base previa.`;
   elements.feeMessage.textContent =
-    `Cuota ${formatMonthLabel(nextMonth)} creada con valores actuales. Ya se pueden registrar pagos.`;
+    `Cuota ${formatMonthLabel(nextMonth)} creada con valores actuales.${baseMessage} Ya se pueden registrar pagos.`;
   render();
 }
 
@@ -5004,6 +5025,9 @@ function getSuggestedFeeFormValues(referenceFee = null) {
   const sortedFees = getSortedFees();
   const latestFee = referenceFee ?? sortedFees[sortedFees.length - 1] ?? null;
   const nextMonth = latestFee?.month ? getNextMonth(latestFee.month) : getCurrentMonth();
+  const attendanceBillingBase = getAttendanceBillingBaseForMonth(
+    latestFee?.month ?? getPreviousMonth(nextMonth),
+  );
 
   return {
     month: nextMonth,
@@ -5015,8 +5039,14 @@ function getSuggestedFeeFormValues(referenceFee = null) {
       Number(latestFee?.sundayCost) >= 0
         ? Number(latestFee.sundayCost)
         : DEFAULT_SUNDAY_COST,
-    trainingBillingBase: latestFee?.trainingBillingBase ?? "",
-    sundayBillingBase: latestFee?.sundayBillingBase ?? "",
+    trainingBillingBase:
+      attendanceBillingBase.totalPlayers > 0
+        ? attendanceBillingBase.totalPlayers
+        : (latestFee?.trainingBillingBase ?? ""),
+    sundayBillingBase:
+      attendanceBillingBase.totalPlayers > 0
+        ? attendanceBillingBase.competitors
+        : (latestFee?.sundayBillingBase ?? ""),
     interestPercent:
       Number(latestFee?.interestPercent) >= 0 ? Number(latestFee.interestPercent) : 5,
   };
@@ -7593,6 +7623,40 @@ function getDefaultScholarshipFeeId() {
   );
 }
 
+function getAttendanceBillingBaseForMonth(month) {
+  const sourceMonth = normalizeBillingStartMonth(month);
+  const playerIds = new Set();
+
+  if (!sourceMonth) {
+    return {
+      totalPlayers: 0,
+      competitors: 0,
+      trainingOnly: 0,
+    };
+  }
+
+  state.attendances.forEach((attendance) => {
+    if (!attendance.playerId) return;
+    if ((attendance.eventType ?? "entrenamiento") !== "entrenamiento") return;
+    if (!String(attendance.date ?? "").startsWith(sourceMonth)) return;
+    if (!billingBaseAttendanceStatuses.has(attendance.status)) return;
+
+    playerIds.add(attendance.playerId);
+  });
+
+  const players = state.players.filter(
+    (player) => playerIds.has(player.id) && isBillablePlayer(player),
+  );
+  const competitors = players.filter((player) => player.type === "competidor").length;
+  const trainingOnly = players.filter((player) => player.type === "solo_entrenamientos").length;
+
+  return {
+    totalPlayers: players.length,
+    competitors,
+    trainingOnly,
+  };
+}
+
 function getScholarshipResponseDeadlineIso(baseDate = new Date()) {
   return new Date(baseDate.getTime() + SCHOLARSHIP_RESPONSE_HOURS * 60 * 60 * 1000).toISOString();
 }
@@ -8255,6 +8319,12 @@ function getNextMonth(monthValue) {
   const [year, month] = monthValue.split("-").map(Number);
   const nextDate = new Date(year, month, 1);
   return `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getPreviousMonth(monthValue) {
+  const [year, month] = monthValue.split("-").map(Number);
+  const previousDate = new Date(year, month - 2, 1);
+  return `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function createEstimatedFee(month) {
