@@ -95,6 +95,7 @@ const DEFAULT_TRAINING_SESSION_COST = 65000;
 const DEFAULT_SUNDAY_COST = 120000;
 const billingBaseAttendanceStatuses = new Set([
   "voy",
+  "no_voy",
   "avisa_mas_tarde",
   "llega_sobre_la_hora",
   "baja_sobre_la_hora",
