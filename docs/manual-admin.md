@@ -113,13 +113,15 @@ El costo mensual se reparte segun la cantidad de jugadores que pagan y segun el 
 
 Para pagos anticipados del mes siguiente, usar `Crear cuota del mes siguiente`. La app copia los valores actuales de la ultima cuota, crea el nuevo mes y permite registrar pagos contra esa cuota. No copia montos fijos historicos.
 
+La base automatica se toma de jugadores activos distintos que respondieron al menos un entrenamiento del mes de referencia. `No voy`, `Voy`, `Avisa mas tarde`, `Llega sobre la hora` y `Baja sobre la hora` cuentan como respuesta; los esporadicos no entran en el divisor. La base queda guardada al crear la cuota. Si se corrigen asistencias despues, la cuota existente no se recalcula sola: revisar las bases desde la lista de `Cuotas` antes de cambiar un valor. Si ya hay pagos aprobados, un cambio de base puede modificar montos y deudas; no aplicarlo sin revisar el impacto.
+
 Cuando se crea la cuota siguiente, los formularios de pago quedan apuntando a ese nuevo mes. Los selectores muestran `mes anterior`, `mes actual` o `cuota futura` para que sea mas dificil registrar un pago en el periodo equivocado.
 
 Para corregir una cuota ya cargada, ir a la lista de `Cuotas` y editar los campos de esa fila: `Turno entrenamiento`, `Domingo`, `Base entrenamientos`, `Base domingos`, montos fijos, `Interes %` o `Vence dia`. Al guardar el cambio, la app recalcula deuda, morosos y vista jugador con los nuevos valores.
 
 **Que no hacer**
 
-No cargar dos cuotas para el mismo mes. Si el mes ya existe, editar la fila de la lista de cuotas. No tocar abril 2026 sin recordar que tiene monto historico fijo.
+No cargar dos cuotas para el mismo mes. Si el mes ya existe, editar la fila de la lista de cuotas. No tocar abril 2026 sin recordar que tiene monto historico fijo. No cambiar una base con pagos aprobados sin revisar primero el efecto sobre los jugadores.
 
 **Ejemplo**
 

@@ -245,10 +245,10 @@ Metodo actual:
 
 La cuota se calcula por mes.
 
-Costos actuales:
+Valores guardados en la cuota 2026-10 (cada mes conserva sus propios valores):
 
-- Turno martes/jueves: `$55.000`
-- Domingo: `$90.000`
+- Turno martes/jueves: `$65.000`
+- Domingo: `$110.000`
 
 Cada cuota puede definir:
 
@@ -439,29 +439,27 @@ iPhone:
 
 La app necesita internet para consultar Supabase. El service worker no cachea datos para evitar que el celular use versiones viejas. Cuando se publica una version nueva, la app instalada revisa actualizaciones y se recarga sola.
 
-## Lo que falta
+## Pendientes y alcance futuro
 
-Para cerrar una version mas firme:
+La asistencia por jugador, estadisticas, ranking de responsabilidad e informes con graficos simples ya estan disponibles. Los informes se consultan en pantalla o se copian; no generan PDF.
 
-- documentar SQL final completo de Supabase en `supabase/schema.sql`
-- revisar datos de prueba y limpiar pagos de prueba antes de operar real
-- agregar Supabase Auth para admin real
-- separar roles reales: jugador, admin y posible usuario extendido
-- mejorar auditoria de acciones admin
-- definir si se mantiene GitHub Pages o se migra a Next.js/Vercel
-- evaluar dominio propio
+Pendiente antes de una operacion mas amplia:
 
-Funcionalidades pendientes:
+- revisar y conciliar saldos de caja trasladados entre meses antes de aplicar nuevos ajustes
+- completar y verificar requisitos de documentacion desde `Documentacion`; un requisito no cargado no habilita al jugador
+- evaluar Supabase Auth y roles reales para reemplazar el PIN compartido de admin
+- completar una bitacora de acciones administrativas
+- decidir si se mantiene GitHub Pages o se migra a Next.js/Vercel y si se compra dominio propio
 
-- asistencia real de martes/jueves por jugador
-- cierre de jornada con destacados
-- ranking de responsabilidad calculado desde eventos
-- reporte WhatsApp mas completo
-- Mercado Pago API o debito automatico
-- PDF
-- graficos
-- modulo VIP/extendido
-- cocina/lavado, si finalmente se decide incluir
+Futuro, fuera del alcance actual:
+
+- integracion de pagos automatizados con Mercado Pago y webhooks
+- exportacion PDF de informes
+- habilitacion VIP paga y definicion de beneficios
+- convocatoria editable antes de publicarla a jugadores
+- fixture/prode y uso de la plataforma por otros equipos
+
+La cuota mensual toma una base de asistencia al momento de crear el mes siguiente. Si despues se corrigen respuestas historicas, esa base guardada no se recalcula sola; revisarla desde la lista de `Cuotas` antes de cambiarla, sobre todo si ya hay pagos aprobados.
 
 ## Desarrollo local
 

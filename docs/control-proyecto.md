@@ -1,6 +1,6 @@
 # Control del proyecto
 
-Ultima actualizacion: 2026-06-11
+Ultima actualizacion: 2026-10-16
 
 Este documento acompana al `README.md` y sirve para registrar avances, pendientes y estimacion de cierre.
 
@@ -296,6 +296,14 @@ Al 2026-08-13:
 - Se actualizo la version de PWA para que la app instalada tome el cambio publicado.
 - Se agrego primera version admin de `Documentacion` para controlar estudios medicos, DJDR, pase, seguro y lista de buena fe.
 - Se preparo SQL incremental `supabase/player-documents-v1.sql` y seed local privado `private/player-documents-seed.local.sql` para no publicar links sensibles en GitHub.
+
+Al 2026-10-16:
+
+- Se publico la pestana de jugador `Habilitados`, con estado general basado en estudios medicos, DJDR y pase para competidores activos.
+- Se corrigio la RPC publica para que un requisito sin fila cuente como inhabilitante; la prueba en Supabase devuelve 17 competidores activos, todos inhabilitados porque no hay registros de `pase` asociados. Dos tambien requieren revisar estudios medicos. No se modificaron los datos de documentacion.
+- Se audito la cuota 2026-10: costos guardados de `$65.000` por entrenamiento y `$110.000` por domingo, con bases 18/14 y ajuste de caja `-$113.000`. La asistencia de septiembre actualmente da 21 jugadores distintos (17 competidores, 4 solo entrenamientos), por lo que la base guardada no coincide con el historial actual. No se recalculo porque ya existen pagos aprobados.
+- Se auditaron saldos mensuales y los arrastres guardados no coinciden con los saldos recalculados actualmente. No se cambiaron cuotas ni pagos; conciliar antes de trasladar nuevos saldos.
+- Se actualizo README/manual: informes y graficos ya existen; la base de la cuota siguiente queda congelada al crearla y requiere revision si se corrigen asistencias historicas despues.
 
 Al 2026-05-24:
 

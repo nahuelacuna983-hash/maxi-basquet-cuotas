@@ -24,8 +24,11 @@ as $function$
         nullif(trim(coalesce(p.first_name, '')), '')
       )) as player_name,
       bool_and(
-        latest.status = 'cargado'
-        and (latest.expires_at is null or latest.expires_at >= current_date)
+        coalesce(
+          latest.status = 'cargado'
+          and (latest.expires_at is null or latest.expires_at >= current_date),
+          false
+        )
       ) as all_requirements_current
     from public.players as p
     cross join required_documents as required
