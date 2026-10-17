@@ -40,6 +40,7 @@ https://nahuelacuna983-hash.github.io/maxi-basquet-cuotas/
 - Informes MVP por jugador, pagos general, asistencia general, responsabilidad general, historial detallado, resumen de equipo y graficos simples.
 - Los informes permiten ocultar/mostrar montos antes de compartir pantalla o copiar el texto.
 - Panel admin de documentacion para controlar estudios medicos, DJDR, pase, seguro y lista de buena fe sin mostrarlo a jugadores.
+- Vista jugador `Habilitados`: lista publica de competidores activos con estado general basado en estudios medicos, DJDR y pase vigentes.
 - Escrituras principales protegidas con RPC en Supabase.
 - Correccion mobile: formularios admin ocultos respetan `hidden` y, si el codigo guardado del jugador queda invalido, la app pide ingresarlo nuevamente.
 
@@ -358,6 +359,8 @@ Estados:
 - `Vencido`
 
 Los links de Drive no se guardan en el codigo fuente publico. La carga inicial se ejecuta desde `private/player-documents-seed.local.sql` despues de crear la tabla/RPC con `supabase/player-documents-v1.sql`.
+
+La pestana de jugador `Habilitados` muestra competidores activos como habilitados solo si tienen estudios medicos, DJDR y pase cargados y vigentes. Si falta un registro, se consideran inhabilitados. La lista publica no muestra que requisito falta ni fechas u observaciones. Requiere ejecutar `supabase/player-clearance-public-v1.sql`.
 
 ## Altas nuevas y deuda historica
 

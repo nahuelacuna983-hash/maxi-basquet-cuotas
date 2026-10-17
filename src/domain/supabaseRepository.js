@@ -128,6 +128,21 @@ export async function listPlayerDocumentsForPlayer(playerId, accessCode) {
   return (rpcResult.data ?? []).map(fromSupabasePlayerDocument);
 }
 
+export async function listPublicPlayerClearance() {
+  const client = await getSupabaseClient();
+  const rpcResult = await client.rpc("list_public_player_clearance");
+
+  if (rpcResult.error) {
+    throwSupabaseError(rpcResult, "list_public_player_clearance");
+  }
+
+  return (rpcResult.data ?? []).map((row) => ({
+    playerId: row.player_id ?? "",
+    playerName: row.player_name ?? "",
+    status: row.clearance_status ?? "inhabilitado",
+  }));
+}
+
 export async function adminUpsertPlayer(adminPin, player) {
   const client = await getSupabaseClient();
   const payload = toSupabasePlayer(player);

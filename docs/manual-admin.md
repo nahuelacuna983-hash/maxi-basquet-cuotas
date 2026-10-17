@@ -500,6 +500,8 @@ No usar el informe como comprobante definitivo sin revisar pagos pendientes. No 
 
 ## Documentacion
 
+La pestana de jugador `Habilitados` muestra el estado general de los competidores activos. Para habilitar a alguien deben figurar como cargados y vigentes sus estudios medicos, DJDR y pase. Si falta alguno, esta pendiente/a revisar o vencio, aparece como `Inhabilitado`. La lista compartida no revela que requisito falta ni fechas; corregi el registro desde `Documentacion`.
+
 **Que es**
 
 Es el control admin de documentacion del equipo: estudios medicos, DJDR, pase, seguro y lista de buena fe.

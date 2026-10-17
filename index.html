@@ -11,7 +11,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <link rel="stylesheet" href="./src/styles.css?v=fee-adjustments-1" />
+    <link rel="stylesheet" href="./src/styles.css?v=player-clearance-v1" />
   </head>
   <body>
     <main class="app-shell">
@@ -64,6 +64,9 @@
               </button>
               <button class="self-tab-button" type="button" data-player-tab="documents" aria-controls="selfDocumentsTab">
                 Documentacion
+              </button>
+              <button class="self-tab-button" type="button" data-player-tab="clearance" aria-controls="selfClearanceTab">
+                Habilitados
               </button>
             </nav>
 
@@ -234,6 +237,19 @@
                   </div>
                 </div>
                 <div id="selfDocumentsPanel"></div>
+              </article>
+            </section>
+
+            <section class="self-tab-panel" id="selfClearanceTab" data-player-panel="clearance" hidden>
+              <article class="player-documents-card">
+                <div class="training-card-header">
+                  <div>
+                    <span class="section-kicker">Requisitos deportivos</span>
+                    <h3>Habilitaciones</h3>
+                    <p>Estado de estudios medicos, DJDR y pase de competidores activos.</p>
+                  </div>
+                </div>
+                <div id="selfClearancePanel"></div>
               </article>
             </section>
 
@@ -1069,7 +1085,7 @@
       </section>
     </main>
     <script src="./src/vendor/supabase.umd.js?v=local-supabase-1"></script>
-    <script type="module" src="./src/app.js?v=fixed-fees-v1"></script>
+    <script type="module" src="./src/app.js?v=player-clearance-v1"></script>
     <script type="module" src="./src/pwa.js?v=pwa-16"></script>
   </body>
 </html>

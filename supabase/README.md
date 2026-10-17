@@ -13,6 +13,7 @@ supabase/training-votes-v1.sql
 supabase/player-billing-start-v1.sql
 supabase/player-birthdays-v1.sql
 supabase/player-documents-v1.sql
+supabase/player-clearance-public-v1.sql
 supabase/treasury-cash-v1.sql
 supabase/treasury-cash-auto-v1.sql
 supabase/treasury-movement-categories-v1.sql
@@ -65,6 +66,7 @@ Estado:
 - `submit_training_vote`
 - `admin_list_player_documents`
 - `list_player_documents_for_player`
+- `list_public_player_clearance`
 - `admin_upsert_player_document_requirement`
 - `admin_list_scholarship_offers`
 - `list_player_scholarship_offers`
@@ -123,6 +125,7 @@ Estado:
 - `status`: `cargado`, `pendiente`, `revisar` o `vencido`.
 - `expires_at`: fecha de vencimiento si aplica.
 - La app no marca pendientes por ausencia de filas. Solo notifica avisos cargados por admin.
+- `list_public_player_clearance` expone solo nombre, identificador y habilitacion general de competidores activos. Considera habilitados a quienes tienen estudios medicos, DJDR y pase cargados y no vencidos; ausencia de requisito significa inhabilitado. No devuelve tipos, vencimientos, observaciones ni enlaces.
 
 `scholarship_offers`:
 

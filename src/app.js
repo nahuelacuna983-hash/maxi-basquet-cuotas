@@ -50,6 +50,7 @@ import {
   adminUpsertPlayer,
   isSupabaseEnabled,
   listPlayerDocumentsForPlayer,
+  listPublicPlayerClearance,
   listScholarshipOffersForPlayer,
   loadSupabaseState,
   respondScholarshipOffer,
@@ -78,6 +79,9 @@ const selfServiceDocumentErrorsByPlayerId = new Map();
 const selfServiceScholarshipsByPlayerId = new Map();
 const selfServiceScholarshipLoadsByPlayerId = new Set();
 const selfServiceScholarshipErrorsByPlayerId = new Map();
+let publicPlayerClearanceRows = [];
+let publicPlayerClearanceLoadState = "idle";
+let publicPlayerClearanceError = "";
 const attendanceTagOptions = [
   { id: "meat", emoji: "🥩" },
   { id: "cook", emoji: "👨‍🍳" },
@@ -278,6 +282,7 @@ const elements = {
   selfBirthdayNotice: document.querySelector("#selfBirthdayNotice"),
   selfDocumentsNotice: document.querySelector("#selfDocumentsNotice"),
   selfDocumentsPanel: document.querySelector("#selfDocumentsPanel"),
+  selfClearancePanel: document.querySelector("#selfClearancePanel"),
   selfTrainingCard: document.querySelector("#selfTrainingCard"),
   selfTrainingTitle: document.querySelector("#selfTrainingTitle"),
   selfTrainingWindow: document.querySelector("#selfTrainingWindow"),
@@ -1324,6 +1329,8 @@ function renderSelfService() {
   loadSelfServiceDocumentsIfNeeded(fallbackPlayer);
   renderSelfDocumentsNotice(fallbackPlayer);
   renderSelfDocumentsPanel(fallbackPlayer);
+  loadPublicPlayerClearanceIfNeeded(fallbackPlayer);
+  renderPublicPlayerClearance();
 
   const currentMonth = selectedMonth;
   const currentFee = getSelectedSelfServiceFee();
@@ -2553,6 +2560,79 @@ function renderSelfDocumentsPanel(player) {
     }
     <p class="muted-detail">Si un vencimiento no coincide o ya lo presentaste, avisale al administrador.</p>
   `;
+}
+
+function renderPublicPlayerClearance() {
+  if (!elements.selfClearancePanel) return;
+
+  if (publicPlayerClearanceLoadState === "loading" || publicPlayerClearanceLoadState === "idle") {
+    elements.selfClearancePanel.innerHTML = '<p class="muted-detail">Cargando habilitaciones...</p>';
+    return;
+  }
+
+  if (publicPlayerClearanceError) {
+    elements.selfClearancePanel.innerHTML = `
+      <p class="form-message">No se pudo cargar la lista: ${escapeHtml(publicPlayerClearanceError)}</p>
+    `;
+    return;
+  }
+
+  if (!publicPlayerClearanceRows.length) {
+    elements.selfClearancePanel.innerHTML = '<p class="empty-state">No hay competidores activos para mostrar.</p>';
+    return;
+  }
+
+  const enabledCount = publicPlayerClearanceRows.filter((row) => row.status === "habilitado").length;
+  const disabledCount = publicPlayerClearanceRows.length - enabledCount;
+
+  elements.selfClearancePanel.innerHTML = `
+    <div class="document-check-summary">
+      <article><span>Habilitados</span><strong>${enabledCount}</strong></article>
+      <article><span>Inhabilitados</span><strong>${disabledCount}</strong></article>
+      <article><span>Competidores activos</span><strong>${publicPlayerClearanceRows.length}</strong></article>
+    </div>
+    <div class="table-wrap">
+      <table class="compact-table">
+        <thead><tr><th>Jugador</th><th>Estado</th></tr></thead>
+        <tbody>
+          ${publicPlayerClearanceRows.map((row) => `
+            <tr>
+              <td><strong>${escapeHtml(row.playerName)}</strong></td>
+              <td><span class="payment-status ${row.status === "habilitado" ? "status-aprobado" : "status-rechazado"}">${row.status === "habilitado" ? "Habilitado" : "Inhabilitado"}</span></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted-detail">Para figurar habilitado deben estar presentados y vigentes los tres requisitos. Si hay un error, consultalo con el administrador.</p>
+  `;
+}
+
+async function loadPublicPlayerClearanceIfNeeded(player) {
+  if (!player || !canViewSelfServicePlayer(player)) return;
+  if (!isSupabaseEnabled()) {
+    publicPlayerClearanceLoadState = "error";
+    publicPlayerClearanceError = "La lista requiere conexion con Supabase.";
+    return;
+  }
+  if (!supabaseHydrated) return;
+  if (publicPlayerClearanceLoadState !== "idle") return;
+
+  publicPlayerClearanceLoadState = "loading";
+  try {
+    publicPlayerClearanceRows = await listPublicPlayerClearance();
+    publicPlayerClearanceLoadState = "loaded";
+  } catch (error) {
+    publicPlayerClearanceError = error.message.includes("list_public_player_clearance")
+      ? "Falta ejecutar supabase/player-clearance-public-v1.sql en Supabase."
+      : error.message;
+    publicPlayerClearanceLoadState = "error";
+  }
+
+  const selectedPlayer = state.players.find((item) => item.id === state.selectedSelfServicePlayerId);
+  if (selectedPlayer && canViewSelfServicePlayer(selectedPlayer)) {
+    renderPublicPlayerClearance();
+  }
 }
 
 function renderSelfDocumentsNotice(player) {
