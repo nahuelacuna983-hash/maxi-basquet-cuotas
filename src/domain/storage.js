@@ -249,6 +249,7 @@ function dedupeFeesByMonth(fees) {
       sundayCost: fee.sundayCost ?? existingFee.sundayCost,
       trainingBillingBase: fee.trainingBillingBase ?? existingFee.trainingBillingBase,
       sundayBillingBase: fee.sundayBillingBase ?? existingFee.sundayBillingBase,
+      sundayDates: fee.sundayDates ?? existingFee.sundayDates,
       fixedTrainingOnlyAmount: fee.fixedTrainingOnlyAmount ?? existingFee.fixedTrainingOnlyAmount,
       fixedCompetitorAmount: fee.fixedCompetitorAmount ?? existingFee.fixedCompetitorAmount,
       cashAdjustmentAmount: fee.cashAdjustmentAmount ?? existingFee.cashAdjustmentAmount,

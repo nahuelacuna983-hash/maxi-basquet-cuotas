@@ -795,6 +795,9 @@ function fromSupabaseFee(row) {
       row.fixed_competitor_amount === null || row.fixed_competitor_amount === undefined
         ? null
         : Number(row.fixed_competitor_amount),
+    sundayDates: Array.isArray(row.sunday_dates)
+      ? row.sunday_dates.map((date) => String(date).slice(0, 10))
+      : null,
     cashAdjustmentAmount: Number(row.cash_adjustment_amount) || 0,
     interestPercent: Number(row.interest_percent) || 0,
     dueDay: Number(row.due_day) || 10,
@@ -859,6 +862,7 @@ function toSupabaseFee(fee) {
     sunday_billing_base: fee.sundayBillingBase ?? null,
     fixed_training_only_amount: fee.fixedTrainingOnlyAmount ?? null,
     fixed_competitor_amount: fee.fixedCompetitorAmount ?? null,
+    sunday_dates: Array.isArray(fee.sundayDates) ? fee.sundayDates : null,
     cash_adjustment_amount: Number(fee.cashAdjustmentAmount) || 0,
     interest_percent: Number(fee.interestPercent) || 0,
     due_day: Number(fee.dueDay) || 10,

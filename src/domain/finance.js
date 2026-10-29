@@ -77,6 +77,27 @@ export function countWeekdaysInMonth(month, weekday) {
   return count;
 }
 
+export function getCalendarSundayDates(month) {
+  if (!/^\d{4}-\d{2}$/.test(String(month ?? ""))) return [];
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, monthNumber - 1, 1));
+  const dates = [];
+
+  while (date.getUTCMonth() === monthNumber - 1) {
+    if (date.getUTCDay() === 0) dates.push(date.toISOString().slice(0, 10));
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+
+  return dates;
+}
+
+export function getFeeSundayDates(fee) {
+  const calendarDates = getCalendarSundayDates(fee?.month);
+  if (!Array.isArray(fee?.sundayDates)) return calendarDates;
+  const calendarDateSet = new Set(calendarDates);
+  return [...new Set(fee.sundayDates)].filter((date) => calendarDateSet.has(date)).sort();
+}
+
 export function getFeeDueDate(fee) {
   const dueDay = fee.dueDay ?? 10;
   return `${fee.month}-${String(dueDay).padStart(2, "0")}`;
@@ -91,7 +112,8 @@ export function getFeeBreakdown(fee, players) {
   const billablePlayers = players.filter((player) => isPlayerBillableForFee(player, fee));
   const tuesdays = countWeekdaysInMonth(fee.month, 2);
   const thursdays = countWeekdaysInMonth(fee.month, 4);
-  const sundays = countWeekdaysInMonth(fee.month, 0);
+  const calendarSundays = countWeekdaysInMonth(fee.month, 0);
+  const sundays = getFeeSundayDates(fee).length;
   const trainingSessions = tuesdays + thursdays;
   const competitors = billablePlayers.filter((player) => player.type === "competidor").length;
   const totalPlayers = billablePlayers.length;
@@ -117,6 +139,7 @@ export function getFeeBreakdown(fee, players) {
     tuesdays,
     thursdays,
     sundays,
+    calendarSundays,
     trainingSessions,
     competitors,
     totalPlayers,

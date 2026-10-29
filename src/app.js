@@ -9,8 +9,10 @@ import {
   getBaseExpectedFeeForPlayer as calculateBaseExpectedFeeForPlayer,
   getDefaulters,
   getExpectedFeeForPlayer as calculateExpectedFeeForPlayer,
+  getCalendarSundayDates,
   getFeeBreakdown,
   getFeeDueDate,
+  getFeeSundayDates,
   getInterestAmount,
   getPendingPayments,
   getPaidAmount,
@@ -208,6 +210,8 @@ const elements = {
   bulkPlayersInput: document.querySelector("#bulkPlayersInput"),
   bulkPlayersMessage: document.querySelector("#bulkPlayersMessage"),
   feeForm: document.querySelector("#feeForm"),
+  feeMonth: document.querySelector("#feeMonth"),
+  feeSundaySchedule: document.querySelector("#feeSundaySchedule"),
   createNextFeeButton: document.querySelector("#createNextFeeButton"),
   feeMessage: document.querySelector("#feeMessage"),
   feeAdjustmentForm: document.querySelector("#feeAdjustmentForm"),
@@ -394,6 +398,9 @@ syncFeeFormDefaults({ force: true });
   element.addEventListener("input", () => {
     feeFormDirty = true;
   });
+});
+elements.feeSundaySchedule.addEventListener("input", () => {
+  feeFormDirty = true;
 });
 
 [
@@ -815,6 +822,7 @@ elements.feeForm.addEventListener("submit", async (event) => {
     month,
     trainingSessionCost,
     sundayCost,
+    sundayDates: getSelectedFeeFormSundayDates(month),
     trainingBillingBase,
     sundayBillingBase,
     cashAdjustmentAmount: 0,
@@ -827,6 +835,10 @@ elements.feeForm.addEventListener("submit", async (event) => {
   feeFormDirty = false;
   syncFeeFormDefaults({ referenceFee: fee, force: true });
   elements.feeMessage.textContent = `Cuota ${month} creada. Ya se pueden registrar pagos de ese mes.`;
+});
+
+elements.feeMonth.addEventListener("change", () => {
+  renderFeeFormSundayOptions(elements.feeMonth.value);
 });
 
 elements.createNextFeeButton.addEventListener("click", async () => {
@@ -1983,6 +1995,7 @@ async function createNextFeeFromLatest() {
     ...latestFee,
     id: createId("fee"),
     month: nextMonth,
+    sundayDates: getCalendarSundayDates(nextMonth),
     trainingBillingBase:
       attendanceBillingBase.totalPlayers > 0
         ? attendanceBillingBase.totalPlayers
@@ -2067,6 +2080,17 @@ function renderFeesList() {
       updateFeeBillingBase(input.dataset.feeBaseId, input.dataset.feeBaseField, input.value);
     });
   });
+
+  document.querySelectorAll("[data-fee-sunday-date]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const fee = state.fees.find((item) => item.id === input.dataset.feeId);
+      if (!fee) return;
+      const selectedDates = new Set(getFeeSundayDates(fee));
+      if (input.checked) selectedDates.add(input.dataset.feeSundayDate);
+      else selectedDates.delete(input.dataset.feeSundayDate);
+      updateFeeBillingBase(fee.id, "sundayDates", [...selectedDates].sort());
+    });
+  });
 }
 
 function renderFeeRow(fee) {
@@ -2111,7 +2135,7 @@ function renderFeeRow(fee) {
     <article class="fee-row">
       <div>
         <strong>${fee.month}</strong>
-        <span>${breakdown.tuesdays} martes, ${breakdown.thursdays} jueves, ${breakdown.sundays} domingos</span>
+        <span>${breakdown.tuesdays} martes, ${breakdown.thursdays} jueves, ${breakdown.sundays} de ${breakdown.calendarSundays} domingos con partido</span>
       </div>
       <div>
         <strong>Vence ${getFeeDueDate(fee)}</strong>
@@ -2163,6 +2187,15 @@ function renderFeeRow(fee) {
             <input class="score-input" data-fee-base-field="dueDay" data-fee-base-id="${fee.id}" type="number" min="1" max="31" value="${fee.dueDay ?? 10}" />
           </label>
         </div>
+        <fieldset class="fee-sunday-date-controls">
+          <legend>Domingos con partido (${breakdown.sundays}/${breakdown.calendarSundays})</legend>
+          ${getCalendarSundayDates(fee.month).map((date) => `
+            <label>
+              <input type="checkbox" data-fee-id="${escapeHtml(fee.id)}" data-fee-sunday-date="${date}" ${getFeeSundayDates(fee).includes(date) ? "checked" : ""} />
+              ${formatFeeSundayLabel(date)}
+            </label>
+          `).join("") || "<span>Este mes no tiene domingos.</span>"}
+        </fieldset>
       </div>
     </article>
   `;
@@ -5100,6 +5133,32 @@ function syncFeeFormDefaults({ referenceFee = null, force = false } = {}) {
   document.querySelector("#feeTrainingBillingBase").value = defaults.trainingBillingBase ?? "";
   document.querySelector("#feeSundayBillingBase").value = defaults.sundayBillingBase ?? "";
   document.querySelector("#feeInterestPercent").value = String(defaults.interestPercent);
+  renderFeeFormSundayOptions(defaults.month);
+}
+
+function renderFeeFormSundayOptions(month) {
+  const dates = getCalendarSundayDates(month);
+  elements.feeSundaySchedule.innerHTML = `
+    <legend>Domingos con partido (${dates.length})</legend>
+    <p>Todos los domingos del mes vienen seleccionados. Desmarca los que no se juegan.</p>
+    ${dates.map((date) => `
+      <label>
+        <input type="checkbox" data-fee-form-sunday-date="${date}" checked />
+        ${formatFeeSundayLabel(date)}
+      </label>
+    `).join("") || "<span>Este mes no tiene domingos.</span>"}
+  `;
+}
+
+function getSelectedFeeFormSundayDates(month) {
+  return [...elements.feeSundaySchedule.querySelectorAll("[data-fee-form-sunday-date]:checked")]
+    .map((input) => input.dataset.feeFormSundayDate)
+    .filter((date) => getCalendarSundayDates(month).includes(date));
+}
+
+function formatFeeSundayLabel(date) {
+  const [, month, day] = date.split("-");
+  return `${day}/${month}`;
 }
 
 function getSuggestedFeeFormValues(referenceFee = null) {
@@ -7097,21 +7156,42 @@ function updateResponsibilityAdjustment(playerId, field, value) {
 async function updateFeeBillingBase(feeId, field, value) {
   if (!requireAdmin()) return;
 
-  const nextValue = normalizeEditableFeeValue(field, value);
+  const previousFees = state.fees;
+  const currentFee = previousFees.find((fee) => fee.id === feeId);
+  if (!currentFee) return;
+  const nextValue = field === "sundayDates"
+    ? [...new Set(value)].filter((date) => getCalendarSundayDates(currentFee.month).includes(date)).sort()
+    : normalizeEditableFeeValue(field, value);
   if (nextValue === undefined) {
     state.syncStatus = "Valor de cuota invalido.";
     renderRoleVisibility();
     return;
   }
 
-  const previousFees = state.fees;
-  const currentFee = previousFees.find((fee) => fee.id === feeId);
-  if (!currentFee) return;
-
   const previewFee = {
     ...currentFee,
     [field]: nextValue,
   };
+  const excludedSundayDates = field === "sundayDates"
+    ? getFeeSundayDates(currentFee).filter((date) => !nextValue.includes(date))
+    : [];
+  const automaticSundayMovementsToRemove = excludedSundayDates.flatMap((date) => {
+    const movement = getActiveAutomaticTreasuryMovementById(
+      getAutomaticTreasuryMovementId(feeId, "domingo", date),
+    );
+    return movement ? [movement] : [];
+  });
+
+  if (
+    automaticSundayMovementsToRemove.length &&
+    !confirm(
+      `Hay ${automaticSundayMovementsToRemove.length} egreso(s) automático(s) ya registrado(s) para esos domingos. ` +
+        "Al desmarcarlos, también se darán de baja de la caja. ¿Continuar?",
+    )
+  ) {
+    render();
+    return;
+  }
 
   if (
     hasSuspiciousSundayCost(previewFee) &&
@@ -7156,6 +7236,25 @@ async function updateFeeBillingBase(feeId, field, value) {
     }
   } else {
     state.syncStatus = "Cuota actualizada localmente";
+  }
+
+  const failedSundayMovementRemovals = [];
+  for (const movement of automaticSundayMovementsToRemove) {
+    try {
+      if (isSupabaseEnabled() && supabaseHydrated) {
+        await adminDeleteTreasuryMovement(adminConfig.pin, movement.id);
+      }
+      state.treasuryMovements = (state.treasuryMovements ?? []).map((item) =>
+        item.id === movement.id ? { ...item, active: false } : item,
+      );
+    } catch {
+      failedSundayMovementRemovals.push(movement);
+    }
+  }
+
+  if (failedSundayMovementRemovals.length) {
+    state.syncStatus =
+      `Cuota guardada, pero no se pudieron dar de baja ${failedSundayMovementRemovals.length} egreso(s) automático(s). Revisa la caja del mes.`;
   }
 
   suppressNextSupabaseSync = true;
@@ -7280,7 +7379,9 @@ function getAutomaticTreasuryMovementsForFee(fee, cutoffDate = new Date()) {
   }
 
   if (sundayCost > 0) {
-    getDatesForWeekdaysInMonth(fee.month, [0]).forEach((sundayDate) => {
+    getFeeSundayDates(fee).forEach((sundayDateValue) => {
+      const [year, month, day] = sundayDateValue.split("-").map(Number);
+      const sundayDate = new Date(year, month - 1, day);
       const paymentDate = addDays(sundayDate, 1);
       if (paymentDate > now) return;
 

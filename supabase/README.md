@@ -16,6 +16,7 @@ supabase/player-documents-v1.sql
 supabase/player-clearance-public-v1.sql
 supabase/treasury-cash-v1.sql
 supabase/treasury-cash-auto-v1.sql
+supabase/fee-sunday-dates-v1.sql
 supabase/treasury-movement-categories-v1.sql
 supabase/scholarships-v1.sql
 ```
@@ -89,6 +90,7 @@ Estado:
 
 - `training_billing_base`: base de cobro para entrenamientos.
 - `sunday_billing_base`: base de cobro para domingos.
+- `sunday_dates`: fechas de domingos con partido. `NULL` conserva el comportamiento anterior de contar todos los domingos; una lista vacia significa que ese mes no tiene partidos.
 - `fixed_training_only_amount`: monto fijo historico para solo entrenamientos.
 - `fixed_competitor_amount`: monto fijo historico para competidores.
 - `cash_adjustment_amount`: ajuste de caja que suma o descuenta del total a dividir.

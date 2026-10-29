@@ -32,6 +32,7 @@ create table if not exists public.fees (
   sunday_billing_base numeric,
   fixed_training_only_amount numeric,
   fixed_competitor_amount numeric,
+  sunday_dates date[],
   interest_percent numeric not null default 5,
   due_day integer not null default 10,
   created_at timestamptz not null default now(),

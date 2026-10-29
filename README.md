@@ -254,6 +254,7 @@ Cada cuota puede definir:
 
 - costo de turno de entrenamiento
 - costo de domingo
+- fechas de domingos con partido (por defecto, todos los domingos del mes; el admin puede desmarcar los que no se juegan)
 - base de cobro entrenamientos
 - base de cobro domingos
 - monto fijo historico para solo entrenamientos

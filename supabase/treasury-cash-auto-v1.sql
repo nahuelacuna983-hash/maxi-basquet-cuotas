@@ -1,6 +1,9 @@
 alter table public.fees
 add column if not exists cash_adjustment_amount numeric not null default 0;
 
+alter table public.fees
+add column if not exists sunday_dates date[];
+
 create table if not exists public.treasury_movements (
   id text primary key,
   fee_id text not null references public.fees(id) on delete cascade,
@@ -82,6 +85,7 @@ declare
   v_cash_adjustment_amount numeric := coalesce((p_fee->>'cash_adjustment_amount')::numeric, 0);
   v_interest_percent numeric := coalesce((p_fee->>'interest_percent')::numeric, 0);
   v_due_day integer := coalesce((p_fee->>'due_day')::integer, 10);
+  v_sunday_dates date[];
 begin
   if p_admin_pin <> '1234' then
     raise exception 'PIN admin invalido';
@@ -99,6 +103,23 @@ begin
     raise exception 'Dia de vencimiento invalido';
   end if;
 
+  if jsonb_typeof(p_fee->'sunday_dates') = 'array' then
+    select coalesce(array_agg(distinct item::date order by item::date), array[]::date[])
+      into v_sunday_dates
+    from jsonb_array_elements_text(p_fee->'sunday_dates') as dates(item);
+
+    if exists (
+      select 1
+      from unnest(v_sunday_dates) as selected(day)
+      where to_char(selected.day, 'YYYY-MM') <> v_month
+        or extract(dow from selected.day) <> 0
+    ) then
+      raise exception 'Las fechas de partido deben ser domingos del mes de la cuota';
+    end if;
+  else
+    v_sunday_dates := null;
+  end if;
+
   insert into public.fees (
     id,
     month,
@@ -111,6 +132,7 @@ begin
     cash_adjustment_amount,
     interest_percent,
     due_day,
+    sunday_dates,
     updated_at
   )
   values (
@@ -125,6 +147,7 @@ begin
     v_cash_adjustment_amount,
     v_interest_percent,
     v_due_day,
+    v_sunday_dates,
     now()
   )
   on conflict (id) do update
@@ -139,6 +162,7 @@ begin
     cash_adjustment_amount = excluded.cash_adjustment_amount,
     interest_percent = excluded.interest_percent,
     due_day = excluded.due_day,
+    sunday_dates = excluded.sunday_dates,
     updated_at = now();
 end;
 $$;
