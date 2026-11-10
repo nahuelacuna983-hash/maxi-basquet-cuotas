@@ -1185,7 +1185,7 @@ elements.attendanceNoveltyForm.addEventListener("submit", async (event) => {
 
   if (tags.length > 0 && !isDinnerTrainingDate(date)) {
     elements.attendanceNoveltyMessage.textContent =
-      "Cena y emoticones solo se usan en entrenamientos de jueves.";
+      "Cena y emoticones solo se usan en fechas de entrenamiento.";
     return;
   }
 
@@ -5493,7 +5493,7 @@ function getDinnerAttendanceSuffix(attendance) {
 }
 
 function isDinnerTrainingDate(dateValue) {
-  return parseDateInputValue(dateValue)?.getDay() === 4;
+  return isTrainingDate(dateValue);
 }
 
 function renderTrainingTagButtons(currentAttendance, isDinnerDay, isReadOnly = false) {
@@ -5529,7 +5529,7 @@ async function submitSelfTrainingStatus(status, options = {}) {
   }
 
   if (options.dinnerOnly && !isDinnerTrainingDate(session.date)) {
-    elements.selfTrainingMessage.textContent = "Solo cena se usa en entrenamientos de jueves.";
+    elements.selfTrainingMessage.textContent = "Solo cena se usa en fechas de entrenamiento.";
     return;
   }
 
@@ -5582,7 +5582,7 @@ async function addTrainingGuest() {
   }
 
   if (isDinnerOnly && !isDinnerTrainingDate(session.date)) {
-    elements.selfTrainingMessage.textContent = "Solo cena se usa en entrenamientos de jueves.";
+    elements.selfTrainingMessage.textContent = "Solo cena se usa en fechas de entrenamiento.";
     return;
   }
 
@@ -5675,7 +5675,7 @@ async function toggleSelfTrainingTag(tag) {
 
   if (!isDinnerTrainingDate(session.date)) {
     elements.selfTrainingMessage.textContent =
-      "Los emoticones de cena se usan en entrenamientos de jueves.";
+      "Los emoticones de cena se usan en fechas de entrenamiento.";
     return;
   }
 

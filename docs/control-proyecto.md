@@ -224,7 +224,7 @@ Al 2026-05-19:
 - Si un pago esta pendiente o aprobado para ese mes, la app oculta el boton de pagar y el formulario para evitar duplicados.
 - Se agrego `Respuesta admin` para que el administrador pueda anotar `Voy`, `No voy`, `Avisa mas tarde`, `Llega sobre la hora`, `Falto`, `Aviso tarde` o `Baja sobre la hora` por un jugador que no pudo usar la app.
 - Se corrigio la fecha de `Respuesta admin`: la sincronizacion con Supabase ya no pisa la fecha elegida ni vuelve automaticamente al 06/04/2026.
-- Se agrego soporte para jueves con `Solo cena`, lista secundaria de cena y emoticones opcionales por jugador sin repetir.
+- Se agrego soporte para fechas de entrenamiento con `Solo cena`, lista secundaria de cena y emoticones opcionales por jugador sin repetir.
 - Para que los emoticones queden compartidos por Supabase, se agrego `supabase/attendance-tags-v1.sql`.
 
 Al 2026-05-31:
@@ -280,7 +280,7 @@ Al 2026-06-22:
 
 Al 2026-07-22:
 
-- Se agrego modo `Solo cena` para invitados en el listado temporal de jueves: aparece en la lista secundaria de cena y no suma al contador de entrenamiento.
+- Se agrego modo `Solo cena` para invitados en el listado temporal: aparece en la lista secundaria de cena y no suma al contador de entrenamiento.
 - Se agrego campo opcional `Nacimiento` para jugadores, editable desde alta y tabla admin.
 - La vista jugador muestra aviso de proximo cumpleanos; si el jugador cumple hoy, muestra saludo y simbolo de cumpleanos durante el dia.
 - Se agrego SQL incremental `supabase/player-birthdays-v1.sql` para persistir `birth_date` y actualizar las RPC de jugadores.
