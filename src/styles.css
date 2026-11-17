@@ -543,6 +543,15 @@ h1 {
   color: var(--ink-soft);
 }
 
+.defaulters-month-filter {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 280px);
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
 .training-action-grid,
 .training-tag-grid {
   gap: 10px;

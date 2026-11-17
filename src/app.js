@@ -138,6 +138,7 @@ const state = {
   ...persistedAppState,
   playerFilter: "todos",
   selectedAdminPaymentFeeId: "",
+  selectedDefaultersMonth: "all",
   selectedPlayerPaymentFeeId: "",
   selectedFeeAdjustmentPlayerId: "",
   selectedFeeAdjustmentFeeId: "",
@@ -345,6 +346,7 @@ const elements = {
   playerFilters: document.querySelector("#playerFilters"),
   feesList: document.querySelector("#feesList"),
   defaultersList: document.querySelector("#defaultersList"),
+  defaultersMonthFilter: document.querySelector("#defaultersMonthFilter"),
   pendingPaymentsList: document.querySelector("#pendingPaymentsList"),
   paymentsHistoryList: document.querySelector("#paymentsHistoryList"),
   attendanceList: document.querySelector("#attendanceList"),
@@ -475,6 +477,11 @@ elements.selfServiceMonth.addEventListener("change", () => {
   state.selectedSelfServiceMonth = elements.selfServiceMonth.value;
   clearSelfPaymentDraft();
   renderSelfService();
+});
+
+elements.defaultersMonthFilter.addEventListener("change", () => {
+  state.selectedDefaultersMonth = elements.defaultersMonthFilter.value;
+  render();
 });
 
 elements.playerTabs.addEventListener("click", (event) => {
@@ -2233,9 +2240,41 @@ function getFeeWorkPriority(fee, currentMonth, nextMonth) {
 }
 
 function renderDefaulters(defaulters) {
-  if (defaulters.length === 0) {
+  const today = new Date();
+  const overdueMonths = state.fees
+    .filter((fee) => isFeeOverdue(fee, today))
+    .map((fee) => fee.month)
+    .sort((a, b) => b.localeCompare(a));
+  if (!overdueMonths.includes(state.selectedDefaultersMonth)) {
+    state.selectedDefaultersMonth = "all";
+  }
+  elements.defaultersMonthFilter.innerHTML = [
+    '<option value="all">Todos los meses</option>',
+    ...overdueMonths.map(
+      (month) => `<option value="${escapeHtml(month)}">${escapeHtml(formatMonthLabel(month))}</option>`,
+    ),
+  ].join("");
+  elements.defaultersMonthFilter.value = state.selectedDefaultersMonth;
+
+  const filteredDefaulters = defaulters
+    .map((debt) => {
+      const overdueFees = debt.overdueFees.filter(
+        (fee) => state.selectedDefaultersMonth === "all" || fee.month === state.selectedDefaultersMonth,
+      );
+      return {
+        ...debt,
+        overdueFees,
+        overdueBalance: overdueFees.reduce((sum, fee) => sum + fee.balance, 0),
+        interestTotal: overdueFees.reduce((sum, fee) => sum + (Number(fee.interest) || 0), 0),
+      };
+    })
+    .filter((debt) => debt.overdueFees.length > 0);
+
+  if (filteredDefaulters.length === 0) {
     elements.defaultersList.innerHTML =
-      '<p class="empty-state">No hay morosos con cuotas vencidas.</p>';
+      state.selectedDefaultersMonth === "all"
+        ? '<p class="empty-state">No hay morosos con cuotas vencidas.</p>'
+        : `<p class="empty-state">No hay morosos con saldo vencido en ${escapeHtml(formatMonthLabel(state.selectedDefaultersMonth))}.</p>`;
     return;
   }
 
@@ -2252,12 +2291,12 @@ function renderDefaulters(defaulters) {
                         </tr>
         </thead>
         <tbody>
-          ${defaulters
+          ${filteredDefaulters
             .map(
               (debt) => `
                 <tr>
                   <td><strong>${escapeHtml(getPlayerName(debt.player))}</strong></td>
-                  <td>${debt.overdueFees.map((fee) => fee.month).join(", ")}</td>
+                  <td>${debt.overdueFees.map((fee) => escapeHtml(formatMonthLabel(fee.month))).join(", ")}</td>
                   <td class="debt-value">${formatMoney(debt.overdueBalance ?? 0)}</td>
                   <td>${formatMoney(debt.interestTotal)}</td>
                   <td>${debt.player.internalEnabled ? "Habilitado" : "No habilitado"}</td>
